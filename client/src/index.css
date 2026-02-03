@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gradient-mesh bg-fixed text-surface-900 antialiased min-h-screen;
+  }
+}
+
+@layer components {
+  /* ========================================
+     LIQUID GLASS DESIGN SYSTEM
+     Apple 2026 Inspired Glass Components
+     ======================================== */
+
+  /* Glass Panel - For sidebars and large containers */
+  .glass-panel {
+    @apply backdrop-blur-xl bg-white/20 border border-white/20 shadow-glass;
+  }
+
+  /* Glass Card - For content cards and modals */
+  .glass-card {
+    @apply backdrop-blur-lg bg-white/25 border border-white/25 rounded-2xl shadow-glass;
+  }
+
+  /* Glass Surface - For subtle glass effects */
+  .glass-surface {
+    @apply backdrop-blur-md bg-white/15 border border-white/15 rounded-xl;
+  }
+
+  /* Glass Input - For form inputs */
+  .glass-input {
+    @apply backdrop-blur-md bg-white/20 border border-white/20 rounded-xl
+           focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30
+           placeholder:text-surface-500/70 transition-all duration-200;
+  }
+
+  /* Glass Button variants */
+  .glass-btn {
+    @apply backdrop-blur-md bg-white/20 border border-white/25 rounded-xl
+           hover:bg-white/30 hover:border-white/35
+           active:bg-white/35 active:scale-[0.98]
+           transition-all duration-200;
+  }
+
+  .glass-btn-primary {
+    @apply backdrop-blur-md bg-primary-500/40 border border-primary-400/30 rounded-xl text-white
+           hover:bg-primary-500/50 hover:border-primary-400/40
+           active:bg-primary-500/60 active:scale-[0.98]
+           transition-all duration-200;
+  }
+
+  /* ========================================
+     OPACITY TEXT CLASSES (100/70/40/20 Rule)
+     ======================================== */
+
+  /* 100% - Critical text, logos, primary CTAs */
+  .text-solid {
+    @apply text-surface-900;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 70% - Supporting text, nav tabs */
+  .text-prominent {
+    @apply text-surface-700/90;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  /* 40% - Decorative dividers, placeholders */
+  .text-subtle {
+    @apply text-surface-500/70;
+  }
+
+  /* 20% - Atmospheric overlays */
+  .text-muted {
+    @apply text-surface-400/50;
+  }
+
+  /* ========================================
+     ORIGINAL BUTTON CLASSES
+     ======================================== */
+
+  .btn-primary {
+    @apply bg-primary-600 text-white px-4 py-2 rounded-lg font-medium
+           hover:bg-primary-700 transition-colors duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-surface-200 text-surface-700 px-4 py-2 rounded-lg font-medium
+           hover:bg-surface-300 transition-colors duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-lg border border-surface-300
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+           placeholder:text-surface-400;
+  }
+
+  /* ========================================
+     SPECULAR HIGHLIGHT EFFECT
+     ======================================== */
+
+  .specular-surface {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .specular-surface::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(255, 255, 255, 0.15) 0%,
+      transparent 50%
+    );
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .specular-surface:hover::before {
+    opacity: 1;
+  }
+
+  /* ========================================
+     GLASS MESSAGE BUBBLES
+     ======================================== */
+
+  .glass-message-user {
+    @apply backdrop-blur-lg bg-primary-500/40 border border-primary-400/30
+           rounded-2xl rounded-br-sm shadow-glass;
+  }
+
+  .glass-message-ai {
+    @apply backdrop-blur-lg bg-white/30 border border-white/20
+           rounded-2xl rounded-bl-sm shadow-glass;
+  }
+
+  /* ========================================
+     GLASS STAT CARDS
+     ======================================== */
+
+  .glass-stat-card {
+    @apply backdrop-blur-xl bg-white/25 border border-white/20 rounded-2xl
+           shadow-glass transition-all duration-300
+           hover:bg-white/30 hover:shadow-glass-lg;
+  }
+}
+
+/* ========================================
+   CUSTOM SCROLLBAR (Glass themed)
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-white/30 rounded-full backdrop-blur-sm;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-white/40;
+}
+
+/* ========================================
+   MESSAGE ANIMATIONS
+   ======================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-enter {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* ========================================
+   TYPING INDICATOR
+   ======================================== */
+
+@keyframes bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+.typing-dot {
+  animation: bounce 1.4s infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* ========================================
+   REDUCED MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .message-enter {
+    animation: none;
+  }
+}
+
+/* ========================================
+   GLASS FOCUS STATES
+   ======================================== */
+
+.glass-focus {
+  @apply focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2
+         focus:ring-offset-transparent;
+}
+
+/* ========================================
+   LIQUID BORDER ANIMATION
+   ======================================== */
+
+.liquid-border {
+  filter: url(#liquid-edge-filter);
+}
+
+.liquid-border-animated {
+  filter: url(#liquid-edge-filter-animated);
+}

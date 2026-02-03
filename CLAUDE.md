@@ -1,0 +1,696 @@
+# CLAUDE.md - Academio Project Context
+
+> **Purpose:** This file serves as persistent memory for AI agents working on this codebase.
+> It documents critical architectural decisions and behavioral requirements that must never be forgotten.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 18 + TypeScript + Vite + Tailwind CSS |
+| **Backend** | Node.js + Express + TypeScript |
+| **AI Engine** | DeepSeek via Ollama (localhost:11434) |
+| **Database** | SQLite (local file: `server/data/sqlite.db`) |
+| **File Processing** | `pdf-parse` (PDFs), `sharp` (images) |
+| **Streaming** | Server-Sent Events (SSE) for real-time AI responses |
+| **Animation** | Motion (formerly Framer Motion) for transitions |
+| **Design System** | Apple Liquid Glass (2026) - glassmorphism with specular highlights |
+
+---
+
+## Liquid Glass Design System
+
+> **Added:** Apple-inspired Liquid Glass UI with glassmorphism, dynamic backgrounds, and motion animations.
+> **Status:** Implemented across all components.
+
+### Design Philosophy
+
+The UI uses Apple's 2026 Liquid Glass design language featuring:
+- **Translucent glass panels** with backdrop blur effects
+- **Dynamic gradient mesh background** with animated floating orbs
+- **100/70/40/20 opacity rule** for text hierarchy
+- **Cursor-following specular highlights** on interactive elements
+- **Morphing transitions** between states using Motion library
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `client/src/styles/liquid-glass-tokens.ts` | Design tokens (opacity, blur, tints, shadows) |
+| `client/src/components/layout/DynamicBackground.tsx` | Animated gradient mesh background |
+| `client/src/components/effects/LiquidEdgeFilter.tsx` | SVG filters for liquid edge effects |
+| `client/src/components/glass/*.tsx` | Reusable glass components |
+| `client/src/hooks/useSpecularHighlight.ts` | Cursor-following light effect hook |
+
+### Glass Component Library
+
+```
+client/src/components/glass/
+├── GlassCard.tsx        # Container with variants: panel, card, surface, elevated
+├── GlassButton.tsx      # Button with specular highlight effect
+├── GlassInput.tsx       # Form inputs with glass styling
+├── SpecularSurface.tsx  # Wrapper for cursor-following light
+└── index.ts             # Barrel exports
+```
+
+### CSS Utility Classes
+
+These classes are defined in `client/src/index.css`:
+
+| Class | Usage |
+|-------|-------|
+| `.glass-panel` | Sidebars, large containers (xl blur, 20% white bg) |
+| `.glass-card` | Content cards, modals (lg blur, 25% white bg, rounded-2xl) |
+| `.glass-surface` | Subtle glass (md blur, 15% white bg, rounded-xl) |
+| `.glass-btn` | Default glass button |
+| `.glass-btn-primary` | Primary action button (primary color tint) |
+| `.glass-message-user` | User chat bubbles (primary tint) |
+| `.glass-message-ai` | AI chat bubbles (white tint) |
+| `.glass-stat-card` | Dashboard stat cards with hover effect |
+
+### Text Opacity Classes (100/70/40/20 Rule)
+
+| Class | Opacity | Usage |
+|-------|---------|-------|
+| `.text-solid` | 100% | Critical text, logos, primary CTAs |
+| `.text-prominent` | 70% | Supporting text, nav tabs |
+| `.text-subtle` | 40% | Decorative dividers, placeholders |
+| `.text-muted` | 20% | Atmospheric overlays |
+
+### Tailwind Config Extensions
+
+Glass colors are available via Tailwind:
+- `bg-glass-white-{5,10,15,20,25,30,40,50,60,70}` - White glass tints
+- `bg-glass-dark-{5,10,15,20,25,30}` - Dark glass tints
+- `bg-glass-primary-{20,30,40}` - Primary color glass tints
+- `shadow-glass`, `shadow-glass-lg`, `shadow-glass-inset` - Glass shadows
+- `animate-gradient-shift`, `animate-liquid-wobble` - Glass animations
+
+### Motion Animations
+
+The `motion` library (imported from `motion/react`) provides:
+- `whileHover`, `whileTap` - Interactive feedback on buttons
+- `layoutId` - Shared element transitions (used in TopicSelector)
+- `LayoutGroup` - Coordinate animations between components
+- `AnimatePresence` - Exit animations
+
+### Accessibility
+
+- **Reduced motion**: All animations respect `prefers-reduced-motion` media query
+- **Focus states**: Glass elements use `focus:ring-2 focus:ring-white/50`
+- **Text contrast**: Critical text uses `.text-solid` with subtle text shadow
+- **Keyboard navigation**: All interactive elements are focusable
+
+### Using Glass Components
+
+```tsx
+// Import glass components
+import { GlassCard, GlassButton } from '@/components/glass';
+
+// Use in your component
+<GlassCard variant="card" tint="light" hover>
+  <h2 className="text-solid">Title</h2>
+  <p className="text-prominent">Supporting text</p>
+  <GlassButton variant="primary">Action</GlassButton>
+</GlassCard>
+```
+
+### Background Setup
+
+The `DynamicBackground` and `LiquidEdgeFilter` are added in `App.tsx`:
+```tsx
+<>
+  <LiquidEdgeFilter />    {/* SVG filter definitions */}
+  <DynamicBackground />   {/* Animated gradient mesh */}
+  <div className="relative z-10">
+    {/* App content */}
+  </div>
+</>
+```
+
+---
+
+## File Structure
+
+```
+academio/
+│
+├── CLAUDE.md                        # THIS FILE - Agent memory
+│
+├── client/                          # React Frontend Application
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── chat/
+│   │   │   │   ├── ChatCanvas.tsx        # Main conversation display
+│   │   │   │   ├── ChatMessage.tsx       # Individual message bubble
+│   │   │   │   ├── ChatInput.tsx         # Text input + file upload
+│   │   │   │   └── StreamingIndicator.tsx
+│   │   │   ├── sidebar/
+│   │   │   │   ├── Sidebar.tsx           # Container for sidebar
+│   │   │   │   ├── TopicSelector.tsx     # Math, History, Science buttons
+│   │   │   │   └── ChatHistory.tsx       # Previous sessions list
+│   │   │   ├── admin/
+│   │   │   │   ├── PromptEditor.tsx      # System prompt text area
+│   │   │   │   └── AdminLogin.tsx        # Simple password gate
+│   │   │   ├── common/
+│   │   │   │   ├── Button.tsx
+│   │   │   │   ├── FileUploadButton.tsx
+│   │   │   │   └── LoadingSpinner.tsx
+│   │   │   ├── glass/                    # Liquid Glass Design System
+│   │   │   │   ├── GlassCard.tsx
+│   │   │   │   ├── GlassButton.tsx
+│   │   │   │   ├── GlassInput.tsx
+│   │   │   │   ├── SpecularSurface.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── effects/
+│   │   │   │   ├── LiquidEdgeFilter.tsx
+│   │   │   │   └── LiquidBorder.tsx
+│   │   │   ├── layout/
+│   │   │   │   └── DynamicBackground.tsx
+│   │   │   └── transitions/
+│   │   │       └── MorphingContainer.tsx
+│   │   ├── pages/
+│   │   │   ├── StudentPage.tsx           # Main student interface
+│   │   │   └── AdminPage.tsx             # Admin portal
+│   │   ├── hooks/
+│   │   │   ├── useChat.ts                # SSE streaming (dedicated handler)
+│   │   │   ├── useSessions.ts            # Session management
+│   │   │   ├── useFileUpload.ts          # File upload handling
+│   │   │   └── useSpecularHighlight.ts   # Cursor-following light effect
+│   │   ├── styles/
+│   │   │   └── liquid-glass-tokens.ts    # Design system tokens
+│   │   ├── services/
+│   │   │   └── api.ts                    # REST calls (sessions, uploads, admin)
+│   │   ├── context/
+│   │   │   └── ChatContext.tsx           # Global chat state
+│   │   ├── types/
+│   │   │   └── index.ts
+│   │   ├── utils/
+│   │   │   └── formatters.ts
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── index.css
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── tailwind.config.js
+│   ├── tsconfig.json
+│   └── package.json
+│
+├── server/                          # Express Backend Application
+│   ├── src/
+│   │   ├── controllers/
+│   │   │   ├── chat.controller.ts
+│   │   │   ├── session.controller.ts
+│   │   │   ├── upload.controller.ts
+│   │   │   └── admin.controller.ts
+│   │   ├── services/
+│   │   │   ├── ollama.service.ts         # DeepSeek/Ollama integration
+│   │   │   ├── pdf.service.ts
+│   │   │   ├── image.service.ts
+│   │   │   └── prompt.service.ts
+│   │   ├── routes/
+│   │   │   ├── chat.routes.ts
+│   │   │   ├── session.routes.ts
+│   │   │   ├── upload.routes.ts
+│   │   │   ├── admin.routes.ts
+│   │   │   └── index.ts
+│   │   ├── middleware/
+│   │   │   ├── adminAuth.middleware.ts
+│   │   │   └── errorHandler.middleware.ts
+│   │   ├── database/
+│   │   │   ├── db.ts
+│   │   │   ├── schema.sql
+│   │   │   └── queries/
+│   │   │       ├── sessions.queries.ts
+│   │   │       └── messages.queries.ts
+│   │   ├── config/
+│   │   │   └── index.ts
+│   │   ├── types/
+│   │   │   └── index.ts
+│   │   └── index.ts
+│   ├── data/
+│   │   ├── sqlite.db
+│   │   ├── system-prompt.txt
+│   │   └── uploads/
+│   ├── tsconfig.json
+│   └── package.json
+│
+├── shared/                          # Shared TypeScript Types
+│   └── types/
+│       ├── chat.types.ts
+│       ├── session.types.ts
+│       └── index.ts
+│
+├── .env.example
+├── .gitignore
+├── README.md
+└── package.json
+```
+
+---
+
+## THE SOCRATIC PRIME DIRECTIVE
+
+> **CRITICAL: This section defines the core behavioral requirement of the AI tutor.**
+> **Any code changes to the AI service or system prompts MUST preserve this directive.**
+
+### The Prime Directive
+
+**The AI agent within this application MUST NEVER simply provide the final answer to a student's question, math problem, or quiz.**
+
+It must act as a **world-class Socratic Tutor**. Its goal is to **guide the student to the answer** through:
+- Thoughtful questioning
+- Relatable analogies
+- Breaking down complex problems into smaller steps
+
+The AI must be **encouraging, clear, and comprehensive**, suitable for a **K-12 audience**.
+
+---
+
+### Required Behaviors
+
+| Behavior | Description |
+|----------|-------------|
+| **Guide, Don't Tell** | Use questions to lead students to discover answers themselves |
+| **Break Down Problems** | Decompose complex questions into smaller, manageable steps |
+| **Use Analogies** | Relate abstract concepts to familiar, everyday experiences |
+| **Encourage Always** | Maintain a positive, supportive, patient tone at all times |
+| **Validate Thinking** | Acknowledge correct reasoning before introducing new concepts |
+| **Check Understanding** | Ask students to explain their thinking before moving forward |
+
+---
+
+### Forbidden Behaviors
+
+| Forbidden Action | Why It's Forbidden |
+|------------------|-------------------|
+| Giving final answers directly | Robs students of the learning experience |
+| Solving math problems for students | Students must work through the steps themselves |
+| Writing essays/assignments | Academic integrity; students must produce their own work |
+| Skipping the questioning process | The process IS the learning |
+| Being condescending or impatient | Discourages students from asking questions |
+
+---
+
+### Example Interactions
+
+#### BAD (Forbidden)
+
+```
+Student: "What is 7 × 8?"
+AI: "56"
+```
+
+```
+Student: "What caused World War I?"
+AI: "World War I was caused by the assassination of Archduke Franz Ferdinand..."
+```
+
+#### GOOD (Required)
+
+```
+Student: "What is 7 × 8?"
+AI: "Great question! Let's figure this out together.
+     Do you remember what 7 × 7 equals?
+     Once you have that, what would happen if we added one more group of 7?"
+```
+
+```
+Student: "What caused World War I?"
+AI: "That's a fascinating question about a pivotal moment in history!
+     Let's explore this step by step. First, do you know what was happening
+     in Europe in the early 1900s? Were the major countries getting along,
+     or were there tensions building up? What have you heard about alliances
+     between countries during that time?"
+```
+
+---
+
+### System Prompt Location
+
+The active system prompt that enforces this directive is stored at:
+```
+server/data/system-prompt.txt
+```
+
+This prompt can be edited via the Admin Portal at `/admin`.
+
+**WARNING:** Any modifications to the system prompt MUST preserve the Socratic teaching methodology defined above.
+
+---
+
+## Key Architectural Decisions
+
+### 1. SSE for Streaming
+- `useChat.ts` handles Server-Sent Events directly (not through `api.ts`)
+- Endpoint: `GET /api/chat/stream`
+- Provides real-time token-by-token rendering
+
+### 2. Separation of Concerns
+- Controllers: HTTP request/response handling only
+- Services: Business logic (AI calls, file parsing, database)
+- Routes: Endpoint definitions and middleware chaining
+
+### 3. File Upload Flow
+1. Client uploads file to `/api/upload`
+2. Backend extracts text (PDF) or processes image
+3. Extracted content is included in the chat context
+4. Ollama receives the enriched prompt
+
+### 4. Session Management
+- Each conversation is a "session" with a unique ID
+- Sessions are associated with a topic (Math, Science, etc.)
+- All messages within a session are persisted to SQLite
+
+---
+
+## Environment Variables
+
+See `.env.example` for required configuration:
+- `OLLAMA_BASE_URL` - Ollama API endpoint (default: http://localhost:11434)
+- `OLLAMA_MODEL` - Model to use (default: deepseek-r1:8b)
+- `ADMIN_PASSWORD` - Password for admin portal access
+- `PORT` - Server port (default: 3001)
+
+---
+
+## Commands
+
+```bash
+# Development
+npm run dev          # Start both client and server in dev mode
+
+# Individual
+npm run dev:client   # Start frontend only
+npm run dev:server   # Start backend only
+
+# Production
+npm run build        # Build both client and server
+npm run start        # Start production server
+```
+
+---
+
+## Teacher Interface Architecture
+
+> **Added:** This section documents the Teacher Interface design and architecture.
+> **Status:** Approved for implementation.
+
+### Overview
+
+The Teacher Interface is a separate portal that allows teachers to:
+1. **Monitor Students** - View individual student profiles, grades, and learning progress
+2. **Detect Struggles** - Identify students who need intervention based on AI copilot usage patterns
+3. **Generate Materials** - Use AI assistant to create lessons, presentations, tests, and homework
+
+---
+
+### Teacher Interface File Structure
+
+#### Client-Side (Frontend)
+
+```
+client/src/
+├── components/
+│   └── teacher/
+│       ├── TeacherSidebar.tsx           # Navigation: Dashboard, Students, AI Assistant
+│       ├── StudentList.tsx              # Grid/list of students in classroom
+│       ├── StudentCard.tsx              # Student summary card (avatar, name, status)
+│       ├── StudentProfile.tsx           # Detailed student view
+│       │   ├── StudentSummary.tsx       # Quick bio, enrollment info
+│       │   ├── GradeHistory.tsx         # Grades per subject (chart/table)
+│       │   ├── LearningActivity.tsx     # AI copilot usage, questions asked
+│       │   └── InterventionAlert.tsx    # Warning if student is struggling
+│       ├── classroom/
+│       │   ├── ClassroomOverview.tsx    # Aggregate class stats
+│       │   └── SubjectSelector.tsx      # Filter by subject
+│       └── assistant/
+│           ├── TeacherChat.tsx          # ChatGPT-like interface for teachers
+│           ├── TeacherChatInput.tsx     # Input with material type selector
+│           ├── TeacherChatMessage.tsx   # Message bubble (supports markdown)
+│           └── MaterialPreview.tsx      # Preview generated content
+│
+├── pages/
+│   └── TeacherPage.tsx                  # Main teacher portal container
+│
+├── hooks/
+│   ├── useTeacherChat.ts                # SSE streaming for teacher assistant
+│   ├── useStudents.ts                   # Fetch/manage student data
+│   └── useClassroom.ts                  # Classroom-level data
+│
+├── services/
+│   └── teacherApi.ts                    # REST calls for teacher endpoints
+│
+├── context/
+│   └── TeacherContext.tsx               # Global teacher state
+│
+└── types/
+    └── teacher.types.ts                 # Teacher-specific TypeScript types
+```
+
+#### Server-Side (Backend)
+
+```
+server/src/
+├── controllers/
+│   ├── teacher.controller.ts            # Teacher authentication, profile
+│   ├── student.controller.ts            # Student CRUD, profiles
+│   ├── classroom.controller.ts          # Classroom management
+│   └── teacherChat.controller.ts        # AI assistant for teachers
+│
+├── services/
+│   ├── student.service.ts               # Student data aggregation
+│   ├── classroom.service.ts             # Class-level analytics
+│   ├── grades.service.ts                # Grade history management
+│   ├── learningAnalytics.service.ts     # Track student AI usage patterns
+│   └── teacherAssistant.service.ts      # Material generation prompts
+│
+├── routes/
+│   ├── teacher.routes.ts                # /api/teacher/*
+│   ├── student.routes.ts                # /api/students/*
+│   └── classroom.routes.ts              # /api/classroom/*
+│
+├── middleware/
+│   └── teacherAuth.middleware.ts        # Teacher session validation
+│
+└── database/
+    └── queries/
+        ├── students.queries.ts          # Student data queries
+        ├── grades.queries.ts            # Grade history queries
+        └── analytics.queries.ts         # Learning analytics queries
+```
+
+#### Database Schema Additions
+
+```
+server/data/
+├── sqlite.db                            # Extended with new tables:
+│   ├── teachers                         # Teacher accounts
+│   ├── classrooms                       # Classroom definitions
+│   ├── students                         # Student profiles
+│   ├── student_grades                   # Grade history per subject
+│   ├── learning_analytics               # AI copilot usage tracking
+│   └── teacher_chat_sessions            # Teacher assistant history
+│
+└── teacher-system-prompt.txt            # System prompt for teacher assistant
+```
+
+#### Shared Types
+
+```
+shared/types/
+├── teacher.types.ts                     # Teacher, Classroom interfaces
+├── student.types.ts                     # Student, Grade, Analytics interfaces
+└── index.ts                             # Updated exports
+```
+
+---
+
+### Database Schema Design
+
+#### New Tables
+
+```sql
+-- Teachers table
+CREATE TABLE teachers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Classrooms table
+CREATE TABLE classrooms (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    teacher_id TEXT NOT NULL,
+    subject TEXT,
+    grade_level TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id)
+);
+
+-- Students table
+CREATE TABLE students (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT,
+    avatar_url TEXT,
+    grade_level TEXT,
+    classroom_id TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (classroom_id) REFERENCES classrooms(id)
+);
+
+-- Student grades history
+CREATE TABLE student_grades (
+    id TEXT PRIMARY KEY,
+    student_id TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    grade REAL NOT NULL,
+    assignment_name TEXT,
+    graded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(id)
+);
+
+-- Learning analytics (tracks AI copilot usage)
+CREATE TABLE learning_analytics (
+    id TEXT PRIMARY KEY,
+    student_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    subject TEXT,
+    topic TEXT,
+    questions_asked INTEGER DEFAULT 0,
+    time_spent_seconds INTEGER DEFAULT 0,
+    struggle_score REAL DEFAULT 0,  -- 0-1 scale, higher = more struggling
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(id),
+    FOREIGN KEY (session_id) REFERENCES sessions(id)
+);
+
+-- Teacher chat sessions (for material generation)
+CREATE TABLE teacher_chat_sessions (
+    id TEXT PRIMARY KEY,
+    teacher_id TEXT NOT NULL,
+    title TEXT,
+    material_type TEXT,  -- 'lesson', 'presentation', 'test', 'homework'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id)
+);
+
+-- Teacher chat messages
+CREATE TABLE teacher_chat_messages (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL,  -- 'user' or 'assistant'
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES teacher_chat_sessions(id)
+);
+```
+
+---
+
+### API Endpoints
+
+#### Teacher Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/teacher/login` | Teacher login |
+| POST | `/api/teacher/logout` | Teacher logout |
+| GET | `/api/teacher/profile` | Get current teacher profile |
+
+#### Student Management
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/students` | List all students in teacher's classrooms |
+| GET | `/api/students/:id` | Get student profile with grades & analytics |
+| GET | `/api/students/:id/grades` | Get student's grade history |
+| GET | `/api/students/:id/activity` | Get student's AI copilot usage |
+
+#### Classroom
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/classroom` | Get classroom overview stats |
+| GET | `/api/classroom/struggling` | Get list of struggling students |
+
+#### Teacher AI Assistant
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/teacher/chat/stream` | SSE stream for material generation |
+| GET | `/api/teacher/chat/sessions` | List teacher's chat sessions |
+| POST | `/api/teacher/chat/sessions` | Create new chat session |
+
+---
+
+### Routing Structure
+
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/teacher` | `TeacherPage.tsx` | Main teacher dashboard |
+| `/teacher/students` | `StudentList.tsx` | View all students |
+| `/teacher/students/:id` | `StudentProfile.tsx` | Individual student details |
+| `/teacher/assistant` | `TeacherChat.tsx` | AI material generator |
+| `/teacher/classroom` | `ClassroomOverview.tsx` | Class-wide analytics |
+
+---
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Separate `TeacherContext` | Teachers have different state needs than students |
+| `learningAnalytics.service.ts` | Aggregates student's AI chat sessions to detect struggle patterns |
+| Two system prompts | Teacher assistant needs different behavior (generate materials, not Socratic) |
+| `InterventionAlert.tsx` | Visual indicator when student asks many questions on same topic |
+| Reuse existing SSE pattern | Consistent streaming approach via `useTeacherChat.ts` |
+| `struggle_score` field | Algorithm-based metric (0-1) based on questions asked, time spent, repetition |
+
+---
+
+### Struggle Detection Algorithm
+
+The `struggle_score` is calculated based on:
+
+```typescript
+// Factors that increase struggle score:
+// 1. Number of questions asked on same topic (normalized)
+// 2. Time spent without progress (normalized)
+// 3. Repetitive questions (asking same thing multiple ways)
+// 4. Requesting clarification multiple times
+
+function calculateStruggleScore(analytics: LearningAnalytics): number {
+    const questionWeight = 0.3;
+    const timeWeight = 0.2;
+    const repetitionWeight = 0.3;
+    const clarificationWeight = 0.2;
+
+    // Returns value between 0 and 1
+    // > 0.7 triggers InterventionAlert
+}
+```
+
+---
+
+### Teacher Assistant System Prompt
+
+Unlike the Student AI (Socratic method), the Teacher Assistant should:
+- **Directly provide** lesson plans, test questions, homework assignments
+- **Generate** structured content (markdown, outlines, rubrics)
+- **Suggest** pedagogical approaches and differentiation strategies
+- **Create** age-appropriate materials based on grade level
+
+Location: `server/data/teacher-system-prompt.txt`
+
+---
+
+### Environment Variables (New)
+
+```bash
+# Add to .env
+TEACHER_PASSWORD=your_teacher_password  # For teacher portal access
+```
