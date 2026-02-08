@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface AnalyticsRow {
   id: string;
   student_id: string;
+  user_id: string | null;
   session_id: string;
   subject: string | null;
   topic: string | null;
@@ -18,7 +19,7 @@ interface AnalyticsRow {
 
 const rowToAnalytics = (row: AnalyticsRow): LearningAnalytics => ({
   id: row.id,
-  studentId: row.student_id,
+  studentId: row.user_id || row.student_id, // Prefer user_id, fall back to student_id
   sessionId: row.session_id,
   subject: row.subject || undefined,
   topic: row.topic || undefined,
@@ -32,20 +33,27 @@ const rowToAnalytics = (row: AnalyticsRow): LearningAnalytics => ({
 
 export const analyticsQueries = {
   /**
-   * Get all analytics for a student
+   * Get all analytics for a user (uses user_id, falls back to student_id)
    */
-  getByStudentId(studentId: string): LearningAnalytics[] {
+  getByUserId(userId: string): LearningAnalytics[] {
     const db = getDb();
     const rows = db
       .prepare(
-        `SELECT id, student_id, session_id, subject, topic, questions_asked,
+        `SELECT id, student_id, user_id, session_id, subject, topic, questions_asked,
                 time_spent_seconds, struggle_score, resolved, created_at, updated_at
          FROM learning_analytics
-         WHERE student_id = ?
+         WHERE user_id = ? OR (user_id IS NULL AND student_id = ?)
          ORDER BY created_at DESC`
       )
-      .all(studentId) as AnalyticsRow[];
+      .all(userId, userId) as AnalyticsRow[];
     return rows.map(rowToAnalytics);
+  },
+
+  /**
+   * Get all analytics for a student (legacy - calls getByUserId)
+   */
+  getByStudentId(studentId: string): LearningAnalytics[] {
+    return this.getByUserId(studentId);
   },
 
   /**
@@ -55,7 +63,7 @@ export const analyticsQueries = {
     const db = getDb();
     const row = db
       .prepare(
-        `SELECT id, student_id, session_id, subject, topic, questions_asked,
+        `SELECT id, student_id, user_id, session_id, subject, topic, questions_asked,
                 time_spent_seconds, struggle_score, resolved, created_at, updated_at
          FROM learning_analytics
          WHERE session_id = ?`
@@ -65,9 +73,9 @@ export const analyticsQueries = {
   },
 
   /**
-   * Get student activity summary
+   * Get user activity summary (uses user_id, falls back to student_id)
    */
-  getStudentActivity(studentId: string): StudentActivity {
+  getUserActivity(userId: string): StudentActivity {
     const db = getDb();
 
     // Get recent sessions with analytics
@@ -77,11 +85,11 @@ export const analyticsQueries = {
                 la.created_at as createdAt
          FROM learning_analytics la
          JOIN sessions s ON la.session_id = s.id
-         WHERE la.student_id = ?
+         WHERE la.user_id = ? OR (la.user_id IS NULL AND la.student_id = ?)
          ORDER BY la.created_at DESC
          LIMIT 10`
       )
-      .all(studentId) as {
+      .all(userId, userId) as {
         id: string;
         topic: string;
         questions_asked: number;
@@ -94,31 +102,31 @@ export const analyticsQueries = {
       .prepare(
         `SELECT SUM(questions_asked) as total
          FROM learning_analytics
-         WHERE student_id = ?
+         WHERE (user_id = ? OR (user_id IS NULL AND student_id = ?))
          AND created_at > datetime('now', '-7 days')`
       )
-      .get(studentId) as { total: number | null };
+      .get(userId, userId) as { total: number | null };
 
     // Get average struggle score (last 7 days)
     const avgStruggle = db
       .prepare(
         `SELECT AVG(struggle_score) as avg
          FROM learning_analytics
-         WHERE student_id = ?
+         WHERE (user_id = ? OR (user_id IS NULL AND student_id = ?))
          AND created_at > datetime('now', '-7 days')`
       )
-      .get(studentId) as { avg: number | null };
+      .get(userId, userId) as { avg: number | null };
 
     // Get topics studied
     const topics = db
       .prepare(
         `SELECT DISTINCT topic
          FROM learning_analytics
-         WHERE student_id = ?
+         WHERE (user_id = ? OR (user_id IS NULL AND student_id = ?))
          AND topic IS NOT NULL
          AND created_at > datetime('now', '-30 days')`
       )
-      .all(studentId) as { topic: string }[];
+      .all(userId, userId) as { topic: string }[];
 
     const avgScore = avgStruggle.avg || 0;
 
@@ -138,22 +146,31 @@ export const analyticsQueries = {
   },
 
   /**
+   * Get student activity summary (legacy - calls getUserActivity)
+   */
+  getStudentActivity(studentId: string): StudentActivity {
+    return this.getUserActivity(studentId);
+  },
+
+  /**
    * Get students needing intervention (high struggle scores)
+   * Uses user_id via student_profiles for school-aware queries
    */
   getStudentsNeedingIntervention(teacherId: string): InterventionAlert[] {
     const db = getDb();
     const rows = db
       .prepare(
         `SELECT
-           s.id as studentId,
-           s.name as studentName,
+           u.id as studentId,
+           u.name as studentName,
            la.struggle_score as struggleScore,
            la.subject,
            la.topic,
            la.created_at as createdAt
          FROM learning_analytics la
-         JOIN students s ON la.student_id = s.id
-         JOIN classrooms c ON s.classroom_id = c.id
+         JOIN users u ON (la.user_id = u.id OR (la.user_id IS NULL AND la.student_id = u.id))
+         JOIN student_profiles sp ON u.id = sp.user_id
+         JOIN classrooms c ON sp.classroom_id = c.id
          WHERE c.teacher_id = ?
          AND la.struggle_score > 0.7
          AND la.resolved = 0
@@ -186,10 +203,10 @@ export const analyticsQueries = {
   },
 
   /**
-   * Create or update analytics for a session
+   * Create or update analytics for a session (uses user_id)
    */
   upsert(data: {
-    studentId: string;
+    userId: string;
     sessionId: string;
     subject?: string;
     topic?: string;
@@ -226,17 +243,18 @@ export const analyticsQueries = {
         updatedAt: now,
       };
     } else {
-      // Create new
+      // Create new with user_id
       const id = uuidv4();
 
       db.prepare(
-        `INSERT INTO learning_analytics (id, student_id, session_id, subject, topic,
+        `INSERT INTO learning_analytics (id, student_id, user_id, session_id, subject, topic,
                                          questions_asked, time_spent_seconds, struggle_score,
                                          resolved, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         id,
-        data.studentId,
+        data.userId, // Also set student_id for backward compatibility
+        data.userId,
         data.sessionId,
         data.subject || null,
         data.topic || null,
@@ -250,7 +268,7 @@ export const analyticsQueries = {
 
       return {
         id,
-        studentId: data.studentId,
+        studentId: data.userId,
         sessionId: data.sessionId,
         subject: data.subject,
         topic: data.topic,

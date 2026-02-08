@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { ollamaService } from '../services/ollama.service';
+import { promptService } from '../services/prompt.service';
 import { messagesQueries } from '../database/queries/messages.queries';
 import { sessionsQueries } from '../database/queries/sessions.queries';
-import { ChatRequest, Message } from '../types';
+import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
+import { ChatRequest, Message, JwtAuthenticatedRequest } from '../types';
 import { AppError } from '../middleware/errorHandler.middleware';
 
 /**
@@ -26,13 +28,60 @@ const buildPrompt = (messages: Message[], newMessage: string): string => {
   return prompt;
 };
 
+/**
+ * Build enriched system prompt with student profile context
+ */
+const buildEnrichedSystemPrompt = async (studentId?: string): Promise<string> => {
+  // Get base system prompt
+  let systemPrompt = await promptService.getPrompt();
+
+  // If we have a student ID, try to get their profile for personalization
+  if (studentId) {
+    try {
+      const profile = studentProfilesQueries.getByUserId(studentId);
+      if (profile) {
+        systemPrompt += '\n\n## Student Context (Personalization)\n';
+
+        if (profile.age) {
+          systemPrompt += `- Student Age: ${profile.age} years old\n`;
+        }
+
+        if (profile.gradeLevel) {
+          systemPrompt += `- Grade Level: ${profile.gradeLevel}\n`;
+        }
+
+        if (profile.favoriteSports && profile.favoriteSports.length > 0) {
+          systemPrompt += `- Interests/Activities: ${profile.favoriteSports.join(', ')}\n`;
+          systemPrompt += `  (Use these to create relatable examples and analogies)\n`;
+        }
+
+        if (profile.skillsToImprove && profile.skillsToImprove.length > 0) {
+          systemPrompt += `- Skills to Improve: ${profile.skillsToImprove.join(', ')}\n`;
+          systemPrompt += `  (Pay extra attention to helping with these areas)\n`;
+        }
+
+        if (profile.learningSystemPrompt) {
+          systemPrompt += `\n## Student's Personal Learning Preferences\n`;
+          systemPrompt += profile.learningSystemPrompt;
+          systemPrompt += '\n';
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching student profile for personalization:', error);
+      // Continue without personalization if profile fetch fails
+    }
+  }
+
+  return systemPrompt;
+};
+
 export const chatController = {
   /**
    * Stream chat response using SSE
-   * GET /api/chat/stream?sessionId=xxx&message=xxx
+   * GET /api/chat/stream?sessionId=xxx&message=xxx&studentId=xxx (optional)
    */
   async streamChat(req: Request, res: Response) {
-    const { sessionId, message } = req.query;
+    const { sessionId, message, studentId } = req.query;
 
     if (!sessionId || typeof sessionId !== 'string') {
       throw new AppError('sessionId is required', 400);
@@ -66,6 +115,10 @@ export const chatController = {
       message
     );
 
+    // Build enriched system prompt with student profile (if studentId provided or in session)
+    const studentIdStr = typeof studentId === 'string' ? studentId : session.userId;
+    const systemPrompt = await buildEnrichedSystemPrompt(studentIdStr);
+
     // Create placeholder for assistant message
     const assistantMessage = messagesQueries.create(sessionId, 'assistant', '');
 
@@ -81,8 +134,8 @@ export const chatController = {
     let fullResponse = '';
 
     try {
-      // Stream response from Ollama
-      for await (const chunk of ollamaService.generateStream(prompt)) {
+      // Stream response from Ollama with personalized system prompt
+      for await (const chunk of ollamaService.generateStream(prompt, undefined, systemPrompt)) {
         fullResponse += chunk.text;
 
         res.write(

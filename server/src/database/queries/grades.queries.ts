@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface GradeRow {
   id: string;
   student_id: string;
+  user_id: string | null;
   subject: string;
   grade: number;
   max_grade: number;
@@ -15,7 +16,7 @@ interface GradeRow {
 
 const rowToGrade = (row: GradeRow): StudentGrade => ({
   id: row.id,
-  studentId: row.student_id,
+  studentId: row.user_id || row.student_id, // Prefer user_id, fall back to student_id
   subject: row.subject as Subject,
   grade: row.grade,
   maxGrade: row.max_grade,
@@ -26,54 +27,68 @@ const rowToGrade = (row: GradeRow): StudentGrade => ({
 
 export const gradesQueries = {
   /**
-   * Get all grades for a student
+   * Get all grades for a user (uses user_id, falls back to student_id)
+   */
+  getByUserId(userId: string): StudentGrade[] {
+    const db = getDb();
+    const rows = db
+      .prepare(
+        `SELECT id, student_id, user_id, subject, grade, max_grade, assignment_name,
+                assignment_type, graded_at
+         FROM student_grades
+         WHERE user_id = ? OR (user_id IS NULL AND student_id = ?)
+         ORDER BY graded_at DESC`
+      )
+      .all(userId, userId) as GradeRow[];
+    return rows.map(rowToGrade);
+  },
+
+  /**
+   * Get all grades for a student (legacy - calls getByUserId)
    */
   getByStudentId(studentId: string): StudentGrade[] {
+    return this.getByUserId(studentId);
+  },
+
+  /**
+   * Get grades for a user by subject (uses user_id, falls back to student_id)
+   */
+  getByUserAndSubject(userId: string, subject: Subject): StudentGrade[] {
     const db = getDb();
     const rows = db
       .prepare(
-        `SELECT id, student_id, subject, grade, max_grade, assignment_name,
+        `SELECT id, student_id, user_id, subject, grade, max_grade, assignment_name,
                 assignment_type, graded_at
          FROM student_grades
-         WHERE student_id = ?
+         WHERE (user_id = ? OR (user_id IS NULL AND student_id = ?)) AND subject = ?
          ORDER BY graded_at DESC`
       )
-      .all(studentId) as GradeRow[];
+      .all(userId, userId, subject) as GradeRow[];
     return rows.map(rowToGrade);
   },
 
   /**
-   * Get grades for a student by subject
+   * Get grades for a student by subject (legacy - calls getByUserAndSubject)
    */
   getByStudentAndSubject(studentId: string, subject: Subject): StudentGrade[] {
-    const db = getDb();
-    const rows = db
-      .prepare(
-        `SELECT id, student_id, subject, grade, max_grade, assignment_name,
-                assignment_type, graded_at
-         FROM student_grades
-         WHERE student_id = ? AND subject = ?
-         ORDER BY graded_at DESC`
-      )
-      .all(studentId, subject) as GradeRow[];
-    return rows.map(rowToGrade);
+    return this.getByUserAndSubject(studentId, subject);
   },
 
   /**
-   * Get grades grouped by subject with averages and trends
+   * Get grades grouped by subject with averages and trends (uses user_id)
    */
-  getByStudentGroupedBySubject(studentId: string): GradesBySubject[] {
+  getByUserGroupedBySubject(userId: string): GradesBySubject[] {
     const db = getDb();
 
-    // Get all subjects for this student
+    // Get all subjects for this user
     const subjects = db
       .prepare(
-        `SELECT DISTINCT subject FROM student_grades WHERE student_id = ?`
+        `SELECT DISTINCT subject FROM student_grades WHERE user_id = ? OR (user_id IS NULL AND student_id = ?)`
       )
-      .all(studentId) as { subject: string }[];
+      .all(userId, userId) as { subject: string }[];
 
     return subjects.map(({ subject }) => {
-      const grades = this.getByStudentAndSubject(studentId, subject as Subject);
+      const grades = this.getByUserAndSubject(userId, subject as Subject);
       const average = grades.length > 0
         ? grades.reduce((sum, g) => sum + (g.grade / g.maxGrade) * 100, 0) / grades.length
         : 0;
@@ -98,21 +113,51 @@ export const gradesQueries = {
   },
 
   /**
-   * Get recent grades for a student (last N)
+   * Get grades grouped by subject (legacy - calls getByUserGroupedBySubject)
    */
-  getRecentByStudentId(studentId: string, limit: number = 10): StudentGrade[] {
+  getByStudentGroupedBySubject(studentId: string): GradesBySubject[] {
+    return this.getByUserGroupedBySubject(studentId);
+  },
+
+  /**
+   * Get all subjects for a user
+   */
+  getSubjectsByUserId(userId: string): string[] {
+    const db = getDb();
+
+    // Get all subjects for this user
+    const subjects = db
+      .prepare(
+        `SELECT DISTINCT subject FROM student_grades WHERE user_id = ? OR (user_id IS NULL AND student_id = ?)`
+      )
+      .all(userId, userId) as { subject: string }[];
+
+    return subjects.map(s => s.subject);
+  },
+
+  /**
+   * Get recent grades for a user (last N)
+   */
+  getRecentByUserId(userId: string, limit: number = 10): StudentGrade[] {
     const db = getDb();
     const rows = db
       .prepare(
-        `SELECT id, student_id, subject, grade, max_grade, assignment_name,
+        `SELECT id, student_id, user_id, subject, grade, max_grade, assignment_name,
                 assignment_type, graded_at
          FROM student_grades
-         WHERE student_id = ?
+         WHERE user_id = ? OR (user_id IS NULL AND student_id = ?)
          ORDER BY graded_at DESC
          LIMIT ?`
       )
-      .all(studentId, limit) as GradeRow[];
+      .all(userId, userId, limit) as GradeRow[];
     return rows.map(rowToGrade);
+  },
+
+  /**
+   * Get recent grades for a student (legacy - calls getRecentByUserId)
+   */
+  getRecentByStudentId(studentId: string, limit: number = 10): StudentGrade[] {
+    return this.getRecentByUserId(studentId, limit);
   },
 
   /**
@@ -122,7 +167,7 @@ export const gradesQueries = {
     const db = getDb();
     const row = db
       .prepare(
-        `SELECT id, student_id, subject, grade, max_grade, assignment_name,
+        `SELECT id, student_id, user_id, subject, grade, max_grade, assignment_name,
                 assignment_type, graded_at
          FROM student_grades
          WHERE id = ?`
@@ -132,10 +177,10 @@ export const gradesQueries = {
   },
 
   /**
-   * Create a new grade
+   * Create a new grade (uses user_id)
    */
   create(data: {
-    studentId: string;
+    userId: string;
     subject: Subject;
     grade: number;
     maxGrade?: number;
@@ -148,12 +193,13 @@ export const gradesQueries = {
     const maxGrade = data.maxGrade || 100;
 
     db.prepare(
-      `INSERT INTO student_grades (id, student_id, subject, grade, max_grade,
+      `INSERT INTO student_grades (id, student_id, user_id, subject, grade, max_grade,
                                    assignment_name, assignment_type, graded_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
-      data.studentId,
+      data.userId, // Also set student_id for backward compatibility
+      data.userId,
       data.subject,
       data.grade,
       maxGrade,
@@ -164,7 +210,7 @@ export const gradesQueries = {
 
     return {
       id,
-      studentId: data.studentId,
+      studentId: data.userId,
       subject: data.subject,
       grade: data.grade,
       maxGrade,
@@ -221,7 +267,7 @@ export const gradesQueries = {
   },
 
   /**
-   * Get class average for a subject
+   * Get class average for a subject (uses user_id via student_profiles)
    */
   getClassAverageBySubject(classroomId: string, subject: Subject): number {
     const db = getDb();
@@ -229,8 +275,8 @@ export const gradesQueries = {
       .prepare(
         `SELECT AVG(g.grade / g.max_grade * 100) as average
          FROM student_grades g
-         JOIN students s ON g.student_id = s.id
-         WHERE s.classroom_id = ? AND g.subject = ?`
+         JOIN student_profiles sp ON (g.user_id = sp.user_id OR (g.user_id IS NULL AND g.student_id = sp.user_id))
+         WHERE sp.classroom_id = ? AND g.subject = ?`
       )
       .get(classroomId, subject) as { average: number | null };
     return result.average || 0;

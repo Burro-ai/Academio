@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface SessionRow {
   id: string;
   teacher_id: string;
+  user_id: string | null;
   title: string | null;
   material_type: string | null;
   created_at: string;
@@ -21,7 +22,7 @@ interface MessageRow {
 
 const rowToSession = (row: SessionRow): TeacherChatSession => ({
   id: row.id,
-  teacherId: row.teacher_id,
+  teacherId: row.user_id || row.teacher_id, // Prefer user_id, fall back to teacher_id
   title: row.title || 'Untitled Session',
   materialType: (row.material_type as MaterialType) || 'general',
   createdAt: row.created_at,
@@ -38,19 +39,26 @@ const rowToMessage = (row: MessageRow): TeacherChatMessage => ({
 
 export const teacherSessionsQueries = {
   /**
-   * Get all sessions for a teacher
+   * Get all sessions for a user (uses user_id, falls back to teacher_id)
    */
-  getByTeacherId(teacherId: string): TeacherChatSession[] {
+  getByUserId(userId: string): TeacherChatSession[] {
     const db = getDb();
     const rows = db
       .prepare(
-        `SELECT id, teacher_id, title, material_type, created_at, updated_at
+        `SELECT id, teacher_id, user_id, title, material_type, created_at, updated_at
          FROM teacher_chat_sessions
-         WHERE teacher_id = ?
+         WHERE user_id = ? OR (user_id IS NULL AND teacher_id = ?)
          ORDER BY updated_at DESC`
       )
-      .all(teacherId) as SessionRow[];
+      .all(userId, userId) as SessionRow[];
     return rows.map(rowToSession);
+  },
+
+  /**
+   * Get all sessions for a teacher (legacy - calls getByUserId)
+   */
+  getByTeacherId(teacherId: string): TeacherChatSession[] {
+    return this.getByUserId(teacherId);
   },
 
   /**
@@ -60,7 +68,7 @@ export const teacherSessionsQueries = {
     const db = getDb();
     const row = db
       .prepare(
-        `SELECT id, teacher_id, title, material_type, created_at, updated_at
+        `SELECT id, teacher_id, user_id, title, material_type, created_at, updated_at
          FROM teacher_chat_sessions
          WHERE id = ?`
       )
@@ -69,10 +77,10 @@ export const teacherSessionsQueries = {
   },
 
   /**
-   * Create a new session
+   * Create a new session (uses user_id)
    */
   create(data: {
-    teacherId: string;
+    userId: string;
     title?: string;
     materialType?: MaterialType;
   }): TeacherChatSession {
@@ -83,13 +91,13 @@ export const teacherSessionsQueries = {
     const materialType = data.materialType || 'general';
 
     db.prepare(
-      `INSERT INTO teacher_chat_sessions (id, teacher_id, title, material_type, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    ).run(id, data.teacherId, title, materialType, now, now);
+      `INSERT INTO teacher_chat_sessions (id, teacher_id, user_id, title, material_type, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(id, data.userId, data.userId, title, materialType, now, now);
 
     return {
       id,
-      teacherId: data.teacherId,
+      teacherId: data.userId,
       title,
       materialType,
       createdAt: now,

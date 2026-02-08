@@ -2,3 +2,7 @@ export * from './chat.types';
 export * from './session.types';
 export * from './teacher.types';
 export * from './student.types';
+export * from './auth.types';
+export * from './studentProfile.types';
+export * from './lesson.types';
+export * from './school.types';

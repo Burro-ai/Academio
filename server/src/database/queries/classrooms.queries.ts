@@ -8,17 +8,23 @@ interface ClassroomRow {
   teacher_id: string;
   subject: string | null;
   grade_level: string | null;
+  school_id: string | null;
   created_at: string;
   updated_at: string;
   student_count?: number;
 }
 
-const rowToClassroom = (row: ClassroomRow): Classroom => ({
+interface ClassroomWithSchool extends Classroom {
+  schoolId?: string;
+}
+
+const rowToClassroom = (row: ClassroomRow): ClassroomWithSchool => ({
   id: row.id,
   name: row.name,
   teacherId: row.teacher_id,
   subject: row.subject || undefined,
   gradeLevel: row.grade_level || undefined,
+  schoolId: row.school_id || undefined,
   studentCount: row.student_count,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -26,19 +32,37 @@ const rowToClassroom = (row: ClassroomRow): Classroom => ({
 
 export const classroomsQueries = {
   /**
-   * Get all classrooms
+   * Get all classrooms (uses student_profiles for count)
    */
   getAll(): Classroom[] {
     const db = getDb();
     const rows = db
       .prepare(
-        `SELECT c.id, c.name, c.teacher_id, c.subject, c.grade_level,
+        `SELECT c.id, c.name, c.teacher_id, c.subject, c.grade_level, c.school_id,
                 c.created_at, c.updated_at,
-                (SELECT COUNT(*) FROM students WHERE classroom_id = c.id) as student_count
+                (SELECT COUNT(*) FROM student_profiles WHERE classroom_id = c.id) as student_count
          FROM classrooms c
          ORDER BY c.name ASC`
       )
       .all() as ClassroomRow[];
+    return rows.map(rowToClassroom);
+  },
+
+  /**
+   * Get all classrooms by school ID
+   */
+  getBySchoolId(schoolId: string): Classroom[] {
+    const db = getDb();
+    const rows = db
+      .prepare(
+        `SELECT c.id, c.name, c.teacher_id, c.subject, c.grade_level, c.school_id,
+                c.created_at, c.updated_at,
+                (SELECT COUNT(*) FROM student_profiles WHERE classroom_id = c.id) as student_count
+         FROM classrooms c
+         WHERE c.school_id = ?
+         ORDER BY c.name ASC`
+      )
+      .all(schoolId) as ClassroomRow[];
     return rows.map(rowToClassroom);
   },
 
@@ -49,14 +73,32 @@ export const classroomsQueries = {
     const db = getDb();
     const rows = db
       .prepare(
-        `SELECT c.id, c.name, c.teacher_id, c.subject, c.grade_level,
+        `SELECT c.id, c.name, c.teacher_id, c.subject, c.grade_level, c.school_id,
                 c.created_at, c.updated_at,
-                (SELECT COUNT(*) FROM students WHERE classroom_id = c.id) as student_count
+                (SELECT COUNT(*) FROM student_profiles WHERE classroom_id = c.id) as student_count
          FROM classrooms c
          WHERE c.teacher_id = ?
          ORDER BY c.name ASC`
       )
       .all(teacherId) as ClassroomRow[];
+    return rows.map(rowToClassroom);
+  },
+
+  /**
+   * Get classrooms by teacher ID and school ID
+   */
+  getByTeacherAndSchool(teacherId: string, schoolId: string): Classroom[] {
+    const db = getDb();
+    const rows = db
+      .prepare(
+        `SELECT c.id, c.name, c.teacher_id, c.subject, c.grade_level, c.school_id,
+                c.created_at, c.updated_at,
+                (SELECT COUNT(*) FROM student_profiles WHERE classroom_id = c.id) as student_count
+         FROM classrooms c
+         WHERE c.teacher_id = ? AND c.school_id = ?
+         ORDER BY c.name ASC`
+      )
+      .all(teacherId, schoolId) as ClassroomRow[];
     return rows.map(rowToClassroom);
   },
 
@@ -67,9 +109,9 @@ export const classroomsQueries = {
     const db = getDb();
     const row = db
       .prepare(
-        `SELECT c.id, c.name, c.teacher_id, c.subject, c.grade_level,
+        `SELECT c.id, c.name, c.teacher_id, c.subject, c.grade_level, c.school_id,
                 c.created_at, c.updated_at,
-                (SELECT COUNT(*) FROM students WHERE classroom_id = c.id) as student_count
+                (SELECT COUNT(*) FROM student_profiles WHERE classroom_id = c.id) as student_count
          FROM classrooms c
          WHERE c.id = ?`
       )
@@ -78,22 +120,23 @@ export const classroomsQueries = {
   },
 
   /**
-   * Create a new classroom
+   * Create a new classroom (with optional school_id)
    */
   create(data: {
     name: string;
     teacherId: string;
     subject?: string;
     gradeLevel?: string;
-  }): Classroom {
+    schoolId?: string;
+  }): ClassroomWithSchool {
     const db = getDb();
     const id = uuidv4();
     const now = new Date().toISOString();
 
     db.prepare(
-      `INSERT INTO classrooms (id, name, teacher_id, subject, grade_level, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run(id, data.name, data.teacherId, data.subject || null, data.gradeLevel || null, now, now);
+      `INSERT INTO classrooms (id, name, teacher_id, subject, grade_level, school_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(id, data.name, data.teacherId, data.subject || null, data.gradeLevel || null, data.schoolId || null, now, now);
 
     return {
       id,
@@ -101,6 +144,7 @@ export const classroomsQueries = {
       teacherId: data.teacherId,
       subject: data.subject,
       gradeLevel: data.gradeLevel,
+      schoolId: data.schoolId,
       studentCount: 0,
       createdAt: now,
       updatedAt: now,
@@ -150,5 +194,17 @@ export const classroomsQueries = {
     const db = getDb();
     const result = db.prepare(`DELETE FROM classrooms WHERE id = ?`).run(id);
     return result.changes > 0;
+  },
+
+  /**
+   * Update classroom's school
+   */
+  updateSchool(id: string, schoolId: string | null): Classroom | null {
+    const db = getDb();
+    const now = new Date().toISOString();
+    db.prepare(
+      `UPDATE classrooms SET school_id = ?, updated_at = ? WHERE id = ?`
+    ).run(schoolId, now, id);
+    return this.getById(id);
   },
 };

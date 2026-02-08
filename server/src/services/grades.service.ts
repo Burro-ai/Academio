@@ -35,7 +35,7 @@ class GradesService {
    */
   addGrade(data: AddGradeRequest): StudentGrade {
     return gradesQueries.create({
-      studentId: data.studentId,
+      userId: data.studentId,
       subject: data.subject,
       grade: data.grade,
       maxGrade: data.maxGrade,

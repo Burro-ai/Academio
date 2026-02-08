@@ -102,7 +102,7 @@ class LearningAnalyticsService {
     } else {
       // Create new analytics record
       return analyticsQueries.upsert({
-        studentId,
+        userId: studentId,
         sessionId,
         subject,
         topic,
@@ -121,7 +121,7 @@ class LearningAnalyticsService {
     const existing = analyticsQueries.getBySessionId(sessionId);
     if (existing) {
       analyticsQueries.upsert({
-        studentId: existing.studentId,
+        userId: existing.studentId,
         sessionId,
         timeSpentSeconds,
       });

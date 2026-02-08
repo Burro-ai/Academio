@@ -191,7 +191,7 @@ export const teacherChatController = {
     }
 
     const session = teacherSessionsQueries.create({
-      teacherId: teachers[0].id,
+      userId: teachers[0].id,
       title,
       materialType,
     });

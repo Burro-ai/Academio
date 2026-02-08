@@ -1,10 +1,37 @@
 import { useEffect } from 'react';
 import { useStudents } from '@/hooks/useStudents';
-import { Student } from '@/types';
+import { Student, StudentProfileWithUser } from '@/types';
 
 interface StudentListProps {
   classroomId?: string;
   onSelectStudent: (studentId: string) => void;
+}
+
+// Type guard to check if student is StudentProfileWithUser
+function isStudentProfileWithUser(student: Student | StudentProfileWithUser): student is StudentProfileWithUser {
+  return 'user' in student && student.user !== undefined;
+}
+
+// Helper to normalize student data (handles both Student and StudentProfileWithUser)
+function normalizeStudent(student: Student | StudentProfileWithUser): { id: string; name: string; email?: string; avatarUrl?: string; gradeLevel?: string } {
+  // Check if it's a StudentProfileWithUser (has 'user' property)
+  if (isStudentProfileWithUser(student)) {
+    return {
+      id: student.userId || student.id,
+      name: student.user.name,
+      email: student.user.email,
+      avatarUrl: student.user.avatarUrl,
+      gradeLevel: student.gradeLevel,
+    };
+  }
+  // It's a regular Student
+  return {
+    id: student.id,
+    name: student.name,
+    email: student.email,
+    avatarUrl: student.avatarUrl,
+    gradeLevel: student.gradeLevel,
+  };
 }
 
 export function StudentList({ classroomId, onSelectStudent }: StudentListProps) {
@@ -51,15 +78,18 @@ export function StudentList({ classroomId, onSelectStudent }: StudentListProps) 
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {students.map((student) => (
-        <StudentCard key={student.id} student={student} onClick={() => onSelectStudent(student.id)} />
-      ))}
+      {students.map((student) => {
+        const normalized = normalizeStudent(student);
+        return (
+          <StudentCard key={normalized.id} student={normalized} onClick={() => onSelectStudent(normalized.id)} />
+        );
+      })}
     </div>
   );
 }
 
 interface StudentCardProps {
-  student: Student;
+  student: { id: string; name: string; email?: string; avatarUrl?: string; gradeLevel?: string };
   onClick: () => void;
 }
 
