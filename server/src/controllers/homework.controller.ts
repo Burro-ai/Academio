@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { homeworkService } from '../services/homework.service';
+import { homeworkService, PersonalizationProgress } from '../services/homework.service';
 import { homeworkQueries } from '../database/queries/homework.queries';
 import { JwtAuthenticatedRequest, CreateHomeworkRequest, UpdateHomeworkRequest } from '../types';
 import { AppError } from '../middleware/errorHandler.middleware';
@@ -151,5 +151,79 @@ export const homeworkController = {
 
     const content = await homeworkService.generateMasterContent(topic, subject);
     res.json({ content });
+  },
+
+  /**
+   * GET /api/homework/generate-content/stream
+   * Stream master content generation using SSE
+   */
+  async streamGenerateContent(req: JwtAuthenticatedRequest, res: Response) {
+    if (!req.user) {
+      throw new AppError('Not authenticated', 401);
+    }
+
+    const { topic, subject } = req.query;
+
+    if (!topic || typeof topic !== 'string') {
+      throw new AppError('Topic is required', 400);
+    }
+
+    // Set up SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    try {
+      for await (const chunk of homeworkService.generateMasterContentStream(
+        topic,
+        typeof subject === 'string' ? subject : undefined
+      )) {
+        res.write(`data: ${JSON.stringify({ text: chunk.text, done: chunk.done })}\n\n`);
+
+        if (chunk.done) {
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('[Homework] Stream error:', error);
+      res.write(`data: ${JSON.stringify({ error: 'Generation failed', done: true })}\n\n`);
+    }
+
+    res.end();
+  },
+
+  /**
+   * GET /api/homework/:id/progress
+   * Get personalization progress for homework
+   */
+  async getProgress(req: JwtAuthenticatedRequest, res: Response) {
+    if (!req.user) {
+      throw new AppError('Not authenticated', 401);
+    }
+
+    const { id } = req.params;
+
+    // Verify the homework exists
+    const homework = homeworkQueries.getById(id);
+    if (!homework) {
+      throw new AppError('Homework not found', 404);
+    }
+
+    // Get progress
+    const progress = homeworkService.getProgress(id);
+
+    if (!progress) {
+      res.json({
+        homeworkId: id,
+        status: 'idle',
+        total: 0,
+        completed: 0,
+        current: null,
+      });
+      return;
+    }
+
+    res.json(progress);
   },
 };

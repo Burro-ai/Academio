@@ -36,10 +36,18 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
 
     setIsGenerating(true);
     setError(null);
+    setMasterContent(''); // Clear existing content
 
     try {
-      const result = await lessonApi.generateLessonContent(topic, subject || undefined);
-      setMasterContent(result.content);
+      // Use streaming for real-time content display
+      for await (const chunk of lessonApi.streamLessonContent(topic, subject || undefined)) {
+        if (chunk.text) {
+          setMasterContent((prev) => prev + chunk.text);
+        }
+        if (chunk.done) {
+          break;
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate content');
     } finally {

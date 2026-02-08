@@ -86,24 +86,37 @@ export const seedDatabase = async (): Promise<void> => {
   // Hash password for seeded users (using async bcrypt)
   const defaultPasswordHash = await bcrypt.hash('password123', 10);
 
-  // Create default teacher in unified users table
-  const teacherId = uuidv4();
-  db.prepare(`
-    INSERT INTO users (id, email, password_hash, role, name, school_id, created_at, updated_at)
-    VALUES (?, ?, ?, 'TEACHER', ?, ?, datetime('now'), datetime('now'))
-  `).run(teacherId, 'sarah.johnson@academio.edu', defaultPasswordHash, 'Ms. Sarah Johnson', defaultSchoolId);
+  // Create teachers
+  const teacherData = [
+    { name: 'Ms. Sarah Johnson', email: 'sarah.johnson@academio.edu' },
+    { name: 'Mr. David Kim', email: 'david.kim@academio.edu' },
+  ];
 
-  // Create school membership for teacher
-  db.prepare(`
-    INSERT INTO school_memberships (id, user_id, school_id, role, is_primary, permissions, joined_at)
-    VALUES (?, ?, ?, 'TEACHER', 1, '{}', datetime('now'))
-  `).run(uuidv4(), teacherId, defaultSchoolId);
+  const teacherIds: string[] = [];
 
-  // Also insert into legacy teachers table for backward compatibility
-  db.prepare(`
-    INSERT INTO teachers (id, name, email, password_hash, created_at, updated_at)
-    VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-  `).run(teacherId, 'Ms. Sarah Johnson', 'sarah.johnson@academio.edu', defaultPasswordHash);
+  for (const teacher of teacherData) {
+    const teacherId = uuidv4();
+    teacherIds.push(teacherId);
+
+    db.prepare(`
+      INSERT INTO users (id, email, password_hash, role, name, school_id, created_at, updated_at)
+      VALUES (?, ?, ?, 'TEACHER', ?, ?, datetime('now'), datetime('now'))
+    `).run(teacherId, teacher.email, defaultPasswordHash, teacher.name, defaultSchoolId);
+
+    // Create school membership for teacher
+    db.prepare(`
+      INSERT INTO school_memberships (id, user_id, school_id, role, is_primary, permissions, joined_at)
+      VALUES (?, ?, ?, 'TEACHER', 1, '{}', datetime('now'))
+    `).run(uuidv4(), teacherId, defaultSchoolId);
+
+    // Also insert into legacy teachers table for backward compatibility
+    db.prepare(`
+      INSERT INTO teachers (id, name, email, password_hash, created_at, updated_at)
+      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).run(teacherId, teacher.name, teacher.email, defaultPasswordHash);
+  }
+
+  const teacherId = teacherIds[0]; // Use first teacher for classrooms
 
   // Create classrooms with school_id
   const classrooms = [
@@ -137,6 +150,10 @@ export const seedDatabase = async (): Promise<void> => {
     { first: 'Charlotte', last: 'Thomas', age: 11, sports: ['tennis', 'swimming'], skills: ['vocabulary', 'reading'] },
     { first: 'Aiden', last: 'Moore', age: 12, sports: ['soccer'], skills: ['math', 'science'] },
     { first: 'Harper', last: 'Jackson', age: 11, sports: ['dance', 'volleyball'], skills: ['english', 'history'] },
+    // Additional students
+    { first: 'Alex', last: 'Turner', age: 12, sports: ['skateboarding', 'swimming'], skills: ['science', 'math'] },
+    { first: 'Zoe', last: 'Martinez', age: 11, sports: ['soccer', 'track'], skills: ['reading', 'writing'] },
+    { first: 'Ryan', last: 'Cooper', age: 12, sports: ['basketball', 'video games'], skills: ['problem-solving', 'logic'] },
   ];
 
   const students: { id: string; name: string; email: string; classroomId: string; basePerformance: number }[] = [];

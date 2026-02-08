@@ -1,37 +1,55 @@
-import { ollamaService } from './ollama.service';
+import { ollamaService, ModelType } from './ollama.service';
 import { lessonsQueries } from '../database/queries/lessons.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
-import { Lesson, PersonalizationContext } from '../types';
+import { Lesson, PersonalizationContext, StudentProfileWithUser } from '../types';
 
 /**
- * Few-shot prompt for lesson personalization
+ * Progress tracking for personalization
  */
-const PERSONALIZATION_PROMPT = `You personalize educational content for students based on their profile.
+export interface PersonalizationProgress {
+  lessonId: string;
+  total: number;
+  completed: number;
+  current: string | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'error';
+  error?: string;
+}
 
-## Example 1:
-**Master Content:** The water cycle has three main stages: evaporation, condensation, and precipitation. Water evaporates from oceans and lakes, forms clouds through condensation, and falls as rain or snow.
-**Student Profile:** Age: 10, Interests: [soccer], Skills to Improve: [vocabulary]
-**Personalized Content:** Imagine the water cycle like a soccer game! The sun is like the coach calling water up from the field (that's evaporation - when water turns into invisible vapor). High up in the sky, the water vapor gets together like players huddling - that's condensation forming clouds. Then, when the cloud gets too full, the water falls back down like players running onto the field - that's precipitation (a fancy word for rain, snow, or sleet)!
-
-## Example 2:
-**Master Content:** The French Revolution began in 1789 when the common people of France rose up against the monarchy. Key causes included economic hardship, social inequality, and Enlightenment ideas about liberty and equality.
-**Student Profile:** Age: 14, Interests: [basketball], Skills to Improve: [critical thinking]
-**Personalized Content:** Think of pre-Revolution France like a basketball team with seriously unfair rules. The King and nobles (like a coach who never leaves the bench) got all the best equipment and food, while the common players (the Third Estate) did all the work but got almost nothing. By 1789, the players were fed up - they'd learned about fairness from new "playbooks" (Enlightenment ideas) and decided to change the game completely. What do you think would happen if a real basketball team had rules like that? How might players organize to demand fairness?
-
-## Example 3:
-**Master Content:** Photosynthesis is the process by which plants convert sunlight, water, and carbon dioxide into glucose and oxygen. This occurs in the chloroplasts of plant cells.
-**Student Profile:** Age: 11, Interests: [video games], Skills to Improve: [science]
-**Personalized Content:** Plants are like little food factories running on solar power! Think of photosynthesis like crafting in a video game: plants collect three ingredients (sunlight = energy crystals, water = blue potion, carbon dioxide = air element) and combine them in special green workshops called chloroplasts. The recipe produces two things: glucose (sugar = health points for the plant) and oxygen (the bonus item that we breathe!). Pretty cool, right?
-
-## Your Task:
-Personalize this lesson content for the student. Keep the educational value but make it relatable to their interests and appropriate for their age. If they have skills to improve, emphasize those areas.
-
-**Master Content:** {{MASTER_CONTENT}}
-**Student Profile:** Age: {{AGE}}, Interests: {{INTERESTS}}, Skills to Improve: {{SKILLS}}{{LEARNING_STYLE}}
-**Personalized Content:**`;
+// In-memory progress tracking (can be replaced with Redis for production)
+const progressMap = new Map<string, PersonalizationProgress>();
 
 /**
- * Few-shot prompt for generating master lesson content
+ * Socratic personalization prompt - creates tailored analogies and reflection questions
+ */
+const SOCRATIC_PERSONALIZATION_PROMPT = `You are a Socratic tutor personalizing educational content for a specific student.
+
+## Your Task
+Given the master lesson content and the student's profile, create a SHORT personalized addition that includes:
+1. **One Specific Analogy**: Create a relatable analogy using their interests (${'{INTERESTS}'})
+2. **One Reflection Question**: A thought-provoking question that connects the topic to their life and helps with their skills (${'{SKILLS}'})
+
+Keep it concise (2-3 short paragraphs max). Don't rewrite the whole lesson - just add the personalized touch.
+
+## Example Output Format:
+**Your Personal Connection:**
+[Analogy connecting to their interest]
+
+**Think About This:**
+[Socratic question that makes them reflect and connects to skills they want to improve]
+
+## Master Content:
+{MASTER_CONTENT}
+
+## Student Profile:
+- Age: {AGE}
+- Interests: {INTERESTS}
+- Skills to Improve: {SKILLS}
+{LEARNING_STYLE}
+
+## Personalized Addition:`;
+
+/**
+ * Few-shot prompt for generating master lesson content (uses reasoner model)
  */
 const MASTER_LESSON_PROMPT = `You are an expert educator creating lesson content for K-12 students.
 
@@ -61,37 +79,6 @@ A fraction represents a part of a whole. When we divide something into equal par
 1. If you eat 2 slices of an 8-slice pizza, what fraction did you eat?
 2. Draw a rectangle divided into 5 equal parts. Shade 3 of them. What fraction is shaded?
 
-## Example 2:
-**Topic:** The American Civil War
-**Subject:** History
-**Content:**
-# The American Civil War (1861-1865)
-
-## Overview
-The Civil War was fought between the Northern states (Union) and Southern states (Confederacy) over issues of slavery and states' rights.
-
-## Key Causes
-1. **Slavery**: The South's economy depended on enslaved labor; the North was moving toward abolition
-2. **States' Rights**: Disagreement over how much power federal vs. state governments should have
-3. **Economic Differences**: Industrial North vs. Agricultural South
-
-## Important Figures
-- **Abraham Lincoln**: 16th President, led the Union
-- **Jefferson Davis**: President of the Confederacy
-- **Ulysses S. Grant**: Union general who won key battles
-- **Robert E. Lee**: Confederate general
-
-## Major Events
-- Fort Sumter attack (April 1861) - War begins
-- Emancipation Proclamation (1863) - Freed enslaved people in Confederate states
-- Gettysburg (1863) - Turning point battle
-- Surrender at Appomattox (1865) - War ends
-
-## Impact
-- Slavery abolished (13th Amendment)
-- Over 600,000 Americans died
-- Reconstruction era began
-
 ## Your Task:
 Create a comprehensive, educational lesson on the given topic. Include clear explanations, examples, and questions to check understanding.
 
@@ -101,7 +88,32 @@ Create a comprehensive, educational lesson on the given topic. Include clear exp
 
 export const lessonService = {
   /**
-   * Generate master lesson content using AI
+   * Get personalization progress
+   */
+  getProgress(lessonId: string): PersonalizationProgress | null {
+    return progressMap.get(lessonId) || null;
+  },
+
+  /**
+   * Generate master lesson content using AI (streaming)
+   * Uses 'reasoner' model for high-quality content generation
+   */
+  async *generateMasterContentStream(
+    topic: string,
+    subject?: string
+  ): AsyncGenerator<{ text: string; done: boolean }> {
+    const prompt = MASTER_LESSON_PROMPT.replace('{{TOPIC}}', topic).replace(
+      '{{SUBJECT}}',
+      subject || 'General'
+    );
+
+    // Use reasoner model for high-quality master content
+    yield* ollamaService.generateStream(prompt, undefined, undefined, 'reasoner');
+  },
+
+  /**
+   * Generate master lesson content using AI (non-streaming)
+   * Uses 'reasoner' model for high-quality content generation
    */
   async generateMasterContent(topic: string, subject?: string): Promise<string> {
     const prompt = MASTER_LESSON_PROMPT.replace('{{TOPIC}}', topic).replace(
@@ -109,33 +121,39 @@ export const lessonService = {
       subject || 'General'
     );
 
-    const content = await ollamaService.generate(prompt);
+    // Use reasoner model for high-quality master content
+    const content = await ollamaService.generate(prompt, undefined, undefined, 'reasoner');
     return content.trim();
   },
 
   /**
-   * Personalize lesson content for a specific student
+   * Personalize lesson content for a specific student (uses chat model for speed)
    */
   async personalizeContent(
     masterContent: string,
     profile: PersonalizationContext
   ): Promise<string> {
-    let prompt = PERSONALIZATION_PROMPT.replace('{{MASTER_CONTENT}}', masterContent)
-      .replace('{{AGE}}', profile.age?.toString() || 'unknown')
-      .replace('{{INTERESTS}}', profile.interests.length > 0 ? profile.interests.join(', ') : 'none specified')
-      .replace('{{SKILLS}}', profile.skillsToImprove.length > 0 ? profile.skillsToImprove.join(', ') : 'none specified');
+    const interests = profile.interests.length > 0 ? profile.interests.join(', ') : 'general topics';
+    const skills = profile.skillsToImprove.length > 0 ? profile.skillsToImprove.join(', ') : 'general learning';
+
+    let prompt = SOCRATIC_PERSONALIZATION_PROMPT
+      .replace('{MASTER_CONTENT}', masterContent)
+      .replace(/\{AGE\}/g, profile.age?.toString() || 'unknown')
+      .replace(/\{INTERESTS\}/g, interests)
+      .replace(/\{SKILLS\}/g, skills);
 
     // Add learning style if present
     if (profile.learningSystemPrompt) {
       prompt = prompt.replace(
-        '{{LEARNING_STYLE}}',
-        `\n**Learning Style:** ${profile.learningSystemPrompt}`
+        '{LEARNING_STYLE}',
+        `- Learning Style: ${profile.learningSystemPrompt}`
       );
     } else {
-      prompt = prompt.replace('{{LEARNING_STYLE}}', '');
+      prompt = prompt.replace('{LEARNING_STYLE}', '');
     }
 
-    const content = await ollamaService.generate(prompt);
+    // Use chat model for fast personalization
+    const content = await ollamaService.generate(prompt, undefined, undefined, 'chat');
     return content.trim();
   },
 
@@ -167,9 +185,12 @@ export const lessonService = {
       masterContent,
     });
 
-    // Personalize for all students if requested
+    // Personalize for all students if requested (run in background)
     if (data.generateForStudents) {
-      await this.personalizeForAllStudents(lesson.id);
+      // Don't await - let it run in background
+      this.personalizeForAllStudents(lesson.id).catch((err) => {
+        console.error('[Lesson] Background personalization failed:', err);
+      });
     }
 
     return lesson;
@@ -177,6 +198,7 @@ export const lessonService = {
 
   /**
    * Personalize a lesson for all students with profiles
+   * Uses Promise.all for concurrent personalization (much faster!)
    */
   async personalizeForAllStudents(lessonId: string): Promise<number> {
     const lesson = lessonsQueries.getById(lessonId);
@@ -185,17 +207,34 @@ export const lessonService = {
     }
 
     const profiles = studentProfilesQueries.getAllWithUserDetails();
-    let count = 0;
 
-    for (const profile of profiles) {
-      // Skip if already personalized
+    // Filter out students who already have personalized content
+    const profilesToPersonalize = profiles.filter((profile) => {
       const existing = lessonsQueries.getPersonalizedByLessonAndStudent(
         lessonId,
         profile.userId
       );
-      if (existing) continue;
+      return !existing;
+    });
 
-      // Get personalization context
+    if (profilesToPersonalize.length === 0) {
+      return 0;
+    }
+
+    // Initialize progress tracking
+    progressMap.set(lessonId, {
+      lessonId,
+      total: profilesToPersonalize.length,
+      completed: 0,
+      current: null,
+      status: 'in_progress',
+    });
+
+    console.log(`[Lesson] Starting parallel personalization for ${profilesToPersonalize.length} students`);
+    const startTime = Date.now();
+
+    // Create personalization promises for all students (CONCURRENT!)
+    const personalizationPromises = profilesToPersonalize.map(async (profile) => {
       const context: PersonalizationContext = {
         age: profile.age,
         interests: profile.favoriteSports || [],
@@ -204,6 +243,12 @@ export const lessonService = {
       };
 
       try {
+        // Update progress
+        const progress = progressMap.get(lessonId);
+        if (progress) {
+          progress.current = profile.user?.name || profile.userId;
+        }
+
         const personalizedContent = await this.personalizeContent(
           lesson.masterContent,
           context
@@ -215,13 +260,39 @@ export const lessonService = {
           personalizedContent,
         });
 
-        count++;
+        // Update progress
+        if (progress) {
+          progress.completed++;
+        }
+
+        return { success: true, studentId: profile.userId };
       } catch (error) {
         console.error(`Failed to personalize lesson for student ${profile.userId}:`, error);
+        return { success: false, studentId: profile.userId, error };
       }
+    });
+
+    // Run all personalizations concurrently
+    const results = await Promise.all(personalizationPromises);
+
+    const elapsed = Date.now() - startTime;
+    const successCount = results.filter((r) => r.success).length;
+
+    console.log(`[Lesson] Completed personalization for ${successCount}/${profilesToPersonalize.length} students in ${elapsed}ms`);
+
+    // Update progress to completed
+    const progress = progressMap.get(lessonId);
+    if (progress) {
+      progress.status = 'completed';
+      progress.current = null;
     }
 
-    return count;
+    // Clean up progress after 5 minutes
+    setTimeout(() => {
+      progressMap.delete(lessonId);
+    }, 5 * 60 * 1000);
+
+    return successCount;
   },
 
   /**

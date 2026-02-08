@@ -11,8 +11,11 @@ router.use(authMiddleware, teacherOnly);
 // Get all homework for current teacher
 router.get('/', asyncHandler(homeworkController.getHomework));
 
-// Generate master content using AI
+// Generate master content using AI (non-streaming)
 router.post('/generate-content', asyncHandler(homeworkController.generateContent));
+
+// Generate master content using AI (streaming SSE)
+router.get('/generate-content/stream', asyncHandler(homeworkController.streamGenerateContent));
 
 // Get homework by ID
 router.get('/:id', asyncHandler(homeworkController.getHomeworkById));
@@ -25,6 +28,9 @@ router.put('/:id', asyncHandler(homeworkController.updateHomework));
 
 // Delete homework
 router.delete('/:id', asyncHandler(homeworkController.deleteHomework));
+
+// Get personalization progress
+router.get('/:id/progress', asyncHandler(homeworkController.getProgress));
 
 // Personalize homework for all students
 router.post('/:id/personalize', asyncHandler(homeworkController.personalizeHomework));

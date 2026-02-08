@@ -11,8 +11,11 @@ router.use(authMiddleware, teacherOnly);
 // Get all lessons for current teacher
 router.get('/', asyncHandler(lessonController.getLessons));
 
-// Generate master content using AI
+// Generate master content using AI (non-streaming)
 router.post('/generate-content', asyncHandler(lessonController.generateContent));
+
+// Generate master content using AI (streaming SSE)
+router.get('/generate-content/stream', asyncHandler(lessonController.streamGenerateContent));
 
 // Get lesson by ID
 router.get('/:id', asyncHandler(lessonController.getLesson));
@@ -25,6 +28,9 @@ router.put('/:id', asyncHandler(lessonController.updateLesson));
 
 // Delete a lesson
 router.delete('/:id', asyncHandler(lessonController.deleteLesson));
+
+// Get personalization progress
+router.get('/:id/progress', asyncHandler(lessonController.getProgress));
 
 // Personalize lesson for all students
 router.post('/:id/personalize', asyncHandler(lessonController.personalizeLesson));

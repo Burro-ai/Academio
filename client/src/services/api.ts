@@ -1,8 +1,20 @@
 import { Session, CreateSessionRequest, Topic } from '@/types';
+import { authApi } from './authApi';
 
 const API_BASE = '/api';
 
 class ApiService {
+  /**
+   * Get auth headers if user is logged in
+   */
+  private getAuthHeaders(): Record<string, string> {
+    const token = authApi.getToken();
+    if (token) {
+      return { 'Authorization': `Bearer ${token}` };
+    }
+    return {};
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -10,6 +22,7 @@ class ApiService {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
         ...options.headers,
       },
       ...options,
@@ -17,7 +30,7 @@ class ApiService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.message || `HTTP ${response.status}`);
+      throw new Error(error.message || error.error || `HTTP ${response.status}`);
     }
 
     return response.json();

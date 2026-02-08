@@ -78,10 +78,12 @@ const buildEnrichedSystemPrompt = async (studentId?: string): Promise<string> =>
 export const chatController = {
   /**
    * Stream chat response using SSE
-   * GET /api/chat/stream?sessionId=xxx&message=xxx&studentId=xxx (optional)
+   * GET /api/chat/stream?sessionId=xxx&message=xxx
+   * Uses authenticated user for personalization and session ownership verification
    */
-  async streamChat(req: Request, res: Response) {
-    const { sessionId, message, studentId } = req.query;
+  async streamChat(req: JwtAuthenticatedRequest, res: Response) {
+    const { sessionId, message } = req.query;
+    const authenticatedUserId = req.user?.id;
 
     if (!sessionId || typeof sessionId !== 'string') {
       throw new AppError('sessionId is required', 400);
@@ -95,6 +97,11 @@ export const chatController = {
     const session = sessionsQueries.getById(sessionId);
     if (!session) {
       throw new AppError('Session not found', 404);
+    }
+
+    // Verify user owns this session (if both user and session have user IDs)
+    if (authenticatedUserId && session.userId && session.userId !== authenticatedUserId) {
+      throw new AppError('Access denied to this session', 403);
     }
 
     // Set up SSE headers
@@ -115,9 +122,10 @@ export const chatController = {
       message
     );
 
-    // Build enriched system prompt with student profile (if studentId provided or in session)
-    const studentIdStr = typeof studentId === 'string' ? studentId : session.userId;
-    const systemPrompt = await buildEnrichedSystemPrompt(studentIdStr);
+    // Build enriched system prompt with student profile
+    // Priority: authenticated user > session user ID
+    const studentIdForPersonalization = authenticatedUserId || session.userId;
+    const systemPrompt = await buildEnrichedSystemPrompt(studentIdForPersonalization);
 
     // Create placeholder for assistant message
     const assistantMessage = messagesQueries.create(sessionId, 'assistant', '');
@@ -176,9 +184,11 @@ export const chatController = {
 
   /**
    * POST endpoint for chat (non-streaming, for simpler clients)
+   * Uses authenticated user for personalization and session ownership verification
    */
-  async sendMessage(req: Request, res: Response) {
+  async sendMessage(req: JwtAuthenticatedRequest, res: Response) {
     const { sessionId, message, attachments } = req.body as ChatRequest;
+    const authenticatedUserId = req.user?.id;
 
     if (!sessionId) {
       throw new AppError('sessionId is required', 400);
@@ -192,6 +202,11 @@ export const chatController = {
     const session = sessionsQueries.getById(sessionId);
     if (!session) {
       throw new AppError('Session not found', 404);
+    }
+
+    // Verify user owns this session (if both user and session have user IDs)
+    if (authenticatedUserId && session.userId && session.userId !== authenticatedUserId) {
+      throw new AppError('Access denied to this session', 403);
     }
 
     // Save user message
@@ -211,8 +226,12 @@ export const chatController = {
       message
     );
 
-    // Generate response
-    const response = await ollamaService.generate(prompt);
+    // Build enriched system prompt with student profile for personalization
+    const studentIdForPersonalization = authenticatedUserId || session.userId;
+    const systemPrompt = await buildEnrichedSystemPrompt(studentIdForPersonalization);
+
+    // Generate response with personalized system prompt
+    const response = await ollamaService.generate(prompt, undefined, systemPrompt);
 
     // Save assistant message
     const assistantMessage = messagesQueries.create(

@@ -1,22 +1,23 @@
 import { Router } from 'express';
 import { sessionController } from '../controllers/session.controller';
 import { asyncHandler } from '../middleware/asyncHandler.middleware';
+import { authMiddleware, optionalAuth } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Get all sessions
-router.get('/', asyncHandler(sessionController.getAll));
+// Get all sessions for authenticated user
+router.get('/', authMiddleware, asyncHandler(sessionController.getAll));
 
-// Get single session with messages
-router.get('/:id', asyncHandler(sessionController.getById));
+// Get single session with messages (requires auth to verify ownership)
+router.get('/:id', optionalAuth, asyncHandler(sessionController.getById));
 
-// Create new session
-router.post('/', asyncHandler(sessionController.create));
+// Create new session (requires auth to link to user)
+router.post('/', authMiddleware, asyncHandler(sessionController.create));
 
-// Update session
-router.patch('/:id', asyncHandler(sessionController.update));
+// Update session (requires auth)
+router.patch('/:id', authMiddleware, asyncHandler(sessionController.update));
 
-// Delete session
-router.delete('/:id', asyncHandler(sessionController.delete));
+// Delete session (requires auth)
+router.delete('/:id', authMiddleware, asyncHandler(sessionController.delete));
 
 export default router;

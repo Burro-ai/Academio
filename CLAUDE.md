@@ -11,12 +11,319 @@
 |-------|------------|
 | **Frontend** | React 18 + TypeScript + Vite + Tailwind CSS |
 | **Backend** | Node.js + Express + TypeScript |
-| **AI Engine** | DeepSeek via Ollama (localhost:11434) |
+| **AI Engine** | DeepSeek Cloud API (or Ollama for offline use) |
 | **Database** | SQLite (local file: `server/data/sqlite.db`) |
 | **File Processing** | `pdf-parse` (PDFs), `sharp` (images) |
 | **Streaming** | Server-Sent Events (SSE) for real-time AI responses |
 | **Animation** | Motion (formerly Framer Motion) for transitions |
 | **Design System** | Apple Liquid Glass (2026) - glassmorphism with specular highlights |
+| **Authentication** | JWT (JSON Web Tokens) with bcrypt password hashing |
+
+---
+
+## AI Provider Configuration
+
+> **Updated 2026-02-08:** Switched from Ollama (local) to DeepSeek Cloud API for faster response times.
+
+### Provider Options
+
+| Provider | Speed | Use Case | Configuration |
+|----------|-------|----------|---------------|
+| **DeepSeek Cloud** | Fast (2-5 sec) | Production, normal use | `AI_PROVIDER=deepseek` |
+| **Ollama** | Slow (30-60 sec) | Offline, development | `AI_PROVIDER=ollama` |
+
+### Environment Variables
+
+```bash
+# In .env file:
+
+# Choose provider: 'deepseek' or 'ollama'
+AI_PROVIDER=deepseek
+
+# DeepSeek Cloud API
+DEEPSEEK_API_KEY=sk-your-api-key
+DEEPSEEK_API_URL=https://api.deepseek.com/v1
+AI_MODEL_NAME=deepseek-chat          # or 'deepseek-reasoner' for R1
+
+# Ollama (local fallback)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=deepseek-r1:1.5b
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `server/src/services/ollama.service.ts` | Unified AI service (supports both providers) |
+| `server/src/config/index.ts` | Configuration with provider selection |
+| `.env` | Environment variables with API keys |
+
+### How It Works
+
+1. On server start, `AIService` checks `AI_PROVIDER` env variable
+2. If `deepseek`: Uses DeepSeek Cloud API (OpenAI-compatible format)
+3. If `ollama`: Uses local Ollama instance
+4. If DeepSeek key is missing, automatically falls back to Ollama
+
+### Debugging AI Issues
+
+```bash
+# Check health of current AI provider
+curl http://localhost:3001/api/chat/health
+
+# Response shows provider and status:
+# { "ok": true, "provider": "deepseek" }
+```
+
+---
+
+## Customization Loop (Lesson/Homework Personalization)
+
+> **Updated 2026-02-08:** Optimized with streaming, concurrency, and intelligent prompting.
+
+### Model Strategy
+
+| Use Case | Model | Rationale |
+|----------|-------|-----------|
+| Master Content Generation | `deepseek-reasoner` | Higher reasoning quality for educational content |
+| Student Personalization | `deepseek-chat` | Faster, cheaper for per-student customization |
+
+### Streaming Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/lessons/generate-content/stream` | SSE stream for lesson content |
+| `GET /api/homework/generate-content/stream` | SSE stream for homework content |
+
+### Progress Tracking Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/lessons/:id/progress` | Check personalization status |
+| `GET /api/homework/:id/progress` | Check personalization status |
+
+### Concurrency
+
+Personalization uses `Promise.all()` to process all students in parallel:
+
+```typescript
+// Before: Sequential (slow)
+for (const profile of profiles) {
+  await this.personalizeContent(masterContent, profile);  // 2-5 sec each
+}
+
+// After: Parallel (fast)
+const promises = profiles.map(async (profile) => {
+  await this.personalizeContent(masterContent, profile);
+});
+await Promise.all(promises);  // All run simultaneously
+```
+
+### Socratic Personalization Prompts
+
+The personalization adds student-specific content without rewriting the entire lesson:
+
+**For Lessons:**
+1. **One Analogy**: Relates content to student's interests
+2. **One Reflection Question**: Socratic question connecting concept to their life
+
+**For Homework:**
+1. **Interest-Based Problem**: Reframes one problem using their interests
+2. **Think Deeper Question**: Socratic question about the underlying concept
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `server/src/services/lesson.service.ts` | Lesson generation & personalization |
+| `server/src/services/homework.service.ts` | Homework generation & personalization |
+| `client/src/services/lessonApi.ts` | Client-side streaming methods |
+| `client/src/components/teacher/LessonCreator.tsx` | Streaming UI for lessons |
+| `client/src/components/teacher/HomeworkCreator.tsx` | Streaming UI for homework |
+
+---
+
+## Authentication & JWT System
+
+> **CRITICAL:** This section documents how authentication works across all workflows. Many bugs have been caused by missing JWT tokens in API requests. Always verify auth is properly wired.
+
+### Overview
+
+Academio uses JWT-based authentication with role-based access control (RBAC).
+
+| Component | Purpose |
+|-----------|---------|
+| `server/src/middleware/auth.middleware.ts` | JWT verification and role checking |
+| `server/src/controllers/auth.controller.ts` | Login, register, token generation |
+| `client/src/services/authApi.ts` | Token storage and authenticated requests |
+| `client/src/context/AuthContext.tsx` | Global auth state management |
+
+### JWT Token Structure
+
+```typescript
+interface JwtPayload {
+  id: string;       // User UUID
+  email: string;    // User email
+  role: UserRole;   // 'STUDENT' | 'TEACHER'
+  schoolId?: string; // Optional school context
+  iat?: number;     // Issued at timestamp
+  exp?: number;     // Expiration timestamp
+}
+```
+
+- **Token Expiry:** 7 days
+- **Secret:** Configured via `JWT_SECRET` env variable
+- **Storage:** Client stores token in `localStorage` with key `academio_token`
+
+### Authentication Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           LOGIN FLOW                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. User enters credentials on LoginPage                                    │
+│     │                                                                       │
+│     ▼                                                                       │
+│  2. authApi.login({ email, password })                                      │
+│     │                                                                       │
+│     ▼                                                                       │
+│  3. POST /api/auth/login                                                    │
+│     │                                                                       │
+│     ▼                                                                       │
+│  4. Server: bcrypt.compare(password, user.passwordHash)                     │
+│     │                                                                       │
+│     ▼                                                                       │
+│  5. Server: jwt.sign({ id, email, role }, JWT_SECRET, { expiresIn: '7d' })  │
+│     │                                                                       │
+│     ▼                                                                       │
+│  6. Response: { user, token, redirectTo }                                   │
+│     │                                                                       │
+│     ▼                                                                       │
+│  7. authApi.setToken(token) → localStorage.setItem('academio_token', token) │
+│     │                                                                       │
+│     ▼                                                                       │
+│  8. AuthContext.setUser(user)                                               │
+│     │                                                                       │
+│     ▼                                                                       │
+│  9. Navigate to /dashboard/student or /dashboard/teacher                    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Middleware Types
+
+| Middleware | Usage | Behavior |
+|------------|-------|----------|
+| `authMiddleware` | Required auth | Returns 401 if no valid token |
+| `optionalAuth` | Optional auth | Attaches user if token present, continues if not |
+| `teacherOnly` | Teacher routes | Returns 403 if user.role !== 'TEACHER' |
+| `studentOnly` | Student routes | Returns 403 if user.role !== 'STUDENT' |
+
+### Route Protection by Panel
+
+#### Student Portal Routes
+```typescript
+// Session management - REQUIRES auth
+router.get('/sessions', authMiddleware, sessionController.getAll);
+router.post('/sessions', authMiddleware, sessionController.create);
+
+// Chat streaming - OPTIONAL auth (for personalization)
+router.get('/chat/stream', optionalAuth, chatController.streamChat);
+
+// Student-specific content
+router.get('/student-portal/lessons', authMiddleware, studentOnly, ...);
+router.get('/student-portal/homework', authMiddleware, studentOnly, ...);
+```
+
+#### Teacher Portal Routes
+```typescript
+// All teacher routes require auth + teacher role
+router.use('/lessons', authMiddleware, teacherOnly);
+router.use('/homework', authMiddleware, teacherOnly);
+router.use('/students', authMiddleware, teacherOnly);
+router.use('/classroom', authMiddleware, teacherOnly);
+```
+
+### Frontend API Services - Token Inclusion
+
+**CRITICAL:** All authenticated API calls MUST include the JWT token in the Authorization header.
+
+#### Pattern for REST API calls (api.ts, lessonApi.ts, teacherApi.ts):
+```typescript
+private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = authApi.getToken();  // Get from localStorage
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;  // MUST include this
+  }
+
+  const response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+  // ... handle response
+}
+```
+
+#### Pattern for SSE Streaming (useChat.ts):
+```typescript
+const sendMessage = async (message: string) => {
+  const headers: Record<string, string> = {};
+  const token = authApi.getToken();
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;  // Required for session ownership
+  }
+
+  const response = await fetch(`/api/chat/stream?${params}`, {
+    method: 'GET',
+    headers,  // Include auth headers
+    signal: abortController.signal,
+  });
+  // ... handle SSE stream
+};
+```
+
+### Common Auth Issues & Fixes
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| "Access denied" on create | Missing token in request | Verify `authApi.getToken()` is called and included in headers |
+| "Not authenticated" | Token expired or invalid | Check token expiry, re-login if needed |
+| User data not persisting | Session not linked to user | Ensure routes use `authMiddleware` and pass `req.user.id` |
+| Chat history not showing | Sessions created without userId | Session controller must pass `userId` to `sessionsQueries.create()` |
+| Profile appears blank | Auth context not loaded | Wait for `AuthContext.isLoading` to be false |
+
+### Verifying Auth is Working
+
+```bash
+# 1. Login and get token
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"sarah.johnson@academio.edu","password":"password123"}'
+
+# Response: {"user":{...},"token":"eyJhbG...","redirectTo":"/dashboard/teacher"}
+
+# 2. Use token in authenticated request
+curl http://localhost:3001/api/homework \
+  -H "Authorization: Bearer eyJhbG..."
+
+# Should return homework list, not "Access denied"
+```
+
+### Key Files for Auth Debugging
+
+| File | What to Check |
+|------|---------------|
+| `server/src/middleware/auth.middleware.ts` | JWT verification logic |
+| `server/src/controllers/auth.controller.ts` | Token generation, login logic |
+| `client/src/services/authApi.ts` | Token storage/retrieval |
+| `client/src/context/AuthContext.tsx` | React auth state |
+| `client/src/services/api.ts` | REST API token inclusion |
+| `client/src/services/lessonApi.ts` | Lesson/Homework API token inclusion |
+| `client/src/hooks/useChat.ts` | SSE streaming token inclusion |
 
 ---
 

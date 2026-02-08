@@ -9,7 +9,17 @@ export const config = {
   port: parseInt(process.env.PORT || '3001', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
 
-  // Ollama
+  // AI Provider: 'deepseek' (cloud) or 'ollama' (local)
+  aiProvider: (process.env.AI_PROVIDER || 'deepseek') as 'deepseek' | 'ollama',
+
+  // DeepSeek Cloud API (faster, recommended)
+  deepseek: {
+    apiKey: process.env.DEEPSEEK_API_KEY || '',
+    apiUrl: process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1',
+    model: process.env.AI_MODEL_NAME || 'deepseek-chat',
+  },
+
+  // Ollama (local, slower, for offline use)
   ollama: {
     baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
     model: process.env.OLLAMA_MODEL || 'deepseek-r1:1.5b',

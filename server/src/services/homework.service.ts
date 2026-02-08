@@ -1,76 +1,55 @@
-import { ollamaService } from './ollama.service';
+import { ollamaService, ModelType } from './ollama.service';
 import { homeworkQueries } from '../database/queries/homework.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
-import { HomeworkAssignment, PersonalizationContext } from '../types';
+import { HomeworkAssignment, PersonalizationContext, StudentProfileWithUser } from '../types';
 
 /**
- * Few-shot prompt for homework personalization
+ * Progress tracking for personalization
  */
-const HOMEWORK_PERSONALIZATION_PROMPT = `You personalize homework assignments for students based on their profile.
+export interface PersonalizationProgress {
+  homeworkId: string;
+  total: number;
+  completed: number;
+  current: string | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'error';
+  error?: string;
+}
 
-## Example 1:
-**Master Homework:**
-Practice Problems: Fractions
-1. Add: 1/4 + 2/4 = ?
-2. Add: 3/8 + 2/8 = ?
-3. Subtract: 5/6 - 2/6 = ?
-4. Word problem: You ate 2/8 of a pizza and your friend ate 3/8. How much pizza was eaten in total?
-
-**Student Profile:** Age: 10, Interests: [soccer], Skills to Improve: [math]
-**Personalized Homework:**
-# Soccer Math: Fractions Practice!
-
-1. Your soccer team won 1/4 of their games in August and 2/4 in September. What fraction of their total games did they win? (Hint: add the fractions)
-
-2. At halftime, your water bottle was 3/8 full. You drank 2/8 more. How full is your bottle now?
-
-3. Your team's goal completion rate was 5/6 in practice. In the game, it dropped by 2/6. What's your game rate?
-
-4. You and your teammate are collecting donations for new jerseys. You collected 2/8 of the goal, and your friend collected 3/8. Together, what fraction of the goal have you reached?
-
-**Challenge:** If your team needs to collect 8/8 (the whole amount) for new uniforms, how much more do you need to raise?
-
-## Example 2:
-**Master Homework:**
-Reading Comprehension Questions
-Read Chapter 3 and answer:
-1. Who is the main character?
-2. What is the central conflict?
-3. Write 3 vocabulary words you learned and their definitions.
-4. Summarize the chapter in 50 words.
-
-**Student Profile:** Age: 14, Interests: [basketball, video games], Skills to Improve: [reading, vocabulary]
-**Personalized Homework:**
-# Chapter 3 Analysis - Game Plan Style
-
-Think of this chapter like analyzing game footage. Let's break it down:
-
-**Starting Lineup (Main Character)**
-1. Who's the MVP (main character) of this chapter? Describe them like you'd describe a key player - their strengths, weaknesses, and role in the "game."
-
-**The Opposing Team (Conflict)**
-2. Every good game has tension. What's the main conflict? Is it player vs. player, player vs. team (society), or player vs. themselves (internal)?
-
-**Power-Ups (Vocabulary)**
-3. List 3 new "power-up" words from the chapter:
-   - Word:
-   - Definition:
-   - Use it in a sentence about gaming or basketball:
-
-**Highlight Reel (Summary)**
-4. Create a 50-word "highlight reel" summary. Imagine you're a sports commentator giving the quick recap!
-
-**Bonus Quest:** Find one quote that could be a player's motivational poster.
-
-## Your Task:
-Personalize this homework assignment for the student. Make problems relatable to their interests while maintaining educational rigor.
-
-**Master Homework:** {{MASTER_CONTENT}}
-**Student Profile:** Age: {{AGE}}, Interests: {{INTERESTS}}, Skills to Improve: {{SKILLS}}{{LEARNING_STYLE}}
-**Personalized Homework:**`;
+// In-memory progress tracking (can be replaced with Redis for production)
+const progressMap = new Map<string, PersonalizationProgress>();
 
 /**
- * Few-shot prompt for generating master homework content
+ * Socratic personalization prompt - creates tailored problems with analogies and reflection questions
+ */
+const SOCRATIC_PERSONALIZATION_PROMPT = `You are a Socratic tutor personalizing homework for a specific student.
+
+## Your Task
+Given the master homework and the student's profile, create a SHORT personalized addition that includes:
+1. **One Interest-Based Problem**: Reframe one problem using their interests ({INTERESTS})
+2. **One Reflection Question**: A Socratic question that helps them think about the "why" behind the concept
+
+Keep it concise (2-3 short paragraphs max). Don't rewrite the whole assignment - just add the personalized touch.
+
+## Example Output Format:
+**Your Personal Challenge:**
+[Problem reframed with their interest]
+
+**Think Deeper:**
+[Socratic question that makes them reflect on the underlying concept]
+
+## Master Homework:
+{MASTER_CONTENT}
+
+## Student Profile:
+- Age: {AGE}
+- Interests: {INTERESTS}
+- Skills to Improve: {SKILLS}
+{LEARNING_STYLE}
+
+## Personalized Addition:`;
+
+/**
+ * Few-shot prompt for generating master homework content (uses reasoner model)
  */
 const MASTER_HOMEWORK_PROMPT = `You are an expert educator creating homework assignments for K-12 students.
 
@@ -142,7 +121,32 @@ Create a comprehensive homework assignment on the given topic. Include clear ins
 
 export const homeworkService = {
   /**
-   * Generate master homework content using AI
+   * Get personalization progress
+   */
+  getProgress(homeworkId: string): PersonalizationProgress | null {
+    return progressMap.get(homeworkId) || null;
+  },
+
+  /**
+   * Generate master homework content using AI (streaming)
+   * Uses 'reasoner' model for high-quality content generation
+   */
+  async *generateMasterContentStream(
+    topic: string,
+    subject?: string
+  ): AsyncGenerator<{ text: string; done: boolean }> {
+    const prompt = MASTER_HOMEWORK_PROMPT.replace('{{TOPIC}}', topic).replace(
+      '{{SUBJECT}}',
+      subject || 'General'
+    );
+
+    // Use reasoner model for high-quality master content
+    yield* ollamaService.generateStream(prompt, undefined, undefined, 'reasoner');
+  },
+
+  /**
+   * Generate master homework content using AI (non-streaming)
+   * Uses 'reasoner' model for high-quality content generation
    */
   async generateMasterContent(topic: string, subject?: string): Promise<string> {
     const prompt = MASTER_HOMEWORK_PROMPT.replace('{{TOPIC}}', topic).replace(
@@ -150,32 +154,39 @@ export const homeworkService = {
       subject || 'General'
     );
 
-    const content = await ollamaService.generate(prompt);
+    // Use reasoner model for high-quality master content
+    const content = await ollamaService.generate(prompt, undefined, undefined, 'reasoner');
     return content.trim();
   },
 
   /**
-   * Personalize homework content for a specific student
+   * Personalize homework content for a specific student (uses chat model for speed)
    */
   async personalizeContent(
     masterContent: string,
     profile: PersonalizationContext
   ): Promise<string> {
-    let prompt = HOMEWORK_PERSONALIZATION_PROMPT.replace('{{MASTER_CONTENT}}', masterContent)
-      .replace('{{AGE}}', profile.age?.toString() || 'unknown')
-      .replace('{{INTERESTS}}', profile.interests.length > 0 ? profile.interests.join(', ') : 'none specified')
-      .replace('{{SKILLS}}', profile.skillsToImprove.length > 0 ? profile.skillsToImprove.join(', ') : 'none specified');
+    const interests = profile.interests.length > 0 ? profile.interests.join(', ') : 'general topics';
+    const skills = profile.skillsToImprove.length > 0 ? profile.skillsToImprove.join(', ') : 'general learning';
 
+    let prompt = SOCRATIC_PERSONALIZATION_PROMPT
+      .replace('{MASTER_CONTENT}', masterContent)
+      .replace(/\{AGE\}/g, profile.age?.toString() || 'unknown')
+      .replace(/\{INTERESTS\}/g, interests)
+      .replace(/\{SKILLS\}/g, skills);
+
+    // Add learning style if present
     if (profile.learningSystemPrompt) {
       prompt = prompt.replace(
-        '{{LEARNING_STYLE}}',
-        `\n**Learning Style:** ${profile.learningSystemPrompt}`
+        '{LEARNING_STYLE}',
+        `- Learning Style: ${profile.learningSystemPrompt}`
       );
     } else {
-      prompt = prompt.replace('{{LEARNING_STYLE}}', '');
+      prompt = prompt.replace('{LEARNING_STYLE}', '');
     }
 
-    const content = await ollamaService.generate(prompt);
+    // Use chat model for fast personalization
+    const content = await ollamaService.generate(prompt, undefined, undefined, 'chat');
     return content.trim();
   },
 
@@ -209,9 +220,12 @@ export const homeworkService = {
       dueDate: data.dueDate,
     });
 
-    // Personalize for all students if requested
+    // Personalize for all students if requested (run in background)
     if (data.generateForStudents) {
-      await this.personalizeForAllStudents(homework.id);
+      // Don't await - let it run in background
+      this.personalizeForAllStudents(homework.id).catch((err) => {
+        console.error('[Homework] Background personalization failed:', err);
+      });
     }
 
     return homework;
@@ -219,6 +233,7 @@ export const homeworkService = {
 
   /**
    * Personalize homework for all students with profiles
+   * Uses Promise.all for concurrent personalization (much faster!)
    */
   async personalizeForAllStudents(homeworkId: string): Promise<number> {
     const homework = homeworkQueries.getById(homeworkId);
@@ -227,17 +242,34 @@ export const homeworkService = {
     }
 
     const profiles = studentProfilesQueries.getAllWithUserDetails();
-    let count = 0;
 
-    for (const profile of profiles) {
-      // Skip if already personalized
+    // Filter out students who already have personalized content
+    const profilesToPersonalize = profiles.filter((profile) => {
       const existing = homeworkQueries.getPersonalizedByHomeworkAndStudent(
         homeworkId,
         profile.userId
       );
-      if (existing) continue;
+      return !existing;
+    });
 
-      // Get personalization context
+    if (profilesToPersonalize.length === 0) {
+      return 0;
+    }
+
+    // Initialize progress tracking
+    progressMap.set(homeworkId, {
+      homeworkId,
+      total: profilesToPersonalize.length,
+      completed: 0,
+      current: null,
+      status: 'in_progress',
+    });
+
+    console.log(`[Homework] Starting parallel personalization for ${profilesToPersonalize.length} students`);
+    const startTime = Date.now();
+
+    // Create personalization promises for all students (CONCURRENT!)
+    const personalizationPromises = profilesToPersonalize.map(async (profile) => {
       const context: PersonalizationContext = {
         age: profile.age,
         interests: profile.favoriteSports || [],
@@ -246,6 +278,12 @@ export const homeworkService = {
       };
 
       try {
+        // Update progress
+        const progress = progressMap.get(homeworkId);
+        if (progress) {
+          progress.current = profile.user?.name || profile.userId;
+        }
+
         const personalizedContent = await this.personalizeContent(
           homework.masterContent,
           context
@@ -257,13 +295,39 @@ export const homeworkService = {
           personalizedContent,
         });
 
-        count++;
+        // Update progress
+        if (progress) {
+          progress.completed++;
+        }
+
+        return { success: true, studentId: profile.userId };
       } catch (error) {
         console.error(`Failed to personalize homework for student ${profile.userId}:`, error);
+        return { success: false, studentId: profile.userId, error };
       }
+    });
+
+    // Run all personalizations concurrently
+    const results = await Promise.all(personalizationPromises);
+
+    const elapsed = Date.now() - startTime;
+    const successCount = results.filter((r) => r.success).length;
+
+    console.log(`[Homework] Completed personalization for ${successCount}/${profilesToPersonalize.length} students in ${elapsed}ms`);
+
+    // Update progress to completed
+    const progress = progressMap.get(homeworkId);
+    if (progress) {
+      progress.status = 'completed';
+      progress.current = null;
     }
 
-    return count;
+    // Clean up progress after 5 minutes
+    setTimeout(() => {
+      progressMap.delete(homeworkId);
+    }, 5 * 60 * 1000);
+
+    return successCount;
   },
 
   /**

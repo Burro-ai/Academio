@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
 import { Message, StreamEvent } from '@/types';
+import { authApi } from '@/services/authApi';
 
 interface UseChatOptions {
   sessionId: string;
-  studentId?: string; // For personalized AI responses
   onMessageComplete?: (message: Message) => void;
 }
 
@@ -15,7 +15,7 @@ interface UseChatReturn {
   cancelStream: () => void;
 }
 
-export function useChat({ sessionId, studentId, onMessageComplete }: UseChatOptions): UseChatReturn {
+export function useChat({ sessionId, onMessageComplete }: UseChatOptions): UseChatReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -57,9 +57,11 @@ export function useChat({ sessionId, studentId, onMessageComplete }: UseChatOpti
         message: fullMessage,
       });
 
-      // Add studentId for personalized AI responses
-      if (studentId) {
-        params.append('studentId', studentId);
+      // Build headers with JWT auth token if available
+      const headers: Record<string, string> = {};
+      const token = authApi.getToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
       try {
@@ -68,6 +70,7 @@ export function useChat({ sessionId, studentId, onMessageComplete }: UseChatOpti
 
         const response = await fetch(`/api/chat/stream?${params}`, {
           method: 'GET',
+          headers,
           signal: abortControllerRef.current.signal,
         });
 
@@ -150,7 +153,7 @@ export function useChat({ sessionId, studentId, onMessageComplete }: UseChatOpti
         abortControllerRef.current = null;
       }
     },
-    [sessionId, studentId, isStreaming, cancelStream, onMessageComplete]
+    [sessionId, isStreaming, cancelStream, onMessageComplete]
   );
 
   return {

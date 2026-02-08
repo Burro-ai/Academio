@@ -1,7 +1,7 @@
 # ARCHITECT.md - Academio System Architecture
 
 > **Purpose:** Document the high-level architecture, data flow, and system design decisions.
-> **Last Updated:** 2026-02-07
+> **Last Updated:** 2026-02-08
 
 ---
 
@@ -73,27 +73,117 @@ Academio is an AI-powered tutoring platform with two portals:
 
 ## Data Flow Diagrams
 
-### 1. Authentication Flow
+### 1. Authentication Flow (JWT-Based)
+
+> **IMPORTANT:** All authenticated requests must include the JWT token in the Authorization header.
+> Pattern: `Authorization: Bearer <token>`
 
 ```
-┌──────────┐     POST /api/auth/login      ┌──────────┐
-│  Client  │  ─────────────────────────►   │  Server  │
-│          │  { email, password }          │          │
-│          │                               │          │
-│          │  ◄─────────────────────────   │          │
-│          │  { user, token, redirectTo }  │          │
-└──────────┘                               └──────────┘
-     │                                          │
-     │  Store token in localStorage             │  Verify with bcrypt
-     │  Set AuthContext                         │  Generate JWT
-     │  Navigate to dashboard                   │
-     ▼                                          ▼
-┌──────────────────┐                    ┌──────────────────┐
-│ /dashboard/      │                    │ users table      │
-│ student|teacher  │                    │ (id, email,      │
-│                  │                    │  passwordHash,   │
-│                  │                    │  role, name)     │
-└──────────────────┘                    └──────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           AUTHENTICATION FLOW                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────┐     POST /api/auth/login      ┌──────────┐                    │
+│  │  Client  │  ─────────────────────────►   │  Server  │                    │
+│  │          │  { email, password }          │          │                    │
+│  │          │                               │          │                    │
+│  │          │  ◄─────────────────────────   │          │                    │
+│  │          │  { user, token, redirectTo }  │          │                    │
+│  └──────────┘                               └──────────┘                    │
+│       │                                          │                          │
+│       │  1. Store token: localStorage            │  1. Find user by email   │
+│       │     .setItem('academio_token', token)    │  2. bcrypt.compare()     │
+│       │  2. AuthContext.setUser(user)            │  3. jwt.sign(payload)    │
+│       │  3. Navigate to dashboard                │                          │
+│       ▼                                          ▼                          │
+│  ┌──────────────────┐                    ┌──────────────────┐               │
+│  │ StudentDashboard │                    │ JWT Payload:     │               │
+│  │ TeacherDashboard │                    │ { id, email,     │               │
+│  │                  │                    │   role, schoolId,│               │
+│  │                  │                    │   iat, exp }     │               │
+│  └──────────────────┘                    └──────────────────┘               │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2. Authenticated Request Flow
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                      AUTHENTICATED API REQUEST FLOW                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Client                          Server                                      │
+│    │                               │                                         │
+│    │  GET /api/homework            │                                         │
+│    │  Authorization: Bearer <JWT>  │                                         │
+│    │  ─────────────────────────►   │                                         │
+│    │                               │                                         │
+│    │                    ┌──────────┴──────────┐                              │
+│    │                    │  authMiddleware     │                              │
+│    │                    │  1. Extract token   │                              │
+│    │                    │  2. jwt.verify()    │                              │
+│    │                    │  3. req.user = {    │                              │
+│    │                    │       id, email,    │                              │
+│    │                    │       role, ...}    │                              │
+│    │                    └──────────┬──────────┘                              │
+│    │                               │                                         │
+│    │                    ┌──────────┴──────────┐                              │
+│    │                    │  teacherOnly        │                              │
+│    │                    │  (role check)       │                              │
+│    │                    └──────────┬──────────┘                              │
+│    │                               │                                         │
+│    │                    ┌──────────┴──────────┐                              │
+│    │                    │  Controller         │                              │
+│    │                    │  Uses req.user.id   │                              │
+│    │                    └──────────┬──────────┘                              │
+│    │                               │                                         │
+│    │  ◄────────────────────────────│                                         │
+│    │  { homework: [...] }          │                                         │
+│    │                               │                                         │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3. Session Ownership & Chat Persistence
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                   SESSION OWNERSHIP (Chat History Persistence)               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. CREATE SESSION (linked to user)                                          │
+│  ─────────────────────────────────────                                       │
+│  Client: POST /api/sessions { topic: "math" }                                │
+│          Authorization: Bearer <JWT>                                         │
+│                                                                              │
+│  Server: sessionController.create(req)                                       │
+│          → userId = req.user.id        // From JWT                           │
+│          → schoolId = req.user.schoolId                                      │
+│          → sessionsQueries.create(topic, title, userId, schoolId)            │
+│                                                                              │
+│  Database: INSERT INTO sessions (user_id, school_id, topic, ...)             │
+│                                                                              │
+│  2. GET USER'S SESSIONS                                                      │
+│  ─────────────────────────────────────                                       │
+│  Client: GET /api/sessions                                                   │
+│          Authorization: Bearer <JWT>                                         │
+│                                                                              │
+│  Server: sessionController.getAll(req)                                       │
+│          → userId = req.user.id                                              │
+│          → sessionsQueries.getByUserId(userId)  // Only user's sessions      │
+│                                                                              │
+│  3. CHAT WITH SESSION VERIFICATION                                           │
+│  ─────────────────────────────────────                                       │
+│  Client: GET /api/chat/stream?sessionId=X&message=Y                          │
+│          Authorization: Bearer <JWT>                                         │
+│                                                                              │
+│  Server: chatController.streamChat(req)                                      │
+│          → session = sessionsQueries.getById(sessionId)                      │
+│          → IF (req.user.id !== session.userId) THROW 403 "Access denied"     │
+│          → Use req.user.id for AI personalization context                    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 2. Student Chat Flow (SSE Streaming)
@@ -299,11 +389,46 @@ server/src/
 
 ## Security Considerations
 
-1. **Authentication**: JWT tokens with 7-day expiry, bcrypt password hashing
-2. **Authorization**: Role-based access (STUDENT, TEACHER) enforced via middleware
-3. **Input Validation**: Request validation in controllers before processing
-4. **CORS**: Configured for specific client origin only
-5. **File Uploads**: Limited to specific file types, size limits applied
+### Authentication & Authorization
+
+1. **JWT Tokens**
+   - 7-day expiry (`expiresIn: '7d'`)
+   - Signed with `JWT_SECRET` from environment
+   - Contains: `{ id, email, role, schoolId?, iat, exp }`
+   - Stored in `localStorage` on client (key: `academio_token`)
+
+2. **Password Security**
+   - bcrypt hashing with 10 salt rounds
+   - Minimum 6 character requirement
+
+3. **Role-Based Access Control (RBAC)**
+   - Two roles: `STUDENT`, `TEACHER`
+   - Middleware enforces at route level:
+     - `authMiddleware` - Requires valid JWT
+     - `teacherOnly` - Requires `role: 'TEACHER'`
+     - `studentOnly` - Requires `role: 'STUDENT'`
+     - `optionalAuth` - Attaches user if token present, continues without
+
+### Middleware Application by Route
+
+| Route Pattern | Middleware | Access |
+|---------------|------------|--------|
+| `/api/auth/*` | None (public) | Everyone |
+| `/api/sessions/*` | `authMiddleware` | Any authenticated user |
+| `/api/chat/stream` | `optionalAuth` | Any (auth for personalization) |
+| `/api/lessons/*` | `authMiddleware` + `teacherOnly` | Teachers only |
+| `/api/homework/*` | `authMiddleware` + `teacherOnly` | Teachers only |
+| `/api/students/*` | `authMiddleware` + `teacherOnly` | Teachers only |
+| `/api/classroom/*` | `authMiddleware` + `teacherOnly` | Teachers only |
+| `/api/student-portal/*` | `authMiddleware` + `studentOnly` | Students only |
+| `/api/admin/*` | Legacy password auth | Admins only |
+
+### Other Security Measures
+
+4. **Input Validation**: Request validation in controllers before processing
+5. **CORS**: Configured for specific client origin only
+6. **File Uploads**: Limited to specific file types, size limits applied
+7. **Session Ownership**: Users can only access their own sessions/data
 
 ---
 

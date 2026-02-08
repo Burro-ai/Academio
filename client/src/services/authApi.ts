@@ -64,28 +64,79 @@ class AuthApiService {
 
   /**
    * Register new user
+   * Note: Clears any existing token before registration
    */
   async register(data: RegisterRequest): Promise<RegisterResponse> {
-    const response = await this.request<RegisterResponse>('/register', {
+    // Clear any existing token
+    this.removeToken();
+
+    // Make register request without auth header
+    const response = await fetch(`${API_BASE}/register`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
 
-    this.setToken(response.token);
-    return response;
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Registration failed' }));
+      throw new Error(error.error || error.message || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json() as RegisterResponse;
+
+    // Store new token
+    this.setToken(result.token);
+
+    console.log('[Auth] Registration successful, user role:', result.user.role);
+
+    return result;
+  }
+
+  /**
+   * Debug: Get decoded token payload (without verification)
+   */
+  getTokenPayload(): { id?: string; email?: string; role?: string; exp?: number } | null {
+    const token = this.getToken();
+    if (!token) return null;
+
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      return JSON.parse(atob(parts[1]));
+    } catch {
+      return null;
+    }
   }
 
   /**
    * Login user
+   * Note: Clears any existing token before login to prevent stale token issues
    */
   async login(data: LoginRequest): Promise<LoginResponse> {
-    const response = await this.request<LoginResponse>('/login', {
+    // Clear any existing token to prevent stale token issues
+    this.removeToken();
+
+    // Make login request without auth header
+    const response = await fetch(`${API_BASE}/login`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
 
-    this.setToken(response.token);
-    return response;
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Login failed' }));
+      throw new Error(error.error || error.message || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json() as LoginResponse;
+
+    // Store new token
+    this.setToken(result.token);
+
+    // Debug: Log token role (can be removed in production)
+    console.log('[Auth] Login successful, user role:', result.user.role);
+
+    return result;
   }
 
   /**

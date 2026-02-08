@@ -14,13 +14,14 @@ interface StudentProfileWithSchool extends StudentProfile {
 
 /**
  * Convert database row to StudentProfile object
+ * Ensures arrays are always returned (never undefined) for consistent frontend handling
  */
 const rowToProfile = (row: StudentProfileRow): StudentProfileWithSchool => ({
   id: row.id,
   userId: row.user_id,
   age: row.age || undefined,
-  favoriteSports: row.favorite_sports ? JSON.parse(row.favorite_sports) : undefined,
-  skillsToImprove: row.skills_to_improve ? JSON.parse(row.skills_to_improve) : undefined,
+  favoriteSports: row.favorite_sports ? JSON.parse(row.favorite_sports) : [],
+  skillsToImprove: row.skills_to_improve ? JSON.parse(row.skills_to_improve) : [],
   gradeHistory: row.grade_history ? JSON.parse(row.grade_history) : undefined,
   learningSystemPrompt: row.learning_system_prompt || undefined,
   gradeLevel: row.grade_level || undefined,
