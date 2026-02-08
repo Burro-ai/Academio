@@ -3,6 +3,7 @@ import {
   Teacher,
   Classroom,
   Student,
+  StudentProfileWithUser,
   StudentWithDetails,
   GradesBySubject,
   StudentActivity,
@@ -32,7 +33,7 @@ interface TeacherContextValue {
   createClassroom: (name: string, subject?: string, gradeLevel?: string) => Promise<Classroom>;
 
   // Students
-  students: Student[];
+  students: (Student | StudentProfileWithUser)[];
   selectedStudent: StudentWithDetails | null;
   studentGrades: GradesBySubject[];
   studentActivity: StudentActivity | null;
@@ -77,7 +78,7 @@ export function TeacherProvider({ children }: { children: React.ReactNode }) {
   const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null);
 
   // Student state
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<(Student | StudentProfileWithUser)[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentWithDetails | null>(null);
   const [studentGrades, setStudentGrades] = useState<GradesBySubject[]>([]);
   const [studentActivity, setStudentActivity] = useState<StudentActivity | null>(null);

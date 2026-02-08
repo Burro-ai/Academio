@@ -1,9 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ChatProvider } from '@/context/ChatContext';
-import { TeacherProvider } from '@/context/TeacherContext';
-import { StudentPage } from '@/pages/StudentPage';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from '@/context/AuthContext';
+import { LoginPage } from '@/pages/LoginPage';
+import { StudentDashboard } from '@/pages/StudentDashboard';
+import { TeacherDashboard } from '@/pages/TeacherDashboard';
 import { AdminPage } from '@/pages/AdminPage';
-import { TeacherPage } from '@/pages/TeacherPage';
 import { DynamicBackground } from '@/components/layout/DynamicBackground';
 import { LiquidEdgeFilter } from '@/components/effects/LiquidEdgeFilter';
 
@@ -18,27 +18,27 @@ function App() {
 
       {/* Main app content */}
       <BrowserRouter>
-        <div className="relative z-10 min-h-screen">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <ChatProvider>
-                  <StudentPage />
-                </ChatProvider>
-              }
-            />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route
-              path="/teacher/*"
-              element={
-                <TeacherProvider>
-                  <TeacherPage />
-                </TeacherProvider>
-              }
-            />
-          </Routes>
-        </div>
+        <AuthProvider>
+          <div className="relative z-10 min-h-screen">
+            <Routes>
+              {/* Auth Routes */}
+              <Route path="/login" element={<LoginPage />} />
+
+              {/* Dashboard Routes (JWT Auth) */}
+              <Route path="/dashboard/student/*" element={<StudentDashboard />} />
+              <Route path="/dashboard/teacher/*" element={<TeacherDashboard />} />
+
+              {/* Root redirects to login */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
+
+              {/* Admin route */}
+              <Route path="/admin" element={<AdminPage />} />
+
+              {/* Catch-all redirect */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </div>
+        </AuthProvider>
       </BrowserRouter>
     </>
   );

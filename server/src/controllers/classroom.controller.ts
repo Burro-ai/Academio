@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { classroomService } from '../services/classroom.service';
 import { teachersQueries } from '../database/queries/teachers.queries';
-import { Subject } from '../types';
+import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
+import { Subject, JwtAuthenticatedRequest } from '../types';
 import { AppError } from '../middleware/errorHandler.middleware';
 
 export const classroomController = {
@@ -10,10 +11,33 @@ export const classroomController = {
    * GET /api/classroom
    */
   async getOverview(req: Request, res: Response) {
+    const jwtReq = req as JwtAuthenticatedRequest;
     const { classroomId } = req.query;
 
     if (!classroomId || typeof classroomId !== 'string') {
-      // Return aggregated stats for all teacher's classrooms
+      // If JWT authenticated teacher, count students who selected this teacher
+      if (jwtReq.user && jwtReq.user.role === 'TEACHER') {
+        const myStudents = studentProfilesQueries.getByTeacherId(jwtReq.user.id);
+        const classrooms = classroomService.getClassroomsByTeacher(jwtReq.user.id);
+        const classroomsWithStats = classrooms.map(c => ({
+          ...c,
+          stats: classroomService.getClassroomStats(c.id),
+        }));
+
+        res.json({
+          classrooms: classroomsWithStats,
+          totalStudents: myStudents.length,
+          studentsStruggling: myStudents.filter(s => {
+            // Consider struggling if they have a high struggle score or need intervention
+            return false; // TODO: Calculate from learning analytics
+          }).length,
+          studentsExcelling: 0,
+          recentActivity: 0,
+        });
+        return;
+      }
+
+      // Fallback: Return aggregated stats for all teacher's classrooms (legacy)
       const teachers = teachersQueries.getAll();
       if (teachers.length === 0) {
         res.json({

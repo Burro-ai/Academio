@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { classroomController } from '../controllers/classroom.controller';
 import { asyncHandler } from '../middleware/asyncHandler.middleware';
-import { teacherAuth } from '../middleware/teacherAuth.middleware';
+import { authMiddleware, teacherOnly } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// All classroom routes require teacher authentication
-router.use(teacherAuth);
+// All classroom routes require JWT teacher authentication
+router.use(authMiddleware, teacherOnly);
 
 // Get classroom overview (all classrooms with stats or single classroom)
 router.get('/', asyncHandler(classroomController.getOverview));

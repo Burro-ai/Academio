@@ -12,13 +12,17 @@ export const config = {
   // Ollama
   ollama: {
     baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-    model: process.env.OLLAMA_MODEL || 'deepseek-r1:8b',
+    model: process.env.OLLAMA_MODEL || 'deepseek-r1:1.5b',
   },
+
+  // JWT Authentication
+  jwtSecret: process.env.JWT_SECRET || 'academio-jwt-secret-change-in-production',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
 
   // Admin
   adminPassword: process.env.ADMIN_PASSWORD || 'admin123',
 
-  // Teacher
+  // Teacher (legacy - use JWT auth now)
   teacherPassword: process.env.TEACHER_PASSWORD || 'teacher123',
 
   // CORS
@@ -31,5 +35,6 @@ export const config = {
     systemPrompt: path.join(__dirname, '../../data/system-prompt.txt'),
     teacherSystemPrompt: path.join(__dirname, '../../data/teacher-system-prompt.txt'),
     database: path.join(__dirname, '../../data/sqlite.db'),
+    fewShotPrompts: path.join(__dirname, '../../data/few-shot-prompts'),
   },
 };

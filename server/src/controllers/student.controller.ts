@@ -3,16 +3,26 @@ import { studentService } from '../services/student.service';
 import { gradesService } from '../services/grades.service';
 import { learningAnalyticsService } from '../services/learningAnalytics.service';
 import { teachersQueries } from '../database/queries/teachers.queries';
-import { CreateStudentRequest, UpdateStudentRequest, AddGradeRequest } from '../types';
+import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
+import { CreateStudentRequest, UpdateStudentRequest, AddGradeRequest, JwtAuthenticatedRequest } from '../types';
 import { AppError } from '../middleware/errorHandler.middleware';
 
 export const studentController = {
   /**
    * Get all students for the teacher
    * GET /api/students
+   * If JWT auth is present and user is a teacher, returns students who selected this teacher
    */
   async getAll(req: Request, res: Response) {
+    const jwtReq = req as JwtAuthenticatedRequest;
     const { classroomId } = req.query;
+
+    // If authenticated teacher, get students who selected this teacher
+    if (jwtReq.user && jwtReq.user.role === 'TEACHER') {
+      const students = studentProfilesQueries.getByTeacherId(jwtReq.user.id);
+      res.json(students);
+      return;
+    }
 
     if (classroomId && typeof classroomId === 'string') {
       const students = studentService.getStudentsByClassroom(classroomId);
@@ -20,7 +30,7 @@ export const studentController = {
       return;
     }
 
-    // Get students for first teacher (MVP)
+    // Fallback: Get students for first teacher (legacy MVP behavior)
     const teachers = teachersQueries.getAll();
     if (teachers.length === 0) {
       res.json([]);

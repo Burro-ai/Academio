@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import { studentController } from '../controllers/student.controller';
 import { asyncHandler } from '../middleware/asyncHandler.middleware';
-import { teacherAuth } from '../middleware/teacherAuth.middleware';
+import { authMiddleware, teacherOnly } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// All student routes require teacher authentication
-router.use(teacherAuth);
+// All student routes use JWT auth for teachers
+router.use(authMiddleware, teacherOnly);
 
-// Get all students (optionally filtered by classroom)
+// Get all students - returns students who selected this teacher
 router.get('/', asyncHandler(studentController.getAll));
 
 // Get a single student with full profile

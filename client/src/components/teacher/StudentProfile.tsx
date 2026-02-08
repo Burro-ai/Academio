@@ -110,6 +110,57 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
         </div>
       </div>
 
+      {/* Profile Details */}
+      {(selectedStudent.age || selectedStudent.favoriteSports?.length || selectedStudent.skillsToImprove?.length) && (
+        <div className="glass-card p-6">
+          <h2 className="text-lg font-semibold text-solid mb-4">Student Profile</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {selectedStudent.age && (
+              <div className="p-3 glass-surface">
+                <p className="text-sm text-prominent">Age</p>
+                <p className="text-lg font-medium text-solid">{selectedStudent.age} years old</p>
+              </div>
+            )}
+            {selectedStudent.favoriteSports && selectedStudent.favoriteSports.length > 0 && (
+              <div className="p-3 glass-surface">
+                <p className="text-sm text-prominent">Interests</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {selectedStudent.favoriteSports.map((sport, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-0.5 text-sm backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 rounded-lg text-emerald-100"
+                    >
+                      {sport}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {selectedStudent.skillsToImprove && selectedStudent.skillsToImprove.length > 0 && (
+              <div className="p-3 glass-surface">
+                <p className="text-sm text-prominent">Skills to Improve</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {selectedStudent.skillsToImprove.map((skill, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-0.5 text-sm backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 rounded-lg text-blue-100"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {selectedStudent.learningSystemPrompt && (
+            <div className="mt-4 p-3 glass-surface">
+              <p className="text-sm text-prominent mb-1">Learning Preferences</p>
+              <p className="text-solid text-sm">{selectedStudent.learningSystemPrompt}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Grades by Subject */}

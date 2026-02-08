@@ -1,0 +1,312 @@
+import { getDb } from '../db';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  HomeworkAssignment,
+  HomeworkWithTeacher,
+  PersonalizedHomework,
+  PersonalizedHomeworkWithDetails,
+  HomeworkRow,
+  PersonalizedHomeworkRow,
+} from '../../types';
+
+/**
+ * Convert database row to HomeworkAssignment object
+ */
+const rowToHomework = (row: HomeworkRow): HomeworkAssignment => ({
+  id: row.id,
+  teacherId: row.teacher_id,
+  title: row.title,
+  topic: row.topic,
+  subject: row.subject || undefined,
+  masterContent: row.master_content,
+  dueDate: row.due_date || undefined,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+interface HomeworkWithTeacherRow extends HomeworkRow {
+  teacher_name: string;
+  personalized_count: number;
+}
+
+interface PersonalizedHomeworkWithDetailsRow extends PersonalizedHomeworkRow {
+  homework_title: string;
+  homework_topic: string;
+  homework_subject: string | null;
+  homework_due_date: string | null;
+  teacher_name: string;
+}
+
+export const homeworkQueries = {
+  /**
+   * Create a new homework assignment
+   */
+  create(data: {
+    teacherId: string;
+    title: string;
+    topic: string;
+    subject?: string;
+    masterContent: string;
+    dueDate?: string;
+  }): HomeworkAssignment {
+    const db = getDb();
+    const id = uuidv4();
+
+    db.prepare(`
+      INSERT INTO homework_assignments (id, teacher_id, title, topic, subject, master_content, due_date, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).run(
+      id,
+      data.teacherId,
+      data.title,
+      data.topic,
+      data.subject || null,
+      data.masterContent,
+      data.dueDate || null
+    );
+
+    return this.getById(id)!;
+  },
+
+  /**
+   * Get homework by ID
+   */
+  getById(id: string): HomeworkAssignment | null {
+    const db = getDb();
+    const row = db
+      .prepare('SELECT * FROM homework_assignments WHERE id = ?')
+      .get(id) as HomeworkRow | undefined;
+
+    if (!row) return null;
+    return rowToHomework(row);
+  },
+
+  /**
+   * Get homework with teacher info
+   */
+  getWithTeacher(id: string): HomeworkWithTeacher | null {
+    const db = getDb();
+    const row = db
+      .prepare(`
+        SELECT
+          h.*,
+          u.name as teacher_name,
+          (SELECT COUNT(*) FROM personalized_homework WHERE homework_id = h.id) as personalized_count
+        FROM homework_assignments h
+        JOIN users u ON h.teacher_id = u.id
+        WHERE h.id = ?
+      `)
+      .get(id) as HomeworkWithTeacherRow | undefined;
+
+    if (!row) return null;
+
+    return {
+      ...rowToHomework(row),
+      teacherName: row.teacher_name,
+      personalizedCount: row.personalized_count,
+    };
+  },
+
+  /**
+   * Get all homework by teacher
+   */
+  getByTeacherId(teacherId: string): HomeworkWithTeacher[] {
+    const db = getDb();
+    const rows = db
+      .prepare(`
+        SELECT
+          h.*,
+          u.name as teacher_name,
+          (SELECT COUNT(*) FROM personalized_homework WHERE homework_id = h.id) as personalized_count
+        FROM homework_assignments h
+        JOIN users u ON h.teacher_id = u.id
+        WHERE h.teacher_id = ?
+        ORDER BY h.created_at DESC
+      `)
+      .all(teacherId) as HomeworkWithTeacherRow[];
+
+    return rows.map((row) => ({
+      ...rowToHomework(row),
+      teacherName: row.teacher_name,
+      personalizedCount: row.personalized_count,
+    }));
+  },
+
+  /**
+   * Update homework
+   */
+  update(
+    id: string,
+    data: Partial<{
+      title: string;
+      topic: string;
+      subject: string;
+      masterContent: string;
+      dueDate: string;
+    }>
+  ): HomeworkAssignment | null {
+    const db = getDb();
+    const updates: string[] = [];
+    const values: unknown[] = [];
+
+    if (data.title !== undefined) {
+      updates.push('title = ?');
+      values.push(data.title);
+    }
+    if (data.topic !== undefined) {
+      updates.push('topic = ?');
+      values.push(data.topic);
+    }
+    if (data.subject !== undefined) {
+      updates.push('subject = ?');
+      values.push(data.subject);
+    }
+    if (data.masterContent !== undefined) {
+      updates.push('master_content = ?');
+      values.push(data.masterContent);
+    }
+    if (data.dueDate !== undefined) {
+      updates.push('due_date = ?');
+      values.push(data.dueDate);
+    }
+
+    if (updates.length === 0) {
+      return this.getById(id);
+    }
+
+    updates.push("updated_at = datetime('now')");
+    values.push(id);
+
+    db.prepare(`UPDATE homework_assignments SET ${updates.join(', ')} WHERE id = ?`).run(
+      ...values
+    );
+
+    return this.getById(id);
+  },
+
+  /**
+   * Delete homework
+   */
+  delete(id: string): boolean {
+    const db = getDb();
+    const result = db.prepare('DELETE FROM homework_assignments WHERE id = ?').run(id);
+    return result.changes > 0;
+  },
+
+  // Personalized Homework
+
+  /**
+   * Create personalized homework
+   */
+  createPersonalized(data: {
+    homeworkId: string;
+    studentId: string;
+    personalizedContent: string;
+  }): PersonalizedHomework {
+    const db = getDb();
+    const id = uuidv4();
+
+    db.prepare(`
+      INSERT INTO personalized_homework (id, homework_id, student_id, personalized_content, created_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+    `).run(id, data.homeworkId, data.studentId, data.personalizedContent);
+
+    const row = db
+      .prepare('SELECT * FROM personalized_homework WHERE id = ?')
+      .get(id) as PersonalizedHomeworkRow;
+
+    return {
+      id: row.id,
+      homeworkId: row.homework_id,
+      studentId: row.student_id,
+      personalizedContent: row.personalized_content,
+      submittedAt: row.submitted_at || undefined,
+      createdAt: row.created_at,
+    };
+  },
+
+  /**
+   * Get personalized homework by homework ID and student ID
+   */
+  getPersonalizedByHomeworkAndStudent(
+    homeworkId: string,
+    studentId: string
+  ): PersonalizedHomework | null {
+    const db = getDb();
+    const row = db
+      .prepare('SELECT * FROM personalized_homework WHERE homework_id = ? AND student_id = ?')
+      .get(homeworkId, studentId) as PersonalizedHomeworkRow | undefined;
+
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      homeworkId: row.homework_id,
+      studentId: row.student_id,
+      personalizedContent: row.personalized_content,
+      submittedAt: row.submitted_at || undefined,
+      createdAt: row.created_at,
+    };
+  },
+
+  /**
+   * Get all personalized homework for a student
+   */
+  getPersonalizedByStudentId(studentId: string): PersonalizedHomeworkWithDetails[] {
+    const db = getDb();
+    const rows = db
+      .prepare(`
+        SELECT
+          ph.*,
+          h.title as homework_title,
+          h.topic as homework_topic,
+          h.subject as homework_subject,
+          h.due_date as homework_due_date,
+          u.name as teacher_name
+        FROM personalized_homework ph
+        JOIN homework_assignments h ON ph.homework_id = h.id
+        JOIN users u ON h.teacher_id = u.id
+        WHERE ph.student_id = ?
+        ORDER BY h.due_date ASC, ph.created_at DESC
+      `)
+      .all(studentId) as PersonalizedHomeworkWithDetailsRow[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      homeworkId: row.homework_id,
+      studentId: row.student_id,
+      personalizedContent: row.personalized_content,
+      submittedAt: row.submitted_at || undefined,
+      createdAt: row.created_at,
+      homework: {
+        title: row.homework_title,
+        topic: row.homework_topic,
+        subject: row.homework_subject || undefined,
+        dueDate: row.homework_due_date || undefined,
+        teacherName: row.teacher_name,
+      },
+    }));
+  },
+
+  /**
+   * Mark personalized homework as submitted
+   */
+  markAsSubmitted(id: string): boolean {
+    const db = getDb();
+    const result = db
+      .prepare("UPDATE personalized_homework SET submitted_at = datetime('now') WHERE id = ?")
+      .run(id);
+    return result.changes > 0;
+  },
+
+  /**
+   * Delete all personalized versions of a homework
+   */
+  deleteAllPersonalized(homeworkId: string): number {
+    const db = getDb();
+    const result = db
+      .prepare('DELETE FROM personalized_homework WHERE homework_id = ?')
+      .run(homeworkId);
+    return result.changes;
+  },
+};

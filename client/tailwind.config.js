@@ -141,7 +141,10 @@ export default {
         },
       },
       boxShadow: {
-        // Colored glow shadows instead of black
+        // Glass shadows used in CSS components
+        'glass': '0 8px 32px 0 rgba(139, 92, 246, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+        'glass-lg': '0 25px 50px -12px rgba(139, 92, 246, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+        // Colored glow shadows
         'glass-glow': '0 8px 32px 0 rgba(139, 92, 246, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05)',
         'glass-glow-lg': '0 25px 50px -12px rgba(139, 92, 246, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05)',
         'glass-glow-primary': '0 8px 32px 0 rgba(14, 165, 233, 0.2)',

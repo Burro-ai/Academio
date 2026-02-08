@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
   Student,
+  StudentProfileWithUser,
   StudentWithDetails,
   GradesBySubject,
   StudentActivity,
@@ -11,7 +12,7 @@ import {
 import { teacherApi } from '@/services/teacherApi';
 
 interface UseStudentsReturn {
-  students: Student[];
+  students: (Student | StudentProfileWithUser)[];
   selectedStudent: StudentWithDetails | null;
   studentGrades: GradesBySubject[];
   studentActivity: StudentActivity | null;
@@ -27,7 +28,7 @@ interface UseStudentsReturn {
 }
 
 export function useStudents(initialClassroomId?: string): UseStudentsReturn {
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<(Student | StudentProfileWithUser)[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentWithDetails | null>(null);
   const [studentGrades, setStudentGrades] = useState<GradesBySubject[]>([]);
   const [studentActivity, setStudentActivity] = useState<StudentActivity | null>(null);

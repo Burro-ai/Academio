@@ -3,6 +3,7 @@ import {
   Classroom,
   Student,
   StudentWithDetails,
+  StudentProfileWithUser,
   GradesBySubject,
   StudentActivity,
   StudentGrade,
@@ -17,6 +18,7 @@ import {
   CreateClassroomRequest,
   Subject,
 } from '@/types';
+import { authApi } from './authApi';
 
 const API_BASE = '/api';
 
@@ -31,7 +33,17 @@ class TeacherApiService {
     this.password = null;
   }
 
-  private getAuthHeaders(): HeadersInit {
+  private getAuthHeaders(): Record<string, string> {
+    // First try JWT token from authApi
+    const jwtToken = authApi.getToken();
+    if (jwtToken) {
+      return {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${jwtToken}`,
+      };
+    }
+
+    // Fallback to legacy password auth
     if (!this.password) {
       throw new Error('Not authenticated');
     }
@@ -112,9 +124,9 @@ class TeacherApiService {
 
   // ============ Students ============
 
-  async getStudents(classroomId?: string): Promise<Student[]> {
+  async getStudents(classroomId?: string): Promise<(Student | StudentProfileWithUser)[]> {
     const query = classroomId ? `?classroomId=${classroomId}` : '';
-    return this.request<Student[]>(`/students${query}`);
+    return this.request<(Student | StudentProfileWithUser)[]>(`/students${query}`);
   }
 
   async getStudent(id: string): Promise<{

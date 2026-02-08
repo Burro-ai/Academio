@@ -1,4 +1,5 @@
 import { studentsQueries } from '../database/queries/students.queries';
+import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
 import { gradesQueries } from '../database/queries/grades.queries';
 import { analyticsQueries } from '../database/queries/analytics.queries';
 import { Student, StudentWithDetails, StudentActivity, GradesBySubject } from '../types';
@@ -20,12 +21,49 @@ class StudentService {
 
   /**
    * Get a student's full profile including grades and activity
+   * Supports both legacy students table and new unified student_profiles
    */
   getStudentProfile(studentId: string): {
     student: StudentWithDetails;
     gradesBySubject: GradesBySubject[];
     activity: StudentActivity;
   } | null {
+    // First try the new unified system (student_profiles + users)
+    const profileWithUser = studentProfilesQueries.getWithUserDetails(studentId);
+    if (profileWithUser) {
+      const gradesBySubject = gradesQueries.getByStudentGroupedBySubject(studentId);
+      const activity = analyticsQueries.getStudentActivity(studentId);
+
+      // Convert StudentProfileWithUser to StudentWithDetails format
+      const student: StudentWithDetails = {
+        id: profileWithUser.userId,
+        name: profileWithUser.user.name,
+        email: profileWithUser.user.email,
+        avatarUrl: profileWithUser.user.avatarUrl,
+        gradeLevel: profileWithUser.gradeLevel,
+        classroomId: profileWithUser.classroomId,
+        createdAt: profileWithUser.createdAt,
+        updatedAt: profileWithUser.updatedAt,
+        classroom: profileWithUser.classroom,
+        currentStruggleScore: 0,
+        totalSessions: 0,
+        recentGrades: gradesQueries.getRecentByStudentId(studentId, 5),
+        // Include profile-specific fields
+        age: profileWithUser.age,
+        favoriteSports: profileWithUser.favoriteSports,
+        skillsToImprove: profileWithUser.skillsToImprove,
+        learningSystemPrompt: profileWithUser.learningSystemPrompt,
+        teacherId: profileWithUser.teacherId,
+      };
+
+      return {
+        student,
+        gradesBySubject,
+        activity,
+      };
+    }
+
+    // Fallback to legacy students table
     const student = studentsQueries.getByIdWithDetails(studentId);
     if (!student) return null;
 

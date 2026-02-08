@@ -15,10 +15,17 @@ export interface StudentWithDetails extends Student {
   classroom?: {
     id: string;
     name: string;
+    subject?: string;
   };
   currentStruggleScore?: number;
   recentGrades?: StudentGrade[];
   totalSessions?: number;
+  // Profile-specific fields from unified system
+  age?: number;
+  favoriteSports?: string[];
+  skillsToImprove?: string[];
+  learningSystemPrompt?: string;
+  teacherId?: string;
 }
 
 export type Subject = 'math' | 'science' | 'history' | 'geography' | 'english' | 'writing' | 'general';

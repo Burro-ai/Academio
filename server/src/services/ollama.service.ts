@@ -14,17 +14,22 @@ class OllamaService {
   /**
    * Generate a streaming response from Ollama/DeepSeek
    * Yields chunks of text as they arrive
+   * @param prompt - The conversation prompt
+   * @param context - Optional conversation context (for multi-turn)
+   * @param systemPrompt - Optional custom system prompt (if not provided, uses default)
    */
   async *generateStream(
     prompt: string,
-    context?: number[]
+    context?: number[],
+    systemPrompt?: string
   ): AsyncGenerator<{ text: string; done: boolean; context?: number[] }> {
-    const systemPrompt = await promptService.getPrompt();
+    // Use provided system prompt or fetch default
+    const finalSystemPrompt = systemPrompt || await promptService.getPrompt();
 
     const requestBody: OllamaGenerateRequest = {
       model: this.model,
       prompt,
-      system: systemPrompt,
+      system: finalSystemPrompt,
       stream: true,
       context,
       options: {
@@ -124,7 +129,7 @@ class OllamaService {
         return { ok: false, error: 'Ollama not responding' };
       }
 
-      const data = await response.json();
+      const data = await response.json() as { models?: { name: string }[] };
       const models = data.models || [];
       const hasModel = models.some(
         (m: { name: string }) =>

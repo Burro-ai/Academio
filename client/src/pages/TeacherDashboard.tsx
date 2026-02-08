@@ -1,0 +1,209 @@
+import { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { TeacherProvider, useTeacherContext } from '@/context/TeacherContext';
+import { Dashboard } from '@/components/teacher/Dashboard';
+import { StudentsView } from '@/components/teacher/StudentsView';
+import { TeacherChat } from '@/components/teacher/TeacherChat';
+import { LessonsPanel } from '@/components/teacher/LessonsPanel';
+import { HomeworkPanel } from '@/components/teacher/HomeworkPanel';
+
+type Tab = 'dashboard' | 'students' | 'lessons' | 'homework' | 'assistant';
+
+function TeacherDashboardContent() {
+  const { user, isLoading: authLoading } = useAuth();
+  const { loadInterventionAlerts } = useTeacherContext();
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+
+  useEffect(() => {
+    loadInterventionAlerts();
+  }, [loadInterventionAlerts]);
+
+  const handleViewStudent = (_studentId: string) => {
+    setActiveTab('students');
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400" />
+      </div>
+    );
+  }
+
+  if (!user || user.role !== 'TEACHER') {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <div className="min-h-screen flex">
+      <TeacherSidebarEnhanced activeTab={activeTab} onTabChange={setActiveTab} />
+
+      <main className="flex-1 overflow-hidden">
+        {activeTab === 'dashboard' && <Dashboard onViewStudent={handleViewStudent} />}
+        {activeTab === 'students' && <StudentsView />}
+        {activeTab === 'lessons' && <LessonsPanel />}
+        {activeTab === 'homework' && <HomeworkPanel />}
+        {activeTab === 'assistant' && (
+          <div className="h-screen">
+            <TeacherChat />
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+interface TeacherSidebarEnhancedProps {
+  activeTab: Tab;
+  onTabChange: (tab: Tab) => void;
+}
+
+function TeacherSidebarEnhanced({ activeTab, onTabChange }: TeacherSidebarEnhancedProps) {
+  const { user, logout } = useAuth();
+  const { interventionAlerts } = useTeacherContext();
+
+  const navItems = [
+    {
+      id: 'dashboard' as const,
+      label: 'Dashboard',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: 'students' as const,
+      label: 'Students',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+          />
+        </svg>
+      ),
+      badge: interventionAlerts.length > 0 ? interventionAlerts.length : undefined,
+    },
+    {
+      id: 'lessons' as const,
+      label: 'Lessons',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: 'homework' as const,
+      label: 'Homework',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: 'assistant' as const,
+      label: 'AI Assistant',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+          />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <aside className="w-64 glass-panel border-r border-white/20 flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-white/15">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 backdrop-blur-md bg-blue-500/30 border border-blue-400/30 rounded-full flex items-center justify-center shadow-glass">
+            <span className="text-blue-100 font-semibold">
+              {user?.name?.charAt(0) || 'T'}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-solid truncate">
+              {user?.name || 'Teacher'}
+            </p>
+            <p className="text-xs text-prominent truncate">{user?.email}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-1">
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onTabChange(item.id)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+              activeTab === item.id
+                ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/30 text-blue-100 shadow-glass'
+                : 'text-prominent hover:backdrop-blur-md hover:bg-white/20 hover:border hover:border-white/20'
+            }`}
+          >
+            {item.icon}
+            <span className="font-medium">{item.label}</span>
+            {item.badge && (
+              <span className="ml-auto backdrop-blur-sm bg-red-500/50 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                {item.badge}
+              </span>
+            )}
+          </button>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-white/15">
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 text-prominent hover:text-solid hover:backdrop-blur-md hover:bg-white/20 rounded-xl transition-all"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+            />
+          </svg>
+          <span className="font-medium">Sign Out</span>
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+export function TeacherDashboard() {
+  return (
+    <TeacherProvider>
+      <TeacherDashboardContent />
+    </TeacherProvider>
+  );
+}

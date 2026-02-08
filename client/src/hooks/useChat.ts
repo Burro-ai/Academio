@@ -3,6 +3,7 @@ import { Message, StreamEvent } from '@/types';
 
 interface UseChatOptions {
   sessionId: string;
+  studentId?: string; // For personalized AI responses
   onMessageComplete?: (message: Message) => void;
 }
 
@@ -14,7 +15,7 @@ interface UseChatReturn {
   cancelStream: () => void;
 }
 
-export function useChat({ sessionId, onMessageComplete }: UseChatOptions): UseChatReturn {
+export function useChat({ sessionId, studentId, onMessageComplete }: UseChatOptions): UseChatReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,11 @@ export function useChat({ sessionId, onMessageComplete }: UseChatOptions): UseCh
         sessionId,
         message: fullMessage,
       });
+
+      // Add studentId for personalized AI responses
+      if (studentId) {
+        params.append('studentId', studentId);
+      }
 
       try {
         // Use fetch with streaming for better control
@@ -144,7 +150,7 @@ export function useChat({ sessionId, onMessageComplete }: UseChatOptions): UseCh
         abortControllerRef.current = null;
       }
     },
-    [sessionId, isStreaming, cancelStream, onMessageComplete]
+    [sessionId, studentId, isStreaming, cancelStream, onMessageComplete]
   );
 
   return {
