@@ -42,7 +42,7 @@ export const homeworkController = {
       throw new AppError('Not authenticated', 401);
     }
 
-    const { title, topic, subject, masterContent, dueDate, generateForStudents } =
+    const { title, topic, subject, masterContent, dueDate, classroomId, generateForStudents } =
       req.body as CreateHomeworkRequest;
 
     if (!title || !topic) {
@@ -55,6 +55,7 @@ export const homeworkController = {
       subject,
       masterContent,
       dueDate,
+      classroomId,
       generateForStudents,
     });
 

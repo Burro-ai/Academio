@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { teachersQueries } from '../database/queries/teachers.queries';
 import { classroomsQueries } from '../database/queries/classrooms.queries';
-import { TeacherLoginRequest, CreateClassroomRequest, UpdateClassroomRequest } from '../types';
+import { TeacherLoginRequest, CreateClassroomRequest, UpdateClassroomRequest, JwtAuthenticatedRequest } from '../types';
 import { AppError } from '../middleware/errorHandler.middleware';
 import { config } from '../config';
 
@@ -76,7 +76,16 @@ export const teacherController = {
    * GET /api/teacher/classrooms
    */
   async getClassrooms(req: Request, res: Response) {
-    // For MVP, get classrooms for first teacher
+    const jwtReq = req as JwtAuthenticatedRequest;
+
+    // If JWT authenticated, use that user's ID
+    if (jwtReq.user && jwtReq.user.role === 'TEACHER') {
+      const classrooms = classroomsQueries.getByTeacherId(jwtReq.user.id);
+      res.json(classrooms);
+      return;
+    }
+
+    // Fallback: For legacy auth, get classrooms for first teacher
     const teachers = teachersQueries.getAll();
     if (teachers.length === 0) {
       res.json([]);
@@ -92,13 +101,26 @@ export const teacherController = {
    * POST /api/teacher/classrooms
    */
   async createClassroom(req: Request, res: Response) {
+    const jwtReq = req as JwtAuthenticatedRequest;
     const { name, subject, gradeLevel } = req.body as CreateClassroomRequest;
 
     if (!name) {
       throw new AppError('Classroom name is required', 400);
     }
 
-    // Get teacher ID
+    // If JWT authenticated, use that user's ID
+    if (jwtReq.user && jwtReq.user.role === 'TEACHER') {
+      const classroom = classroomsQueries.create({
+        name,
+        teacherId: jwtReq.user.id,
+        subject,
+        gradeLevel,
+      });
+      res.status(201).json(classroom);
+      return;
+    }
+
+    // Fallback: Get teacher ID from legacy table
     let teachers = teachersQueries.getAll();
     if (teachers.length === 0) {
       // Create default teacher

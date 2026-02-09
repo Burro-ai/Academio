@@ -158,7 +158,7 @@ export const lessonService = {
   },
 
   /**
-   * Create a lesson and optionally personalize for all students
+   * Create a lesson and optionally personalize for students (in classroom or all)
    */
   async createLesson(
     teacherId: string,
@@ -167,6 +167,7 @@ export const lessonService = {
       topic: string;
       subject?: string;
       masterContent?: string;
+      classroomId?: string;
       generateForStudents?: boolean;
     }
   ): Promise<Lesson> {
@@ -183,12 +184,13 @@ export const lessonService = {
       topic: data.topic,
       subject: data.subject,
       masterContent,
+      classroomId: data.classroomId,
     });
 
-    // Personalize for all students if requested (run in background)
+    // Personalize for students if requested (run in background)
     if (data.generateForStudents) {
       // Don't await - let it run in background
-      this.personalizeForAllStudents(lesson.id).catch((err) => {
+      this.personalizeForStudentsInClassroom(lesson.id, data.classroomId).catch((err) => {
         console.error('[Lesson] Background personalization failed:', err);
       });
     }
@@ -197,16 +199,24 @@ export const lessonService = {
   },
 
   /**
-   * Personalize a lesson for all students with profiles
+   * Personalize a lesson for students in a specific classroom (or all if no classroom)
    * Uses Promise.all for concurrent personalization (much faster!)
    */
-  async personalizeForAllStudents(lessonId: string): Promise<number> {
+  async personalizeForStudentsInClassroom(lessonId: string, classroomId?: string): Promise<number> {
     const lesson = lessonsQueries.getById(lessonId);
     if (!lesson) {
       throw new Error('Lesson not found');
     }
 
-    const profiles = studentProfilesQueries.getAllWithUserDetails();
+    // Get profiles - filter by classroom if specified
+    let profiles: StudentProfileWithUser[];
+    if (classroomId) {
+      // Get only students in the specified classroom
+      const allProfiles = studentProfilesQueries.getAllWithUserDetails();
+      profiles = allProfiles.filter(p => p.classroomId === classroomId);
+    } else {
+      profiles = studentProfilesQueries.getAllWithUserDetails();
+    }
 
     // Filter out students who already have personalized content
     const profilesToPersonalize = profiles.filter((profile) => {
@@ -293,6 +303,13 @@ export const lessonService = {
     }, 5 * 60 * 1000);
 
     return successCount;
+  },
+
+  /**
+   * Personalize a lesson for all students (backwards compatible)
+   */
+  async personalizeForAllStudents(lessonId: string): Promise<number> {
+    return this.personalizeForStudentsInClassroom(lessonId, undefined);
   },
 
   /**

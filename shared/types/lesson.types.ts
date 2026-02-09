@@ -7,6 +7,7 @@ export interface Lesson {
   topic: string;
   subject?: string;
   masterContent: string;
+  classroomId?: string;  // Target classroom (null = all students)
   createdAt: string;
   updatedAt: string;
 }
@@ -14,6 +15,7 @@ export interface Lesson {
 export interface LessonWithTeacher extends Lesson {
   teacherName: string;
   personalizedCount?: number;
+  classroomName?: string;  // Name of target classroom
 }
 
 export interface PersonalizedLesson {
@@ -39,7 +41,8 @@ export interface CreateLessonRequest {
   topic: string;
   subject?: string;
   masterContent?: string; // If not provided, AI generates it
-  generateForStudents?: boolean; // Auto-personalize for all students
+  classroomId?: string;   // Target classroom (null = all students)
+  generateForStudents?: boolean; // Auto-personalize for students in classroom
 }
 
 export interface UpdateLessonRequest {
@@ -59,6 +62,7 @@ export interface HomeworkAssignment {
   subject?: string;
   masterContent: string;
   dueDate?: string;
+  classroomId?: string;  // Target classroom (null = all students)
   createdAt: string;
   updatedAt: string;
 }
@@ -66,6 +70,7 @@ export interface HomeworkAssignment {
 export interface HomeworkWithTeacher extends HomeworkAssignment {
   teacherName: string;
   personalizedCount?: number;
+  classroomName?: string;  // Name of target classroom
 }
 
 export interface PersonalizedHomework {
@@ -93,7 +98,8 @@ export interface CreateHomeworkRequest {
   subject?: string;
   masterContent?: string;
   dueDate?: string;
-  generateForStudents?: boolean;
+  classroomId?: string;   // Target classroom (null = all students)
+  generateForStudents?: boolean; // Auto-personalize for students in classroom
 }
 
 export interface UpdateHomeworkRequest {

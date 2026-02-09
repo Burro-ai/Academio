@@ -42,7 +42,7 @@ export const lessonController = {
       throw new AppError('Not authenticated', 401);
     }
 
-    const { title, topic, subject, masterContent, generateForStudents } =
+    const { title, topic, subject, masterContent, classroomId, generateForStudents } =
       req.body as CreateLessonRequest;
 
     if (!title || !topic) {
@@ -54,6 +54,7 @@ export const lessonController = {
       topic,
       subject,
       masterContent,
+      classroomId,
       generateForStudents,
     });
 

@@ -14,6 +14,15 @@ router.get('/', asyncHandler(classroomController.getOverview));
 // Get students needing intervention
 router.get('/struggling', asyncHandler(classroomController.getStrugglingStudents));
 
+// Create a new classroom
+router.post('/', asyncHandler(classroomController.createClassroom));
+
+// Update a classroom
+router.put('/:id', asyncHandler(classroomController.updateClassroom));
+
+// Delete a classroom
+router.delete('/:id', asyncHandler(classroomController.deleteClassroom));
+
 // Get subject average for a classroom
 router.get('/:id/subject/:subject/average', asyncHandler(classroomController.getSubjectAverage));
 

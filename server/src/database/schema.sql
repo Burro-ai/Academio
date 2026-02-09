@@ -264,10 +264,12 @@ CREATE TABLE IF NOT EXISTS lessons (
     topic TEXT NOT NULL,
     subject TEXT,
     master_content TEXT NOT NULL,
+    classroom_id TEXT,             -- Target classroom (null = all students)
     school_id TEXT,                -- School scope (nullable for migration)
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE SET NULL,
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
 );
 
@@ -293,10 +295,12 @@ CREATE TABLE IF NOT EXISTS homework_assignments (
     subject TEXT,
     master_content TEXT NOT NULL,
     due_date TEXT,
+    classroom_id TEXT,             -- Target classroom (null = all students)
     school_id TEXT,                -- School scope (nullable for migration)
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE SET NULL,
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
 );
 
@@ -326,10 +330,12 @@ CREATE INDEX IF NOT EXISTS idx_student_profiles_classroom_id ON student_profiles
 CREATE INDEX IF NOT EXISTS idx_student_profiles_teacher_id ON student_profiles(teacher_id);
 CREATE INDEX IF NOT EXISTS idx_student_profiles_school_id ON student_profiles(school_id);
 CREATE INDEX IF NOT EXISTS idx_lessons_teacher_id ON lessons(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_lessons_classroom_id ON lessons(classroom_id);
 CREATE INDEX IF NOT EXISTS idx_lessons_school_id ON lessons(school_id);
 CREATE INDEX IF NOT EXISTS idx_personalized_lessons_lesson_id ON personalized_lessons(lesson_id);
 CREATE INDEX IF NOT EXISTS idx_personalized_lessons_student_id ON personalized_lessons(student_id);
 CREATE INDEX IF NOT EXISTS idx_homework_assignments_teacher_id ON homework_assignments(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_homework_assignments_classroom_id ON homework_assignments(classroom_id);
 CREATE INDEX IF NOT EXISTS idx_homework_assignments_school_id ON homework_assignments(school_id);
 CREATE INDEX IF NOT EXISTS idx_personalized_homework_homework_id ON personalized_homework(homework_id);
 CREATE INDEX IF NOT EXISTS idx_personalized_homework_student_id ON personalized_homework(student_id);

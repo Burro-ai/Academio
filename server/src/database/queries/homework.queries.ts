@@ -20,6 +20,7 @@ const rowToHomework = (row: HomeworkRow): HomeworkAssignment => ({
   subject: row.subject || undefined,
   masterContent: row.master_content,
   dueDate: row.due_date || undefined,
+  classroomId: row.classroom_id || undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -27,6 +28,7 @@ const rowToHomework = (row: HomeworkRow): HomeworkAssignment => ({
 interface HomeworkWithTeacherRow extends HomeworkRow {
   teacher_name: string;
   personalized_count: number;
+  classroom_name: string | null;
 }
 
 interface PersonalizedHomeworkWithDetailsRow extends PersonalizedHomeworkRow {
@@ -48,13 +50,14 @@ export const homeworkQueries = {
     subject?: string;
     masterContent: string;
     dueDate?: string;
+    classroomId?: string;
   }): HomeworkAssignment {
     const db = getDb();
     const id = uuidv4();
 
     db.prepare(`
-      INSERT INTO homework_assignments (id, teacher_id, title, topic, subject, master_content, due_date, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      INSERT INTO homework_assignments (id, teacher_id, title, topic, subject, master_content, due_date, classroom_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).run(
       id,
       data.teacherId,
@@ -62,7 +65,8 @@ export const homeworkQueries = {
       data.topic,
       data.subject || null,
       data.masterContent,
-      data.dueDate || null
+      data.dueDate || null,
+      data.classroomId || null
     );
 
     return this.getById(id)!;
@@ -91,9 +95,11 @@ export const homeworkQueries = {
         SELECT
           h.*,
           u.name as teacher_name,
+          c.name as classroom_name,
           (SELECT COUNT(*) FROM personalized_homework WHERE homework_id = h.id) as personalized_count
         FROM homework_assignments h
         JOIN users u ON h.teacher_id = u.id
+        LEFT JOIN classrooms c ON h.classroom_id = c.id
         WHERE h.id = ?
       `)
       .get(id) as HomeworkWithTeacherRow | undefined;
@@ -104,6 +110,7 @@ export const homeworkQueries = {
       ...rowToHomework(row),
       teacherName: row.teacher_name,
       personalizedCount: row.personalized_count,
+      classroomName: row.classroom_name || undefined,
     };
   },
 
@@ -117,9 +124,11 @@ export const homeworkQueries = {
         SELECT
           h.*,
           u.name as teacher_name,
+          c.name as classroom_name,
           (SELECT COUNT(*) FROM personalized_homework WHERE homework_id = h.id) as personalized_count
         FROM homework_assignments h
         JOIN users u ON h.teacher_id = u.id
+        LEFT JOIN classrooms c ON h.classroom_id = c.id
         WHERE h.teacher_id = ?
         ORDER BY h.created_at DESC
       `)
@@ -129,6 +138,35 @@ export const homeworkQueries = {
       ...rowToHomework(row),
       teacherName: row.teacher_name,
       personalizedCount: row.personalized_count,
+      classroomName: row.classroom_name || undefined,
+    }));
+  },
+
+  /**
+   * Get homework by classroom ID
+   */
+  getByClassroomId(classroomId: string): HomeworkWithTeacher[] {
+    const db = getDb();
+    const rows = db
+      .prepare(`
+        SELECT
+          h.*,
+          u.name as teacher_name,
+          c.name as classroom_name,
+          (SELECT COUNT(*) FROM personalized_homework WHERE homework_id = h.id) as personalized_count
+        FROM homework_assignments h
+        JOIN users u ON h.teacher_id = u.id
+        LEFT JOIN classrooms c ON h.classroom_id = c.id
+        WHERE h.classroom_id = ?
+        ORDER BY h.due_date ASC, h.created_at DESC
+      `)
+      .all(classroomId) as HomeworkWithTeacherRow[];
+
+    return rows.map((row) => ({
+      ...rowToHomework(row),
+      teacherName: row.teacher_name,
+      personalizedCount: row.personalized_count,
+      classroomName: row.classroom_name || undefined,
     }));
   },
 
@@ -143,6 +181,7 @@ export const homeworkQueries = {
       subject: string;
       masterContent: string;
       dueDate: string;
+      classroomId: string | null;
     }>
   ): HomeworkAssignment | null {
     const db = getDb();
@@ -168,6 +207,10 @@ export const homeworkQueries = {
     if (data.dueDate !== undefined) {
       updates.push('due_date = ?');
       values.push(data.dueDate);
+    }
+    if (data.classroomId !== undefined) {
+      updates.push('classroom_id = ?');
+      values.push(data.classroomId);
     }
 
     if (updates.length === 0) {

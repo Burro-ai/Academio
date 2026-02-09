@@ -119,4 +119,81 @@ export const classroomController = {
       average: Math.round(average * 10) / 10,
     });
   },
+
+  /**
+   * Create a new classroom
+   * POST /api/classroom
+   */
+  async createClassroom(req: Request, res: Response) {
+    const jwtReq = req as JwtAuthenticatedRequest;
+    if (!jwtReq.user) {
+      throw new AppError('Not authenticated', 401);
+    }
+
+    const { name, subject, gradeLevel } = req.body;
+
+    if (!name) {
+      throw new AppError('Classroom name is required', 400);
+    }
+
+    const classroom = classroomService.createClassroom({
+      name,
+      teacherId: jwtReq.user.id,
+      subject,
+      gradeLevel,
+    });
+
+    res.status(201).json(classroom);
+  },
+
+  /**
+   * Update a classroom
+   * PUT /api/classroom/:id
+   */
+  async updateClassroom(req: Request, res: Response) {
+    const jwtReq = req as JwtAuthenticatedRequest;
+    if (!jwtReq.user) {
+      throw new AppError('Not authenticated', 401);
+    }
+
+    const { id } = req.params;
+    const { name, subject, gradeLevel } = req.body;
+
+    // Verify ownership
+    const existing = classroomService.getClassroom(id);
+    if (!existing) {
+      throw new AppError('Classroom not found', 404);
+    }
+    if (existing.teacherId !== jwtReq.user.id) {
+      throw new AppError('Not authorized to update this classroom', 403);
+    }
+
+    const classroom = classroomService.updateClassroom(id, { name, subject, gradeLevel });
+    res.json(classroom);
+  },
+
+  /**
+   * Delete a classroom
+   * DELETE /api/classroom/:id
+   */
+  async deleteClassroom(req: Request, res: Response) {
+    const jwtReq = req as JwtAuthenticatedRequest;
+    if (!jwtReq.user) {
+      throw new AppError('Not authenticated', 401);
+    }
+
+    const { id } = req.params;
+
+    // Verify ownership
+    const existing = classroomService.getClassroom(id);
+    if (!existing) {
+      throw new AppError('Classroom not found', 404);
+    }
+    if (existing.teacherId !== jwtReq.user.id) {
+      throw new AppError('Not authorized to delete this classroom', 403);
+    }
+
+    classroomService.deleteClassroom(id);
+    res.json({ message: 'Classroom deleted' });
+  },
 };

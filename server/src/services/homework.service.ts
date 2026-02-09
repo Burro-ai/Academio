@@ -191,7 +191,7 @@ export const homeworkService = {
   },
 
   /**
-   * Create a homework assignment and optionally personalize for all students
+   * Create a homework assignment and optionally personalize for students (in classroom or all)
    */
   async createHomework(
     teacherId: string,
@@ -201,6 +201,7 @@ export const homeworkService = {
       subject?: string;
       masterContent?: string;
       dueDate?: string;
+      classroomId?: string;
       generateForStudents?: boolean;
     }
   ): Promise<HomeworkAssignment> {
@@ -218,12 +219,13 @@ export const homeworkService = {
       subject: data.subject,
       masterContent,
       dueDate: data.dueDate,
+      classroomId: data.classroomId,
     });
 
-    // Personalize for all students if requested (run in background)
+    // Personalize for students if requested (run in background)
     if (data.generateForStudents) {
       // Don't await - let it run in background
-      this.personalizeForAllStudents(homework.id).catch((err) => {
+      this.personalizeForStudentsInClassroom(homework.id, data.classroomId).catch((err) => {
         console.error('[Homework] Background personalization failed:', err);
       });
     }
@@ -232,16 +234,24 @@ export const homeworkService = {
   },
 
   /**
-   * Personalize homework for all students with profiles
+   * Personalize homework for students in a specific classroom (or all if no classroom)
    * Uses Promise.all for concurrent personalization (much faster!)
    */
-  async personalizeForAllStudents(homeworkId: string): Promise<number> {
+  async personalizeForStudentsInClassroom(homeworkId: string, classroomId?: string): Promise<number> {
     const homework = homeworkQueries.getById(homeworkId);
     if (!homework) {
       throw new Error('Homework not found');
     }
 
-    const profiles = studentProfilesQueries.getAllWithUserDetails();
+    // Get profiles - filter by classroom if specified
+    let profiles: StudentProfileWithUser[];
+    if (classroomId) {
+      // Get only students in the specified classroom
+      const allProfiles = studentProfilesQueries.getAllWithUserDetails();
+      profiles = allProfiles.filter(p => p.classroomId === classroomId);
+    } else {
+      profiles = studentProfilesQueries.getAllWithUserDetails();
+    }
 
     // Filter out students who already have personalized content
     const profilesToPersonalize = profiles.filter((profile) => {
@@ -328,6 +338,13 @@ export const homeworkService = {
     }, 5 * 60 * 1000);
 
     return successCount;
+  },
+
+  /**
+   * Personalize homework for all students (backwards compatible)
+   */
+  async personalizeForAllStudents(homeworkId: string): Promise<number> {
+    return this.personalizeForStudentsInClassroom(homeworkId, undefined);
   },
 
   /**

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { teacherController } from '../controllers/teacher.controller';
 import { teacherChatController } from '../controllers/teacherChat.controller';
 import { asyncHandler } from '../middleware/asyncHandler.middleware';
+import { authMiddleware, teacherOnly } from '../middleware/auth.middleware';
 import { teacherAuth } from '../middleware/teacherAuth.middleware';
 
 const router = Router();
@@ -10,8 +11,21 @@ const router = Router();
 router.post('/verify', asyncHandler(teacherController.verify));
 router.post('/login', asyncHandler(teacherController.login));
 
-// Protected routes (require teacher auth)
-router.use(teacherAuth);
+// Protected routes (require JWT teacher authentication)
+// Use JWT auth for most routes, fallback to legacy password auth for compatibility
+router.use((req, res, next) => {
+  // Try JWT auth first
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ey')) {
+    // Looks like a JWT token, use JWT middleware
+    return authMiddleware(req, res, (err) => {
+      if (err) return next(err);
+      return teacherOnly(req, res, next);
+    });
+  }
+  // Fallback to legacy password auth
+  return teacherAuth(req, res, next);
+});
 
 // Teacher profile
 router.get('/profile', asyncHandler(teacherController.getProfile));

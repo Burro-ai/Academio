@@ -78,6 +78,7 @@ export interface LessonRow {
   topic: string;
   subject: string | null;
   master_content: string;
+  classroom_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -99,6 +100,7 @@ export interface HomeworkRow {
   subject: string | null;
   master_content: string;
   due_date: string | null;
+  classroom_id: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { GlassCard, GlassButton, GlassInput } from '@/components/glass';
 import { lessonApi } from '@/services/lessonApi';
-import { HomeworkWithTeacher } from '@/types';
+import { teacherApi } from '@/services/teacherApi';
+import { HomeworkWithTeacher, Classroom } from '@/types';
 
 const SUBJECTS = [
   { id: 'math', label: 'Math' },
@@ -24,10 +25,17 @@ export function HomeworkCreator({ onBack, onCreated }: HomeworkCreatorProps) {
   const [subject, setSubject] = useState('');
   const [masterContent, setMasterContent] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [classroomId, setClassroomId] = useState<string>('');
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [generateForStudents, setGenerateForStudents] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Load classrooms
+    teacherApi.getClassrooms().then(setClassrooms).catch(console.error);
+  }, []);
 
   const handleGenerateContent = async () => {
     if (!topic) {
@@ -72,6 +80,7 @@ export function HomeworkCreator({ onBack, onCreated }: HomeworkCreatorProps) {
         subject: subject || undefined,
         masterContent: masterContent || undefined,
         dueDate: dueDate || undefined,
+        classroomId: classroomId || undefined,
         generateForStudents,
       });
 
@@ -183,6 +192,27 @@ export function HomeworkCreator({ onBack, onCreated }: HomeworkCreatorProps) {
                   className="w-full px-4 py-2.5 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-solid focus:outline-none focus:ring-2 focus:ring-white/30"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-prominent mb-1.5">
+                Send to Classroom
+              </label>
+              <select
+                value={classroomId}
+                onChange={(e) => setClassroomId(e.target.value)}
+                className="w-full px-4 py-2.5 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-solid focus:outline-none focus:ring-2 focus:ring-white/30"
+              >
+                <option value="">All students</option>
+                {classrooms.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.subject ? `(${c.subject})` : ''} - {c.studentCount || 0} students
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-subtle mt-1">
+                Select a classroom to send this homework only to students in that class
+              </p>
             </div>
           </div>
         </GlassCard>

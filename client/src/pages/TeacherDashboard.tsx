@@ -7,8 +7,9 @@ import { StudentsView } from '@/components/teacher/StudentsView';
 import { TeacherChat } from '@/components/teacher/TeacherChat';
 import { LessonsPanel } from '@/components/teacher/LessonsPanel';
 import { HomeworkPanel } from '@/components/teacher/HomeworkPanel';
+import { ClassroomManager } from '@/components/teacher/ClassroomManager';
 
-type Tab = 'dashboard' | 'students' | 'lessons' | 'homework' | 'assistant';
+type Tab = 'dashboard' | 'students' | 'classrooms' | 'lessons' | 'homework' | 'assistant';
 
 function TeacherDashboardContent() {
   const { user, isLoading: authLoading } = useAuth();
@@ -42,6 +43,7 @@ function TeacherDashboardContent() {
       <main className="flex-1 overflow-hidden">
         {activeTab === 'dashboard' && <Dashboard onViewStudent={handleViewStudent} />}
         {activeTab === 'students' && <StudentsView />}
+        {activeTab === 'classrooms' && <ClassroomManager />}
         {activeTab === 'lessons' && <LessonsPanel />}
         {activeTab === 'homework' && <HomeworkPanel />}
         {activeTab === 'assistant' && (
@@ -92,6 +94,20 @@ function TeacherSidebarEnhanced({ activeTab, onTabChange }: TeacherSidebarEnhanc
         </svg>
       ),
       badge: interventionAlerts.length > 0 ? interventionAlerts.length : undefined,
+    },
+    {
+      id: 'classrooms' as const,
+      label: 'Classrooms',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+          />
+        </svg>
+      ),
     },
     {
       id: 'lessons' as const,

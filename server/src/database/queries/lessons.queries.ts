@@ -19,6 +19,7 @@ const rowToLesson = (row: LessonRow): Lesson => ({
   topic: row.topic,
   subject: row.subject || undefined,
   masterContent: row.master_content,
+  classroomId: row.classroom_id || undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -26,6 +27,7 @@ const rowToLesson = (row: LessonRow): Lesson => ({
 interface LessonWithTeacherRow extends LessonRow {
   teacher_name: string;
   personalized_count: number;
+  classroom_name: string | null;
 }
 
 interface PersonalizedLessonWithDetailsRow extends PersonalizedLessonRow {
@@ -45,14 +47,15 @@ export const lessonsQueries = {
     topic: string;
     subject?: string;
     masterContent: string;
+    classroomId?: string;
   }): Lesson {
     const db = getDb();
     const id = uuidv4();
 
     db.prepare(`
-      INSERT INTO lessons (id, teacher_id, title, topic, subject, master_content, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `).run(id, data.teacherId, data.title, data.topic, data.subject || null, data.masterContent);
+      INSERT INTO lessons (id, teacher_id, title, topic, subject, master_content, classroom_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).run(id, data.teacherId, data.title, data.topic, data.subject || null, data.masterContent, data.classroomId || null);
 
     return this.getById(id)!;
   },
@@ -80,9 +83,11 @@ export const lessonsQueries = {
         SELECT
           l.*,
           u.name as teacher_name,
+          c.name as classroom_name,
           (SELECT COUNT(*) FROM personalized_lessons WHERE lesson_id = l.id) as personalized_count
         FROM lessons l
         JOIN users u ON l.teacher_id = u.id
+        LEFT JOIN classrooms c ON l.classroom_id = c.id
         WHERE l.id = ?
       `)
       .get(id) as LessonWithTeacherRow | undefined;
@@ -93,6 +98,7 @@ export const lessonsQueries = {
       ...rowToLesson(row),
       teacherName: row.teacher_name,
       personalizedCount: row.personalized_count,
+      classroomName: row.classroom_name || undefined,
     };
   },
 
@@ -106,9 +112,11 @@ export const lessonsQueries = {
         SELECT
           l.*,
           u.name as teacher_name,
+          c.name as classroom_name,
           (SELECT COUNT(*) FROM personalized_lessons WHERE lesson_id = l.id) as personalized_count
         FROM lessons l
         JOIN users u ON l.teacher_id = u.id
+        LEFT JOIN classrooms c ON l.classroom_id = c.id
         WHERE l.teacher_id = ?
         ORDER BY l.created_at DESC
       `)
@@ -118,6 +126,35 @@ export const lessonsQueries = {
       ...rowToLesson(row),
       teacherName: row.teacher_name,
       personalizedCount: row.personalized_count,
+      classroomName: row.classroom_name || undefined,
+    }));
+  },
+
+  /**
+   * Get lessons by classroom ID
+   */
+  getByClassroomId(classroomId: string): LessonWithTeacher[] {
+    const db = getDb();
+    const rows = db
+      .prepare(`
+        SELECT
+          l.*,
+          u.name as teacher_name,
+          c.name as classroom_name,
+          (SELECT COUNT(*) FROM personalized_lessons WHERE lesson_id = l.id) as personalized_count
+        FROM lessons l
+        JOIN users u ON l.teacher_id = u.id
+        LEFT JOIN classrooms c ON l.classroom_id = c.id
+        WHERE l.classroom_id = ?
+        ORDER BY l.created_at DESC
+      `)
+      .all(classroomId) as LessonWithTeacherRow[];
+
+    return rows.map((row) => ({
+      ...rowToLesson(row),
+      teacherName: row.teacher_name,
+      personalizedCount: row.personalized_count,
+      classroomName: row.classroom_name || undefined,
     }));
   },
 
@@ -131,6 +168,7 @@ export const lessonsQueries = {
       topic: string;
       subject: string;
       masterContent: string;
+      classroomId: string | null;
     }>
   ): Lesson | null {
     const db = getDb();
@@ -152,6 +190,10 @@ export const lessonsQueries = {
     if (data.masterContent !== undefined) {
       updates.push('master_content = ?');
       values.push(data.masterContent);
+    }
+    if (data.classroomId !== undefined) {
+      updates.push('classroom_id = ?');
+      values.push(data.classroomId);
     }
 
     if (updates.length === 0) {

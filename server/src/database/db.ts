@@ -32,18 +32,30 @@ export const initializeDatabase = async (): Promise<void> => {
   // Enable foreign keys
   db.pragma('foreign_keys = ON');
 
+  // Add classroom columns if they don't exist (migration for existing DBs)
+  // Must run BEFORE schema to avoid index creation errors
+  addClassroomColumns();
+
   // Read and execute schema
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
 
-  // Execute each statement separately
+  // Execute each statement separately, skipping index creation for classroom_id if already done
   const statements = schema
     .split(';')
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
   for (const statement of statements) {
-    db.exec(statement);
+    try {
+      db.exec(statement);
+    } catch (err: unknown) {
+      // Ignore "index already exists" errors from migration
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (!errorMessage.includes('already exists')) {
+        throw err;
+      }
+    }
   }
 
   console.log('Database initialized successfully');
@@ -274,6 +286,45 @@ export const seedDatabase = async (): Promise<void> => {
   console.log(`  - ${students.length} sessions`);
   console.log(`  - ${students.length} learning analytics records`);
   console.log(`  - Default password for all users: password123`);
+};
+
+/**
+ * Add classroom_id columns to lessons and homework tables if they don't exist
+ */
+export const addClassroomColumns = (): void => {
+  // Check if lessons table exists first
+  const lessonsTableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='lessons'"
+  ).get();
+
+  if (lessonsTableExists) {
+    // Check if classroom_id column exists in lessons table
+    const lessonsInfo = db.prepare("PRAGMA table_info(lessons)").all() as { name: string }[];
+    const hasLessonsClassroomId = lessonsInfo.some(col => col.name === 'classroom_id');
+
+    if (!hasLessonsClassroomId) {
+      console.log('Adding classroom_id column to lessons table...');
+      db.exec('ALTER TABLE lessons ADD COLUMN classroom_id TEXT REFERENCES classrooms(id) ON DELETE SET NULL');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_lessons_classroom_id ON lessons(classroom_id)');
+    }
+  }
+
+  // Check if homework_assignments table exists first
+  const homeworkTableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='homework_assignments'"
+  ).get();
+
+  if (homeworkTableExists) {
+    // Check if classroom_id column exists in homework_assignments table
+    const homeworkInfo = db.prepare("PRAGMA table_info(homework_assignments)").all() as { name: string }[];
+    const hasHomeworkClassroomId = homeworkInfo.some(col => col.name === 'classroom_id');
+
+    if (!hasHomeworkClassroomId) {
+      console.log('Adding classroom_id column to homework_assignments table...');
+      db.exec('ALTER TABLE homework_assignments ADD COLUMN classroom_id TEXT REFERENCES classrooms(id) ON DELETE SET NULL');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_homework_assignments_classroom_id ON homework_assignments(classroom_id)');
+    }
+  }
 };
 
 /**
