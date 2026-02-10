@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ChatProvider, useChatContext } from '@/context/ChatContext';
 import { useAuth } from '@/context/AuthContext';
 import { ChatCanvas } from '@/components/chat/ChatCanvas';
@@ -53,12 +54,13 @@ interface StudentSidebarProps {
 }
 
 function StudentSidebar({ activeTab, onTabChange }: StudentSidebarProps) {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
 
   const navItems = [
     {
       id: 'chat' as const,
-      label: 'AI Tutor',
+      label: t('nav.aiTutor'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -72,7 +74,7 @@ function StudentSidebar({ activeTab, onTabChange }: StudentSidebarProps) {
     },
     {
       id: 'lessons' as const,
-      label: 'My Lessons',
+      label: t('nav.myLessons'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -86,7 +88,7 @@ function StudentSidebar({ activeTab, onTabChange }: StudentSidebarProps) {
     },
     {
       id: 'homework' as const,
-      label: 'My Homework',
+      label: t('nav.myHomework'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -100,7 +102,7 @@ function StudentSidebar({ activeTab, onTabChange }: StudentSidebarProps) {
     },
     {
       id: 'teacher' as const,
-      label: 'My Teacher',
+      label: t('nav.myTeacher'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -114,7 +116,7 @@ function StudentSidebar({ activeTab, onTabChange }: StudentSidebarProps) {
     },
     {
       id: 'settings' as const,
-      label: 'Settings',
+      label: t('nav.settings'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -146,7 +148,7 @@ function StudentSidebar({ activeTab, onTabChange }: StudentSidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-solid truncate">
-              {user?.name || 'Student'}
+              {user?.name || t('student.greeting')}
             </p>
             <p className="text-xs text-prominent truncate">{user?.email}</p>
           </div>
@@ -188,7 +190,7 @@ function StudentSidebar({ activeTab, onTabChange }: StudentSidebarProps) {
               d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
             />
           </svg>
-          <span className="font-medium">Sign Out</span>
+          <span className="font-medium">{t('common.signOut')}</span>
         </button>
       </div>
     </aside>

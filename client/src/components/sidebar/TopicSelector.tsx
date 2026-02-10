@@ -1,16 +1,18 @@
 import { Topic } from '@/types';
 import { useChatContext } from '@/context/ChatContext';
 import { motion, LayoutGroup } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 
-const TOPICS: { id: Topic; label: string; icon: string; color: string }[] = [
-  { id: 'math', label: 'Math', icon: '📐', color: 'hover:bg-blue-500/30 hover:border-blue-400/30' },
-  { id: 'science', label: 'Science', icon: '🔬', color: 'hover:bg-green-500/30 hover:border-green-400/30' },
-  { id: 'history', label: 'History', icon: '📜', color: 'hover:bg-amber-500/30 hover:border-amber-400/30' },
-  { id: 'writing', label: 'Writing', icon: '✍️', color: 'hover:bg-purple-500/30 hover:border-purple-400/30' },
-  { id: 'general', label: 'General', icon: '💡', color: 'hover:bg-white/30 hover:border-white/30' },
+const TOPICS: { id: Topic; icon: string; color: string }[] = [
+  { id: 'math', icon: '📐', color: 'hover:bg-blue-500/30 hover:border-blue-400/30' },
+  { id: 'science', icon: '🔬', color: 'hover:bg-green-500/30 hover:border-green-400/30' },
+  { id: 'history', icon: '📜', color: 'hover:bg-amber-500/30 hover:border-amber-400/30' },
+  { id: 'writing', icon: '✍️', color: 'hover:bg-purple-500/30 hover:border-purple-400/30' },
+  { id: 'general', icon: '💡', color: 'hover:bg-white/30 hover:border-white/30' },
 ];
 
 export function TopicSelector() {
+  const { t } = useTranslation();
   const { createSession, isLoading, currentSession } = useChatContext();
 
   const handleTopicSelect = async (topic: Topic) => {
@@ -25,7 +27,7 @@ export function TopicSelector() {
     <LayoutGroup>
       <div className="space-y-1">
         <h3 className="px-3 text-xs font-semibold text-subtle uppercase tracking-wider mb-2">
-          New Session
+          {t('nav.newSession')}
         </h3>
         {TOPICS.map((topic) => {
           const isActive = currentSession?.topic === topic.id;
@@ -57,7 +59,7 @@ export function TopicSelector() {
                 className="font-medium"
                 layoutId={`topic-label-${topic.id}`}
               >
-                {topic.label}
+                {t(`topicLabels.${topic.id}`)}
               </motion.span>
               {isActive && (
                 <motion.div

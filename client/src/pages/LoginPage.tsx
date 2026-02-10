@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { GlassCard, GlassButton, GlassInput } from '@/components/glass';
 import { UserRole } from '@/types';
@@ -8,6 +9,7 @@ import { UserRole } from '@/types';
 type AuthMode = 'login' | 'register';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const { login, register, isLoading, error, clearError } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -24,15 +26,15 @@ export function LoginPage() {
 
     if (mode === 'register') {
       if (password !== confirmPassword) {
-        setLocalError('Passwords do not match');
+        setLocalError(t('auth.errors.passwordMismatch'));
         return;
       }
       if (password.length < 6) {
-        setLocalError('Password must be at least 6 characters');
+        setLocalError(t('auth.errors.passwordTooShort'));
         return;
       }
       if (!name.trim()) {
-        setLocalError('Name is required');
+        setLocalError(t('auth.errors.nameRequired'));
         return;
       }
 
@@ -84,9 +86,9 @@ export function LoginPage() {
                 />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-solid">Academio</h1>
+            <h1 className="text-2xl font-bold text-solid">{t('common.appName')}</h1>
             <p className="text-prominent mt-2">
-              {mode === 'login' ? 'Welcome back!' : 'Create your account'}
+              {mode === 'login' ? t('auth.welcomeBack') : t('auth.createAccount')}
             </p>
           </div>
 
@@ -107,20 +109,20 @@ export function LoginPage() {
               <>
                 <div>
                   <label className="block text-sm font-medium text-prominent mb-1.5">
-                    Full Name
+                    {t('auth.fullName')}
                   </label>
                   <GlassInput
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your name"
+                    placeholder={t('auth.placeholders.name')}
                     required
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-prominent mb-1.5">
-                    I am a...
+                    {t('auth.iAmA')}
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
@@ -145,7 +147,7 @@ export function LoginPage() {
                           d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                         />
                       </svg>
-                      <span className="text-sm font-medium">Student</span>
+                      <span className="text-sm font-medium">{t('auth.student')}</span>
                     </button>
                     <button
                       type="button"
@@ -169,7 +171,7 @@ export function LoginPage() {
                           d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
                         />
                       </svg>
-                      <span className="text-sm font-medium">Teacher</span>
+                      <span className="text-sm font-medium">{t('auth.teacher')}</span>
                     </button>
                   </div>
                 </div>
@@ -178,26 +180,26 @@ export function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-prominent mb-1.5">
-                Email
+                {t('auth.email')}
               </label>
               <GlassInput
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
+                placeholder={t('auth.placeholders.email')}
                 required
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-prominent mb-1.5">
-                Password
+                {t('auth.password')}
               </label>
               <GlassInput
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={t('auth.placeholders.password')}
                 required
               />
             </div>
@@ -205,13 +207,13 @@ export function LoginPage() {
             {mode === 'register' && (
               <div>
                 <label className="block text-sm font-medium text-prominent mb-1.5">
-                  Confirm Password
+                  {t('auth.confirmPassword')}
                 </label>
                 <GlassInput
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
+                  placeholder={t('auth.placeholders.confirmPassword')}
                   required
                 />
               </div>
@@ -244,12 +246,12 @@ export function LoginPage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  {mode === 'login' ? 'Signing in...' : 'Creating account...'}
+                  {mode === 'login' ? t('auth.signingIn') : t('auth.creatingAccount')}
                 </span>
               ) : mode === 'login' ? (
-                'Sign In'
+                t('auth.signIn')
               ) : (
-                'Create Account'
+                t('auth.createAccount')
               )}
             </GlassButton>
           </form>
@@ -257,28 +259,28 @@ export function LoginPage() {
           {/* Switch Mode */}
           <div className="mt-6 text-center">
             <p className="text-prominent">
-              {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+              {mode === 'login' ? t('auth.noAccount') : t('auth.hasAccount')}{' '}
               <button
                 type="button"
                 onClick={switchMode}
                 className="text-emerald-300 hover:text-emerald-200 font-medium"
               >
-                {mode === 'login' ? 'Sign up' : 'Sign in'}
+                {mode === 'login' ? t('auth.signUp') : t('auth.signIn')}
               </button>
             </p>
           </div>
 
           {/* Demo Credentials */}
           <div className="mt-6 pt-6 border-t border-white/10">
-            <p className="text-xs text-subtle text-center mb-2">Demo Credentials</p>
+            <p className="text-xs text-subtle text-center mb-2">{t('auth.demoCredentials')}</p>
             <div className="grid grid-cols-2 gap-2 text-xs text-prominent">
               <div className="p-2 backdrop-blur-sm bg-white/5 rounded-lg">
-                <p className="font-medium">Teacher</p>
+                <p className="font-medium">{t('auth.teacher')}</p>
                 <p className="text-subtle">sarah.johnson@academio.edu</p>
                 <p className="text-subtle">password123</p>
               </div>
               <div className="p-2 backdrop-blur-sm bg-white/5 rounded-lg">
-                <p className="font-medium">Student</p>
+                <p className="font-medium">{t('auth.student')}</p>
                 <p className="text-subtle">emma.rodriguez@student.academio.edu</p>
                 <p className="text-subtle">password123</p>
               </div>
@@ -291,7 +293,7 @@ export function LoginPage() {
               to="/admin"
               className="text-xs text-subtle hover:text-prominent transition-colors"
             >
-              Admin Portal
+              {t('auth.adminPortal')}
             </Link>
           </div>
         </GlassCard>

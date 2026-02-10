@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { Topic } from '@/types';
-import { SUGGESTED_PROMPTS } from '@/data/suggestedPrompts';
 
 interface SuggestedPromptsProps {
   topic: Topic;
@@ -9,7 +9,8 @@ interface SuggestedPromptsProps {
 }
 
 export function SuggestedPrompts({ topic, onSelectPrompt, disabled }: SuggestedPromptsProps) {
-  const prompts = SUGGESTED_PROMPTS[topic];
+  const { t } = useTranslation();
+  const prompts = t(`suggestedPrompts.${topic}`, { returnObjects: true }) as string[];
 
   return (
     <div className="grid grid-cols-2 gap-3">

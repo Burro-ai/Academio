@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useTeacherContext } from '@/context/TeacherContext';
 import { InterventionAlert, Classroom, ClassroomStats } from '@/types';
 
@@ -8,20 +9,21 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onViewStudent }: DashboardProps) {
+  const { t } = useTranslation();
   const { classrooms, totalStats, interventionAlerts } = useTeacherContext();
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-solid">Dashboard</h1>
-        <p className="text-prominent">Overview of your classrooms and students</p>
+        <h1 className="text-2xl font-bold text-solid">{t('teacher.dashboard.title')}</h1>
+        <p className="text-prominent">{t('teacher.dashboard.subtitle')}</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Students"
+          title={t('teacher.dashboard.stats.totalStudents')}
           value={totalStats.totalStudents}
           icon={
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,7 +38,7 @@ export function Dashboard({ onViewStudent }: DashboardProps) {
           color="blue"
         />
         <StatCard
-          title="Students Excelling"
+          title={t('teacher.dashboard.stats.studentsExcelling')}
           value={totalStats.studentsExcelling}
           icon={
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,7 +53,7 @@ export function Dashboard({ onViewStudent }: DashboardProps) {
           color="green"
         />
         <StatCard
-          title="Need Attention"
+          title={t('teacher.dashboard.stats.needAttention')}
           value={totalStats.studentsStruggling}
           icon={
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,7 +68,7 @@ export function Dashboard({ onViewStudent }: DashboardProps) {
           color="red"
         />
         <StatCard
-          title="Active Sessions"
+          title={t('teacher.dashboard.stats.activeSessions')}
           value={totalStats.recentActivity}
           icon={
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +81,7 @@ export function Dashboard({ onViewStudent }: DashboardProps) {
             </svg>
           }
           color="purple"
-          subtitle="Last 7 days"
+          subtitle={t('teacher.dashboard.stats.last7Days')}
         />
       </div>
 
@@ -87,9 +89,9 @@ export function Dashboard({ onViewStudent }: DashboardProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Classrooms */}
         <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-solid mb-4">Your Classrooms</h2>
+          <h2 className="text-lg font-semibold text-solid mb-4">{t('teacher.dashboard.yourClassrooms')}</h2>
           {classrooms.length === 0 ? (
-            <p className="text-prominent text-center py-8">No classrooms yet</p>
+            <p className="text-prominent text-center py-8">{t('teacher.dashboard.noClassroomsYet')}</p>
           ) : (
             <div className="space-y-3">
               {(classrooms as ClassroomWithStats[]).map((classroom) => (
@@ -108,7 +110,7 @@ export function Dashboard({ onViewStudent }: DashboardProps) {
                       <p className="text-sm font-medium text-solid">
                         {classroom.stats.averageGrade.toFixed(1)}%
                       </p>
-                      <p className="text-xs text-subtle">Avg Grade</p>
+                      <p className="text-xs text-subtle">{t('teacher.dashboard.avgGrade')}</p>
                     </div>
                   )}
                 </div>
@@ -120,7 +122,7 @@ export function Dashboard({ onViewStudent }: DashboardProps) {
         {/* Intervention Alerts */}
         <div className="glass-card p-6">
           <h2 className="text-lg font-semibold text-solid mb-4">
-            Students Needing Attention
+            {t('teacher.dashboard.studentsNeedingAttention')}
           </h2>
           {interventionAlerts.length === 0 ? (
             <div className="text-center py-8">
@@ -139,7 +141,7 @@ export function Dashboard({ onViewStudent }: DashboardProps) {
                   />
                 </svg>
               </div>
-              <p className="text-prominent">All students are doing well!</p>
+              <p className="text-prominent">{t('teacher.dashboard.allStudentsDoingWell')}</p>
             </div>
           ) : (
             <div className="space-y-3">

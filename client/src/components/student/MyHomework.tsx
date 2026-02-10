@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/glass';
 import { studentApi } from '@/services/studentApi';
 import { PersonalizedHomeworkWithDetails } from '@/types';
 
 export function MyHomework() {
+  const { t } = useTranslation();
   const [homework, setHomework] = useState<PersonalizedHomeworkWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,15 +38,15 @@ export function MyHomework() {
     const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-      return { label: 'Overdue', color: 'red' };
+      return { label: t('student.myHomework.status.overdue'), color: 'red' };
     } else if (diffDays === 0) {
-      return { label: 'Due today', color: 'yellow' };
+      return { label: t('student.myHomework.status.dueToday'), color: 'yellow' };
     } else if (diffDays === 1) {
-      return { label: 'Due tomorrow', color: 'yellow' };
+      return { label: t('student.myHomework.status.dueTomorrow'), color: 'yellow' };
     } else if (diffDays <= 3) {
-      return { label: `Due in ${diffDays} days`, color: 'blue' };
+      return { label: t('student.myHomework.status.dueInDays', { count: diffDays }), color: 'blue' };
     }
-    return { label: `Due ${due.toLocaleDateString()}`, color: 'emerald' };
+    return { label: t('student.myHomework.status.dueOn', { date: due.toLocaleDateString() }), color: 'emerald' };
   };
 
   if (isLoading) {
@@ -77,7 +79,7 @@ export function MyHomework() {
             onClick={loadHomework}
             className="mt-4 px-4 py-2 backdrop-blur-md bg-white/20 border border-white/30 rounded-lg text-solid hover:bg-white/30 transition-all"
           >
-            Try Again
+            {t('common.tryAgain')}
           </button>
         </GlassCard>
       </div>
@@ -97,9 +99,9 @@ export function MyHomework() {
       >
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-solid">My Homework</h1>
+          <h1 className="text-2xl font-bold text-solid">{t('student.myHomework.title')}</h1>
           <p className="text-prominent mt-1">
-            Assignments personalized for your learning style
+            {t('student.myHomework.subtitle')}
           </p>
         </div>
 
@@ -118,9 +120,9 @@ export function MyHomework() {
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
               />
             </svg>
-            <h2 className="text-lg font-semibold text-solid mb-2">No homework yet</h2>
+            <h2 className="text-lg font-semibold text-solid mb-2">{t('student.myHomework.empty.title')}</h2>
             <p className="text-prominent">
-              Your teacher hasn't assigned any homework yet. Check back later!
+              {t('student.myHomework.empty.message')}
             </p>
           </GlassCard>
         ) : (
@@ -129,7 +131,7 @@ export function MyHomework() {
             {pendingHomework.length > 0 && (
               <div>
                 <h2 className="text-lg font-semibold text-solid mb-4">
-                  To Do ({pendingHomework.length})
+                  {t('student.myHomework.todo', { count: pendingHomework.length })}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {pendingHomework.map((hw, index) => {
@@ -204,7 +206,7 @@ export function MyHomework() {
             {submittedHomework.length > 0 && (
               <div>
                 <h2 className="text-lg font-semibold text-solid mb-4">
-                  Completed ({submittedHomework.length})
+                  {t('student.myHomework.completed', { count: submittedHomework.length })}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {submittedHomework.map((hw, index) => (
@@ -228,7 +230,7 @@ export function MyHomework() {
                               </span>
                             )}
                             <span className="px-2 py-1 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-100 rounded-lg">
-                              Submitted
+                              {t('student.myHomework.status.submitted')}
                             </span>
                           </div>
                           <svg
@@ -339,7 +341,7 @@ export function MyHomework() {
                     onClick={() => setSelectedHomework(null)}
                     className="px-4 py-2 backdrop-blur-md bg-white/20 border border-white/30 rounded-lg text-solid hover:bg-white/30 transition-all"
                   >
-                    Close
+                    {t('common.close')}
                   </button>
                 </div>
               </GlassCard>

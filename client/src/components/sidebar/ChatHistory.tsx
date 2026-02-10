@@ -1,13 +1,15 @@
+import { useTranslation } from 'react-i18next';
 import { useChatContext } from '@/context/ChatContext';
 import { formatDate, getTopicInfo } from '@/utils/formatters';
 
 export function ChatHistory() {
+  const { t } = useTranslation();
   const { sessions, currentSession, selectSession, deleteSession, isLoading } =
     useChatContext();
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (window.confirm('Delete this conversation?')) {
+    if (window.confirm(t('chat.deleteConversation') + '?')) {
       try {
         await deleteSession(id);
       } catch (error) {
@@ -19,7 +21,7 @@ export function ChatHistory() {
   if (sessions.length === 0) {
     return (
       <div className="px-3 py-4 text-sm text-subtle text-center">
-        No conversations yet. Start a new session above!
+        {t('chat.noConversationsYet')}
       </div>
     );
   }
@@ -27,7 +29,7 @@ export function ChatHistory() {
   return (
     <div className="space-y-1">
       <h3 className="px-3 text-xs font-semibold text-subtle uppercase tracking-wider mb-2">
-        History
+        {t('nav.history')}
       </h3>
       <div className="space-y-1 max-h-[400px] overflow-y-auto">
         {sessions.map((session) => {

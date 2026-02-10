@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FileUploadButton } from '@/components/common/FileUploadButton';
 import { useFileUpload } from '@/hooks/useFileUpload';
 
@@ -11,8 +12,9 @@ interface ChatInputProps {
 export function ChatInput({
   onSend,
   disabled = false,
-  placeholder = 'Ask a question...',
+  placeholder,
 }: ChatInputProps) {
+  const { t } = useTranslation();
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { uploadedFile, isUploading, uploadFile, clearUpload, error: uploadError } = useFileUpload();
@@ -93,7 +95,7 @@ export function ChatInput({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={placeholder || t('chat.askAbout', { topic: t('topicLabels.general') })}
             disabled={disabled}
             rows={1}
             className="w-full resize-none rounded-xl px-4 py-3
@@ -124,7 +126,7 @@ export function ChatInput({
       </div>
 
       <p className="mt-2 text-xs text-subtle text-center">
-        Press Enter to send, Shift + Enter for new line
+        {t('chat.pressEnterToSend')}
       </p>
     </form>
   );

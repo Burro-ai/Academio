@@ -1,0 +1,407 @@
+{
+  "common": {
+    "appName": "Academio",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "update": "Actualizar",
+    "back": "Regresar",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "all": "Todos",
+    "none": "Ninguno",
+    "yes": "Sí",
+    "no": "No",
+    "or": "o",
+    "and": "y",
+    "tryAgain": "Intentar de nuevo",
+    "signOut": "Cerrar sesión"
+  },
+
+  "auth": {
+    "welcomeBack": "¡Bienvenido de nuevo!",
+    "createAccount": "Crea tu cuenta",
+    "signIn": "Inicia sesión",
+    "signingIn": "Iniciando sesión...",
+    "creatingAccount": "Creando cuenta...",
+    "signUp": "Regístrate",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirma tu contraseña",
+    "fullName": "Nombre completo",
+    "iAmA": "Soy...",
+    "student": "Estudiante",
+    "teacher": "Maestro",
+    "noAccount": "¿No tienes cuenta?",
+    "hasAccount": "¿Ya tienes cuenta?",
+    "adminPortal": "Portal de Administrador",
+    "demoCredentials": "Credenciales de demostración",
+    "placeholders": {
+      "name": "Escribe tu nombre",
+      "email": "Escribe tu correo electrónico",
+      "password": "Escribe tu contraseña",
+      "confirmPassword": "Confirma tu contraseña"
+    },
+    "errors": {
+      "passwordMismatch": "Las contraseñas no coinciden",
+      "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
+      "nameRequired": "El nombre es requerido",
+      "invalidCredentials": "Credenciales inválidas",
+      "loginFailed": "Error al iniciar sesión"
+    }
+  },
+
+  "nav": {
+    "dashboard": "Panel principal",
+    "students": "Estudiantes",
+    "classrooms": "Salones",
+    "lessons": "Lecciones",
+    "homework": "Tareas",
+    "aiAssistant": "Asistente IA",
+    "aiTutor": "Tutor IA",
+    "myLessons": "Mis lecciones",
+    "myHomework": "Mis tareas",
+    "myTeacher": "Mi maestro",
+    "settings": "Configuración",
+    "newSession": "Nueva sesión",
+    "history": "Historial"
+  },
+
+  "topics": {
+    "math": "Matemáticas",
+    "science": "Ciencias",
+    "history": "Historia",
+    "writing": "Redacción",
+    "english": "Inglés",
+    "geography": "Geografía",
+    "general": "General"
+  },
+
+  "chat": {
+    "welcome": "Bienvenido a Academio",
+    "welcomeSubtitle": "Tu tutor socrático potenciado por IA. ¡Elige una materia para comenzar a aprender!",
+    "orAskAnything": "O pregunta sobre cualquier cosa",
+    "emptyStateMessage": "Te guiaré a descubrir respuestas a través de preguntas bien pensadas. ¡Elige un tema o escribe el tuyo!",
+    "askAbout": "Pregunta sobre {{topic}}...",
+    "pressEnterToSend": "Presiona Enter para enviar, Shift + Enter para nueva línea",
+    "deleteConversation": "Eliminar conversación",
+    "noConversationsYet": "Aún no hay conversaciones. ¡Comienza una nueva sesión arriba!",
+    "uploadFile": "Subir archivo (PDF o imagen)"
+  },
+
+  "student": {
+    "greeting": "Estudiante",
+    "myLessons": {
+      "title": "Mis lecciones",
+      "subtitle": "Lecciones personalizadas creadas especialmente para ti",
+      "empty": {
+        "title": "Aún no hay lecciones",
+        "message": "Tu maestro aún no ha asignado lecciones. ¡Vuelve más tarde!"
+      },
+      "newBadge": "Nueva"
+    },
+    "myHomework": {
+      "title": "Mis tareas",
+      "subtitle": "Tareas personalizadas para tu estilo de aprendizaje",
+      "todo": "Por hacer ({{count}})",
+      "completed": "Completadas ({{count}})",
+      "empty": {
+        "title": "Aún no hay tareas",
+        "message": "Tu maestro aún no ha asignado tareas. ¡Vuelve más tarde!"
+      },
+      "status": {
+        "overdue": "Vencida",
+        "dueToday": "Vence hoy",
+        "dueTomorrow": "Vence mañana",
+        "dueInDays": "Vence en {{count}} días",
+        "dueOn": "Vence el {{date}}",
+        "submitted": "Entregada"
+      }
+    },
+    "settings": {
+      "title": "Configuración de perfil",
+      "subtitle": "Personaliza cómo el tutor IA se adapta a tu estilo de aprendizaje",
+      "basicInfo": "Información básica",
+      "age": "Edad",
+      "yourAge": "Tu edad",
+      "gradeLevel": "Grado escolar",
+      "gradePlaceholder": "ej., 1ro de Secundaria",
+      "favoriteSports": {
+        "title": "Deportes y actividades favoritas",
+        "description": "La IA usará ejemplos relacionados con tus intereses"
+      },
+      "skillsToImprove": {
+        "title": "Habilidades a mejorar",
+        "description": "La IA pondrá atención especial en ayudarte con estas áreas"
+      },
+      "learningPreferences": {
+        "title": "Preferencias personales de aprendizaje",
+        "description": "Dile a la IA cómo aprendes mejor. Esto se incluirá en cada conversación.",
+        "placeholder": "Ejemplo: Aprendo mejor con explicaciones visuales e instrucciones paso a paso...",
+        "charCount": "{{count}}/500 caracteres"
+      },
+      "saveChanges": "Guardar cambios",
+      "saving": "Guardando...",
+      "savedSuccess": "¡Perfil guardado exitosamente!",
+      "sports": {
+        "soccer": "Fútbol",
+        "basketball": "Básquetbol",
+        "baseball": "Béisbol",
+        "football": "Fútbol americano",
+        "tennis": "Tenis",
+        "swimming": "Natación",
+        "volleyball": "Voleibol",
+        "hockey": "Hockey",
+        "track": "Atletismo",
+        "gymnastics": "Gimnasia",
+        "dance": "Baile",
+        "cheerleading": "Porrismo",
+        "lacrosse": "Lacrosse",
+        "golf": "Golf",
+        "skateboarding": "Skateboarding",
+        "cycling": "Ciclismo",
+        "martialArts": "Artes marciales",
+        "other": "Otro"
+      },
+      "skills": {
+        "math": "Matemáticas",
+        "reading": "Lectura",
+        "writing": "Redacción",
+        "science": "Ciencias",
+        "history": "Historia",
+        "geography": "Geografía",
+        "vocabulary": "Vocabulario",
+        "criticalThinking": "Pensamiento crítico",
+        "problemSolving": "Resolución de problemas",
+        "creativity": "Creatividad",
+        "logic": "Lógica",
+        "comprehension": "Comprensión",
+        "english": "Inglés",
+        "studySkills": "Técnicas de estudio"
+      }
+    },
+    "findTeacher": {
+      "title": "Encuentra a tu maestro",
+      "subtitle": "Selecciona a tu maestro para que pueda ver tu perfil y personalizar lecciones para ti",
+      "currentTeacher": "Tu maestro actual",
+      "availableTeachers": "Maestros disponibles",
+      "switchTeacher": "Cambiar a otro maestro",
+      "removeTeacher": "Quitar maestro",
+      "select": "Seleccionar",
+      "selecting": "Seleccionando...",
+      "selected": "Seleccionado",
+      "noTeachersAvailable": "No hay maestros disponibles aún. Vuelve más tarde.",
+      "whatHappens": {
+        "title": "¿Qué pasa cuando seleccionas un maestro?",
+        "item1": "Tu maestro verá tu perfil en su lista de estudiantes",
+        "item2": "Podrá crear lecciones y tareas personalizadas para ti",
+        "item3": "El tutor IA usará tus preferencias para personalizar el aprendizaje",
+        "item4": "Puedes cambiar de maestro cuando quieras"
+      },
+      "successSelect": "¡Maestro seleccionado exitosamente! Tu maestro ahora puede ver tu perfil.",
+      "successRemove": "Maestro removido de tu perfil."
+    }
+  },
+
+  "teacher": {
+    "portal": "Portal del Maestro",
+    "platformName": "Plataforma de Aprendizaje Academio",
+    "dashboard": {
+      "title": "Panel principal",
+      "subtitle": "Vista general de tus salones y estudiantes",
+      "stats": {
+        "totalStudents": "Total de estudiantes",
+        "studentsExcelling": "Estudiantes destacados",
+        "needAttention": "Necesitan atención",
+        "activeSessions": "Sesiones activas",
+        "last7Days": "Últimos 7 días"
+      },
+      "yourClassrooms": "Tus salones",
+      "studentsNeedingAttention": "Estudiantes que necesitan atención",
+      "noClassroomsYet": "Aún no hay salones",
+      "allStudentsDoingWell": "¡Todos los estudiantes van muy bien!",
+      "avgGrade": "Promedio"
+    },
+    "students": {
+      "noStudentsFound": "No se encontraron estudiantes",
+      "addStudentsToStart": "Agrega estudiantes para comenzar",
+      "gradeNotSet": "Sin calificación"
+    },
+    "classrooms": {
+      "title": "Administración de salones",
+      "subtitle": "Crea salones y asigna estudiantes",
+      "createClassroom": "Crear salón",
+      "noClassroomsYet": "Aún no hay salones. ¡Crea tu primer salón!",
+      "studentsCount": "{{count}} estudiantes",
+      "clickToAssign": "Clic para asignar estudiantes",
+      "modal": {
+        "createTitle": "Crear salón",
+        "nameLabel": "Nombre *",
+        "namePlaceholder": "ej., Matemáticas 1er periodo",
+        "subjectLabel": "Materia",
+        "subjectPlaceholder": "ej., Matemáticas",
+        "gradeLevelLabel": "Grado escolar",
+        "gradeLevelPlaceholder": "ej., 1ro de Secundaria",
+        "creating": "Creando...",
+        "nameRequired": "El nombre del salón es requerido"
+      },
+      "assignModal": {
+        "studentsAssigned": "{{count}} estudiantes asignados",
+        "assignedStudents": "Estudiantes asignados",
+        "noStudentsAssigned": "Aún no hay estudiantes asignados",
+        "availableStudents": "Estudiantes disponibles",
+        "allStudentsAssigned": "Todos los estudiantes están asignados",
+        "remove": "Quitar",
+        "add": "Agregar"
+      }
+    },
+    "lessons": {
+      "title": "Lecciones",
+      "createLesson": "Crear lección",
+      "createNew": "Crear nueva lección",
+      "subtitle": "Crea una nueva lección para tus estudiantes",
+      "details": "Detalles de la lección",
+      "content": "Contenido de la lección",
+      "options": "Opciones",
+      "form": {
+        "titleLabel": "Título *",
+        "titlePlaceholder": "ej., Introducción a las fracciones",
+        "topicLabel": "Tema *",
+        "topicPlaceholder": "ej., Entendiendo las fracciones básicas y sus partes",
+        "subjectLabel": "Materia",
+        "sendToClassroom": "Enviar a salón",
+        "allStudents": "Todos los estudiantes",
+        "classroomHint": "Selecciona un salón para enviar esta lección solo a los estudiantes de esa clase",
+        "generateWithAI": "Generar con IA",
+        "generating": "Generando...",
+        "contentPlaceholder": "Escribe el contenido de tu lección aquí, o haz clic en 'Generar con IA' para crear contenido automáticamente...",
+        "masterContentHint": "Este es el contenido maestro que se personalizará para cada estudiante basándose en su perfil.",
+        "autoPersonalize": "Personalizar automáticamente para todos los estudiantes",
+        "autoPersonalizeHint": "La IA creará una versión personalizada para cada estudiante basándose en su perfil"
+      },
+      "creating": "Creando..."
+    },
+    "homework": {
+      "title": "Tareas",
+      "createHomework": "Crear tarea",
+      "createNew": "Crear nueva tarea",
+      "subtitle": "Crea una nueva tarea",
+      "details": "Detalles de la tarea",
+      "content": "Contenido de la tarea",
+      "form": {
+        "titleLabel": "Título *",
+        "titlePlaceholder": "ej., Práctica de fracciones",
+        "topicLabel": "Tema *",
+        "topicPlaceholder": "ej., Suma y resta de fracciones",
+        "subjectLabel": "Materia",
+        "dueDateLabel": "Fecha de entrega",
+        "sendToClassroom": "Enviar a salón",
+        "allStudents": "Todos los estudiantes",
+        "classroomHint": "Selecciona un salón para enviar esta tarea solo a los estudiantes de esa clase",
+        "generateWithAI": "Generar con IA",
+        "generating": "Generando...",
+        "contentPlaceholder": "Escribe el contenido de tu tarea aquí, o haz clic en 'Generar con IA' para crear contenido automáticamente...",
+        "masterContentHint": "Este es el contenido maestro que se personalizará para cada estudiante basándose en su perfil.",
+        "autoPersonalize": "Personalizar automáticamente para todos los estudiantes",
+        "autoPersonalizeHint": "La IA creará una versión personalizada para cada estudiante basándose en su perfil"
+      },
+      "creating": "Creando..."
+    },
+    "login": {
+      "goToStudentPortal": "¿Eres estudiante? Ve al Portal de Estudiantes"
+    }
+  },
+
+  "admin": {
+    "portal": "Portal de Administrador",
+    "subtitle": "Ingresa la contraseña para acceder a la administración de prompts",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Ingresa la contraseña de administrador",
+    "signIn": "Iniciar sesión",
+    "backToStudent": "← Regresar al Portal de Estudiantes",
+    "header": "Administrador de Academio",
+    "systemPromptManagement": "Administración de System Prompt",
+    "studentPortal": "← Portal de Estudiantes",
+    "logout": "Cerrar sesión",
+    "defaultPrompt": "Prompt predeterminado",
+    "customPrompt": "Prompt personalizado",
+    "unsavedChanges": "• Cambios sin guardar",
+    "resetToDefault": "Restablecer predeterminado",
+    "saveChanges": "Guardar cambios",
+    "systemPromptLabel": "System Prompt",
+    "systemPromptDescription": "Este prompt define cómo se comporta el tutor IA. Edita con cuidado para mantener el método socrático de enseñanza.",
+    "systemPromptPlaceholder": "Escribe tu system prompt...",
+    "importantReminder": "Recordatorio Importante",
+    "primeDirectiveWarning": "El system prompt debe preservar la **Directiva Principal Socrática**: La IA nunca debe dar respuestas directas...",
+    "confirmReset": "¿Restablecer al prompt socrático predeterminado? Tus cambios actuales se perderán.",
+    "promptSaved": "¡Prompt guardado exitosamente!",
+    "promptSaveFailed": "Error al guardar el prompt",
+    "promptLoadFailed": "Error al cargar el prompt",
+    "promptResetSuccess": "Prompt restablecido a predeterminado"
+  },
+
+  "suggestedPrompts": {
+    "math": [
+      "Ayúdame a entender las fracciones",
+      "¿Cuál es el orden de las operaciones?",
+      "¿Cómo resuelvo problemas con palabras?",
+      "Explícame las tablas de multiplicar"
+    ],
+    "science": [
+      "¿Qué es la fotosíntesis?",
+      "¿Cómo funciona el ciclo del agua?",
+      "¿Por qué el cielo es azul?",
+      "Explícame los átomos y las moléculas"
+    ],
+    "history": [
+      "Cuéntame sobre el México antiguo",
+      "¿Qué causó la Revolución Mexicana?",
+      "¿Quiénes fueron los héroes de la Independencia?",
+      "Explícame la Conquista de México"
+    ],
+    "writing": [
+      "¿Cómo escribo un párrafo?",
+      "Ayúdame con la estructura de mi ensayo",
+      "¿Qué hace buena a una historia?",
+      "Explícame las reglas de gramática"
+    ],
+    "general": [
+      "Ayúdame con mi tarea",
+      "Necesito tips de estudio",
+      "¿Cómo tomo buenos apuntes?",
+      "Explícame este concepto de manera sencilla"
+    ]
+  },
+
+  "topicGreetings": {
+    "math": "¡Listo para resolver rompecabezas matemáticos juntos!",
+    "science": "¡Exploremos las maravillas de la ciencia!",
+    "history": "¡Viajemos a través del tiempo juntos!",
+    "writing": "¡Creemos una redacción increíble!",
+    "general": "¿Qué te gustaría aprender hoy?"
+  },
+
+  "topicLabels": {
+    "math": "Matemáticas",
+    "science": "Ciencias",
+    "history": "Historia",
+    "writing": "Redacción",
+    "general": "General"
+  },
+
+  "errors": {
+    "generic": "Algo salió mal. Por favor intenta de nuevo.",
+    "networkError": "Error de conexión. Verifica tu internet.",
+    "unauthorized": "No autorizado. Por favor inicia sesión de nuevo.",
+    "notFound": "No encontrado.",
+    "serverError": "Error del servidor. Por favor intenta más tarde."
+  }
+}

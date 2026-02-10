@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { TeacherProvider, useTeacherContext } from '@/context/TeacherContext';
 import { Dashboard } from '@/components/teacher/Dashboard';
@@ -62,13 +63,14 @@ interface TeacherSidebarEnhancedProps {
 }
 
 function TeacherSidebarEnhanced({ activeTab, onTabChange }: TeacherSidebarEnhancedProps) {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const { interventionAlerts } = useTeacherContext();
 
   const navItems = [
     {
       id: 'dashboard' as const,
-      label: 'Dashboard',
+      label: t('nav.dashboard'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -82,7 +84,7 @@ function TeacherSidebarEnhanced({ activeTab, onTabChange }: TeacherSidebarEnhanc
     },
     {
       id: 'students' as const,
-      label: 'Students',
+      label: t('nav.students'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -97,7 +99,7 @@ function TeacherSidebarEnhanced({ activeTab, onTabChange }: TeacherSidebarEnhanc
     },
     {
       id: 'classrooms' as const,
-      label: 'Classrooms',
+      label: t('nav.classrooms'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -111,7 +113,7 @@ function TeacherSidebarEnhanced({ activeTab, onTabChange }: TeacherSidebarEnhanc
     },
     {
       id: 'lessons' as const,
-      label: 'Lessons',
+      label: t('nav.lessons'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -125,7 +127,7 @@ function TeacherSidebarEnhanced({ activeTab, onTabChange }: TeacherSidebarEnhanc
     },
     {
       id: 'homework' as const,
-      label: 'Homework',
+      label: t('nav.homework'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -139,7 +141,7 @@ function TeacherSidebarEnhanced({ activeTab, onTabChange }: TeacherSidebarEnhanc
     },
     {
       id: 'assistant' as const,
-      label: 'AI Assistant',
+      label: t('nav.aiAssistant'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -165,7 +167,7 @@ function TeacherSidebarEnhanced({ activeTab, onTabChange }: TeacherSidebarEnhanc
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-solid truncate">
-              {user?.name || 'Teacher'}
+              {user?.name || t('auth.teacher')}
             </p>
             <p className="text-xs text-prominent truncate">{user?.email}</p>
           </div>
@@ -209,7 +211,7 @@ function TeacherSidebarEnhanced({ activeTab, onTabChange }: TeacherSidebarEnhanc
               d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
             />
           </svg>
-          <span className="font-medium">Sign Out</span>
+          <span className="font-medium">{t('common.signOut')}</span>
         </button>
       </div>
     </aside>

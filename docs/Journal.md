@@ -4,6 +4,64 @@
 
 ---
 
+## 2026-02-09: Mexican Spanish (es-MX) Internationalization
+
+### Summary
+Implemented i18n (internationalization) for the Mexican market using react-i18next. The platform now displays all UI text in Mexican Spanish while keeping the backend code entirely in English.
+
+### Changes Made
+
+#### New Files
+- **`client/src/i18n.ts`**: i18n configuration with language detection
+- **`client/src/locales/es-MX.json`**: Complete Mexican Spanish translations
+
+#### Updated Components (i18n integration)
+- `LoginPage.tsx` - Auth forms and messages
+- `StudentDashboard.tsx` - Navigation and sidebar
+- `TeacherDashboard.tsx` - Navigation and sidebar
+- `ChatCanvas.tsx` - Welcome screen, topic selection, prompts
+- `ChatInput.tsx` - Placeholder and hints
+- `SuggestedPrompts.tsx` - Topic-specific prompts (from locale file)
+- `TopicSelector.tsx` - Topic labels
+- `ChatHistory.tsx` - History section headers
+- `MyLessons.tsx` - Student lessons view
+- `MyHomework.tsx` - Student homework view
+- `Dashboard.tsx` (teacher) - Stats and sections
+- `ClassroomManager.tsx` - Classroom CRUD forms
+
+#### System Prompt
+- **`server/data/system-prompt.txt`**: Updated to Mexican Spanish with Socratic teaching method preserved
+
+### Translation Categories
+| Category | Description |
+|----------|-------------|
+| `common.*` | Shared buttons, labels (Guardar, Cancelar, etc.) |
+| `auth.*` | Login/register forms |
+| `nav.*` | Navigation items |
+| `topics.*` | Subject names (Matemáticas, Ciencias, etc.) |
+| `chat.*` | Chat interface messages |
+| `student.*` | Student portal sections |
+| `teacher.*` | Teacher portal sections |
+| `suggestedPrompts.*` | AI tutor suggested questions per topic |
+| `topicGreetings.*` | Welcome messages per topic |
+| `errors.*` | Error messages |
+
+### Technical Decisions
+1. **Backend unchanged**: All database columns, variables, and API routes remain in English
+2. **i18next with LanguageDetector**: Auto-detects browser language, caches preference in localStorage
+3. **Fallback language**: es-MX (Mexican Spanish is both default and fallback)
+4. **Dynamic keys**: Topic labels and prompts use dynamic keys like `t(\`topicLabels.\${topic}\`)`
+5. **Interpolation**: Date/count variables use `{{variable}}` syntax
+
+### Mexican Terminology Used
+- "Inicia sesión" instead of "Logueate"
+- "Salones" for classrooms
+- "Estudiantes" for students
+- "Maestro" for teacher
+- History prompts about Mexico (Independence heroes, Revolución Mexicana)
+
+---
+
 ## 2026-02-09: Classroom Management & Content Targeting
 
 ### Summary

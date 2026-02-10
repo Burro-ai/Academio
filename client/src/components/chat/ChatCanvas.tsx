@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { ChatMessage } from './ChatMessage';
 import { StreamingIndicator } from './StreamingIndicator';
 import { ChatInput } from './ChatInput';
@@ -7,11 +8,12 @@ import { SuggestedPrompts } from './SuggestedPrompts';
 import { useChat } from '@/hooks/useChat';
 import { useChatContext } from '@/context/ChatContext';
 import { Topic } from '@/types';
-import { TOPIC_INFO, TOPIC_GREETINGS } from '@/data/suggestedPrompts';
+import { TOPIC_INFO } from '@/data/suggestedPrompts';
 
 const TOPICS: Topic[] = ['math', 'science', 'history', 'writing'];
 
 export function ChatCanvas() {
+  const { t } = useTranslation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { currentSession, addMessage, createSession, isLoading: sessionLoading } = useChatContext();
 
@@ -75,10 +77,10 @@ export function ChatCanvas() {
             <span className="text-3xl">🎓</span>
           </motion.div>
           <h2 className="text-2xl font-semibold text-solid mb-2">
-            Welcome to Academio
+            {t('chat.welcome')}
           </h2>
           <p className="text-prominent mb-6">
-            Your AI-powered Socratic tutor. Pick a subject to start learning!
+            {t('chat.welcomeSubtitle')}
           </p>
 
           <div className="grid grid-cols-2 gap-3">
@@ -100,7 +102,7 @@ export function ChatCanvas() {
                   <span className="text-2xl mb-2 block group-hover:scale-110 transition-transform">
                     {info.icon}
                   </span>
-                  <span className="font-medium text-solid">{info.label}</span>
+                  <span className="font-medium text-solid">{t(`topicLabels.${topic}`)}</span>
                 </motion.button>
               );
             })}
@@ -117,7 +119,7 @@ export function ChatCanvas() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            💡 Or ask about anything else
+            💡 {t('chat.orAskAnything')}
           </motion.button>
         </motion.div>
       </div>
@@ -161,10 +163,10 @@ export function ChatCanvas() {
                 <span className="text-2xl">{TOPIC_INFO[currentSession.topic]?.icon}</span>
               </motion.div>
               <h3 className="text-lg font-medium text-solid mb-2">
-                {TOPIC_GREETINGS[currentSession.topic]}
+                {t(`topicGreetings.${currentSession.topic}`)}
               </h3>
               <p className="text-sm text-prominent mb-6 text-center max-w-md">
-                I'll guide you to discover answers through thoughtful questions. Pick a topic or type your own!
+                {t('chat.emptyStateMessage')}
               </p>
               <SuggestedPrompts
                 topic={currentSession.topic}
@@ -201,7 +203,7 @@ export function ChatCanvas() {
       <ChatInput
         onSend={handleSendMessage}
         disabled={isStreaming}
-        placeholder={`Ask about ${currentSession.topic}...`}
+        placeholder={t('chat.askAbout', { topic: t(`topicLabels.${currentSession.topic}`) })}
       />
     </div>
   );

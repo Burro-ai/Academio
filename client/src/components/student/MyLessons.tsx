@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/glass';
 import { studentApi } from '@/services/studentApi';
 import { PersonalizedLessonWithDetails } from '@/types';
 
 export function MyLessons() {
+  const { t } = useTranslation();
   const [lessons, setLessons] = useState<PersonalizedLessonWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export function MyLessons() {
             onClick={loadLessons}
             className="mt-4 px-4 py-2 backdrop-blur-md bg-white/20 border border-white/30 rounded-lg text-solid hover:bg-white/30 transition-all"
           >
-            Try Again
+            {t('common.tryAgain')}
           </button>
         </GlassCard>
       </div>
@@ -94,9 +96,9 @@ export function MyLessons() {
       >
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-solid">My Lessons</h1>
+          <h1 className="text-2xl font-bold text-solid">{t('student.myLessons.title')}</h1>
           <p className="text-prominent mt-1">
-            Personalized lessons created just for you
+            {t('student.myLessons.subtitle')}
           </p>
         </div>
 
@@ -116,9 +118,9 @@ export function MyLessons() {
                 d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
               />
             </svg>
-            <h2 className="text-lg font-semibold text-solid mb-2">No lessons yet</h2>
+            <h2 className="text-lg font-semibold text-solid mb-2">{t('student.myLessons.empty.title')}</h2>
             <p className="text-prominent">
-              Your teacher hasn't assigned any lessons yet. Check back later!
+              {t('student.myLessons.empty.message')}
             </p>
           </GlassCard>
         ) : (
@@ -145,7 +147,7 @@ export function MyLessons() {
                       )}
                       {!lesson.viewedAt && (
                         <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-100 rounded-lg">
-                          New
+                          {t('student.myLessons.newBadge')}
                         </span>
                       )}
                     </div>
@@ -255,7 +257,7 @@ export function MyLessons() {
                     onClick={() => setSelectedLesson(null)}
                     className="px-4 py-2 backdrop-blur-md bg-white/20 border border-white/30 rounded-lg text-solid hover:bg-white/30 transition-all"
                   >
-                    Close
+                    {t('common.close')}
                   </button>
                 </div>
               </GlassCard>
