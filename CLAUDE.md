@@ -143,6 +143,130 @@ The personalization adds student-specific content without rewriting the entire l
 
 ---
 
+## Interactive Lesson Chat & Homework Forms
+
+> **Added 2026-02-09:** Transformed static lesson/homework views into high-interactivity components with AI tutoring and structured data collection.
+
+### Overview
+
+The interactive layer adds two major features:
+
+1. **Lesson Chat Interface**: Students can chat with an AI tutor within the context of each lesson. The AI uses Socratic methodology, referencing the lesson content to guide discovery.
+
+2. **Homework Form System**: Homework is presented as structured question cards. Students submit answers, which are stored for teacher review with AI-generated grading suggestions.
+
+### Database Schema
+
+Three new tables support these features:
+
+```sql
+-- Lesson chat sessions (one per student per lesson)
+CREATE TABLE lesson_chat_sessions (
+    id TEXT PRIMARY KEY,
+    personalized_lesson_id TEXT NOT NULL,
+    student_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(personalized_lesson_id, student_id)
+);
+
+-- Lesson chat messages
+CREATE TABLE lesson_chat_messages (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    timestamp TEXT NOT NULL
+);
+
+-- Homework submissions with structured answers + grading
+CREATE TABLE homework_submissions (
+    id TEXT PRIMARY KEY,
+    personalized_homework_id TEXT NOT NULL,
+    student_id TEXT NOT NULL,
+    answers TEXT NOT NULL,  -- JSON array of {questionId, value}
+    submitted_at TEXT NOT NULL,
+    grade REAL,
+    feedback TEXT,
+    ai_suggested_grade REAL,
+    ai_suggested_feedback TEXT,
+    graded_by TEXT,
+    graded_at TEXT
+);
+```
+
+### API Endpoints
+
+#### Student Portal (Lesson Chat)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/student/lesson-chat/stream` | SSE streaming for lesson chat |
+| GET | `/api/student/lesson-chat/:lessonId` | Get session + messages |
+
+#### Student Portal (Homework Submission)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/student/homework/:id/submit` | Submit homework with answers JSON |
+| GET | `/api/student/homework/:id/submission` | Get existing submission status |
+
+#### Teacher Portal (Grading)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/teacher/homework/pending` | Get ungraded submissions |
+| GET | `/api/teacher/homework/:id/submissions` | Get all submissions for a homework |
+| PUT | `/api/teacher/homework/submissions/:id/grade` | Grade a submission |
+| POST | `/api/teacher/homework/submissions/:id/regenerate-ai` | Regenerate AI suggestion |
+
+#### Teacher Portal (Lesson Chat Oversight)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/teacher/students/:id/lesson-chats` | Get student's lesson chat sessions |
+| GET | `/api/teacher/lesson-chats/:sessionId` | View a specific lesson chat |
+
+### Key Components
+
+| Component | Purpose |
+|-----------|---------|
+| `client/src/components/student/LessonChatInterface.tsx` | Full-screen lesson chat view |
+| `client/src/components/student/HomeworkFormContainer.tsx` | Full-screen homework form |
+| `client/src/components/student/HomeworkQuestionCard.tsx` | Individual question card |
+| `client/src/components/teacher/HomeworkSubmissionsTab.tsx` | Pending submissions list |
+| `client/src/components/teacher/HomeworkGradingModal.tsx` | Grading modal with AI suggestions |
+| `client/src/components/teacher/StudentLessonChats.tsx` | Student's lesson chat history |
+| `client/src/components/teacher/LessonChatViewer.tsx` | Read-only chat viewer |
+
+### Key Hooks
+
+| Hook | Purpose |
+|------|---------|
+| `useLessonChat.ts` | SSE streaming for lesson chat (follows useChat.ts pattern) |
+| `useHomeworkForm.ts` | Form state management with question parsing |
+
+### Lesson Chat System Prompt
+
+The lesson chat AI uses a specialized system prompt that:
+- Includes the full lesson content as context
+- Enforces Socratic methodology (no direct answers)
+- Incorporates student profile for personalization
+- References specific parts of the lesson in responses
+
+See `server/src/services/lessonChat.service.ts` for implementation.
+
+### Homework Question Parsing
+
+Questions are extracted from homework content using regex patterns:
+- Numbered patterns: `1.`, `1)`, `Question 1:`
+- Bulleted patterns: `•`, `-`, `*`
+- Fallback: Split by double newlines
+
+See `client/src/hooks/useHomeworkForm.ts` for implementation.
+
+---
+
 ## Authentication & JWT System
 
 > **CRITICAL:** This section documents how authentication works across all workflows. Many bugs have been caused by missing JWT tokens in API requests. Always verify auth is properly wired.

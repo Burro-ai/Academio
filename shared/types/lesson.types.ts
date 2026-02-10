@@ -124,3 +124,95 @@ export interface PersonalizeContentRequest {
   type: 'lesson' | 'homework';
   studentIds?: string[]; // If not provided, personalize for all students
 }
+
+// ============================================
+// LESSON CHAT TYPES (Interactive AI Tutoring)
+// ============================================
+
+export interface LessonChatSession {
+  id: string;
+  personalizedLessonId: string;
+  studentId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LessonChatMessage {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+export interface LessonChatSessionWithDetails extends LessonChatSession {
+  lessonTitle: string;
+  lessonTopic: string;
+  lessonSubject?: string;
+  messageCount: number;
+}
+
+export interface LessonChatResponse {
+  session: LessonChatSession;
+  messages: LessonChatMessage[];
+  lesson: {
+    id: string;
+    title: string;
+    topic: string;
+    subject?: string;
+    content: string;
+  };
+}
+
+// ============================================
+// HOMEWORK SUBMISSION TYPES (Structured Form)
+// ============================================
+
+export interface HomeworkQuestion {
+  id: string;
+  text: string;
+  type: 'text' | 'textarea' | 'number';
+  order: number;
+}
+
+export interface HomeworkAnswer {
+  questionId: string;
+  value: string;
+}
+
+export interface HomeworkSubmission {
+  id: string;
+  personalizedHomeworkId: string;
+  studentId: string;
+  answers: HomeworkAnswer[];
+  submittedAt: string;
+  grade?: number;
+  feedback?: string;
+  aiSuggestedGrade?: number;
+  aiSuggestedFeedback?: string;
+  gradedBy?: string;
+  gradedAt?: string;
+}
+
+export interface HomeworkSubmissionWithDetails extends HomeworkSubmission {
+  homeworkTitle: string;
+  homeworkTopic: string;
+  homeworkSubject?: string;
+  studentName: string;
+  studentEmail: string;
+  personalizedContent: string;
+}
+
+export interface SubmitHomeworkRequest {
+  answers: HomeworkAnswer[];
+}
+
+export interface GradeSubmissionRequest {
+  grade: number;
+  feedback: string;
+}
+
+export interface SubmissionStats {
+  total: number;
+  graded: number;
+}

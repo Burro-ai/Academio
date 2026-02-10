@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ChatProvider, useChatContext } from '@/context/ChatContext';
 import { useAuth } from '@/context/AuthContext';
@@ -8,6 +8,8 @@ import { StudentSettings } from '@/components/student/StudentSettings';
 import { MyLessons } from '@/components/student/MyLessons';
 import { MyHomework } from '@/components/student/MyHomework';
 import { FindTeacher } from '@/components/student/FindTeacher';
+import { LessonChatInterface } from '@/components/student/LessonChatInterface';
+import { HomeworkFormContainer } from '@/components/student/HomeworkFormContainer';
 import { TopicSelector } from '@/components/sidebar/TopicSelector';
 import { ChatHistory } from '@/components/sidebar/ChatHistory';
 
@@ -16,6 +18,11 @@ type Tab = 'chat' | 'lessons' | 'homework' | 'teacher' | 'settings';
 export function StudentDashboard() {
   const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('chat');
+  const location = useLocation();
+
+  // Check if we're on a full-screen route (lesson chat or homework form)
+  const isFullScreenRoute =
+    location.pathname.includes('/lessons/') || location.pathname.includes('/homework/');
 
   if (isLoading) {
     return (
@@ -27,6 +34,16 @@ export function StudentDashboard() {
 
   if (!user || user.role !== 'STUDENT') {
     return <Navigate to="/login" replace />;
+  }
+
+  // Full-screen routes (no sidebar)
+  if (isFullScreenRoute) {
+    return (
+      <Routes>
+        <Route path="lessons/:id" element={<LessonChatInterface />} />
+        <Route path="homework/:id" element={<HomeworkFormContainer />} />
+      </Routes>
+    );
   }
 
   return (

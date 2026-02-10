@@ -1,7 +1,7 @@
 # JOURNAL.md - Academio Development Progress Log
 
 > **Purpose:** Track development progress, decisions made, and next steps for context continuity.
-> **Last Updated:** 2026-02-08
+> **Last Updated:** 2026-02-09
 
 ---
 
@@ -31,12 +31,20 @@
 - [x] SQLite database with seeded demo data (20 users)
 - [x] DeepSeek Cloud API (primary) / Ollama (fallback)
 - [x] File upload support (PDF, images)
+- [x] **Interactive Lesson Chat**: Students chat with AI tutor within lesson context
+- [x] **Structured Homework Forms**: Question cards with answer submission
+- [x] **AI Grading Suggestions**: Teacher sees AI-suggested grades and feedback
+- [x] **Teacher Lesson Chat Oversight**: View student's lesson chat histories
+- [x] **es-MX Localization**: Full Mexican Spanish translations for all features
 
 ### What's In Progress
 - [ ] Student profile detailed view (teacher side)
 - [ ] Teacher AI assistant for material generation
 
 ### Recently Completed
+- [x] Interactive Lesson Chat & Homework Form Systems (2026-02-09)
+- [x] Teacher Grading with AI Suggestions (2026-02-09)
+- [x] Lesson Chat Teacher Oversight (2026-02-09)
 - [x] Customization Loop optimization (streaming, concurrency, Socratic prompts) (2026-02-08)
 - [x] DeepSeek Cloud API integration (2026-02-08)
 - [x] Auth/JWT fixes across all workflows (2026-02-08)
@@ -81,6 +89,126 @@
 ---
 
 ## Progress Log
+
+### 2026-02-09
+
+#### Session 1: Interactive Lesson Chat & Homework Form Systems
+
+- **What was done:**
+  - Implemented complete interactive lesson chat system with Socratic AI tutoring
+  - Created structured homework form with question cards and answer submission
+  - Added AI-powered grading suggestions for teacher review
+  - Built teacher oversight features to view student lesson chat histories
+  - Full es-MX (Mexican Spanish) localization for all new features
+
+- **Major Features Implemented:**
+
+  | Feature | Description |
+  |---------|-------------|
+  | Lesson Chat Interface | Full-screen chat within lesson context, AI uses Socratic method |
+  | Homework Form | Question cards parsed from content, structured answer collection |
+  | AI Grading | Automatic grade/feedback suggestions when student submits |
+  | Teacher Grading | Modal with student answers, AI suggestions, manual override |
+  | Lesson Chat Oversight | Teachers can view students' lesson chat histories |
+
+- **New Database Tables:**
+  ```sql
+  lesson_chat_sessions   -- One per student per lesson
+  lesson_chat_messages   -- Chat messages with role, content, timestamp
+  homework_submissions   -- Structured answers + grading fields
+  ```
+
+- **New API Endpoints:**
+
+  | Endpoint | Method | Description |
+  |----------|--------|-------------|
+  | `/api/student/lesson-chat/stream` | GET | SSE streaming lesson chat |
+  | `/api/student/lesson-chat/:lessonId` | GET | Get session + messages |
+  | `/api/student/homework/:id/submit` | POST | Submit homework answers |
+  | `/api/teacher/homework/pending` | GET | Pending submissions |
+  | `/api/teacher/homework/submissions/:id/grade` | PUT | Grade submission |
+  | `/api/teacher/students/:id/lesson-chats` | GET | Student's lesson chats |
+
+- **New Frontend Components:**
+
+  | Component | Purpose |
+  |-----------|---------|
+  | `LessonChatInterface.tsx` | Full-screen lesson chat with collapsible content |
+  | `HomeworkFormContainer.tsx` | Full-screen homework form with question cards |
+  | `HomeworkQuestionCard.tsx` | Individual question card component |
+  | `HomeworkSubmissionsTab.tsx` | Pending submissions list for teachers |
+  | `HomeworkGradingModal.tsx` | Grading modal with AI suggestions |
+  | `StudentLessonChats.tsx` | Student's lesson chat history list |
+  | `LessonChatViewer.tsx` | Read-only chat viewer for teachers |
+
+- **New Hooks:**
+
+  | Hook | Purpose |
+  |------|---------|
+  | `useLessonChat.ts` | SSE streaming for lesson chat (follows useChat.ts pattern) |
+  | `useHomeworkForm.ts` | Form state with question parsing |
+
+- **Socratic Tutoring Integration:**
+  - System prompt includes full lesson content as context
+  - AI never gives direct answers, guides through questioning
+  - Conversation history (last 10 messages) maintained for continuity
+  - Student profile used for personalization
+
+- **Homework Question Parsing:**
+  - Extracts questions from numbered patterns (1., 1), Question 1:)
+  - Falls back to bullet points (•, -, *)
+  - Final fallback: paragraphs split by double newlines
+
+- **Localization Additions:**
+  - Added `student.lessonChat.*` keys (welcome, askQuestion, expand/collapse)
+  - Added `student.homeworkForm.*` keys (question, progress, submit, grading states)
+  - Added `teacher.submissions.*` keys (title, grading, AI suggestion)
+  - Added `teacher.lessonChats.*` keys (title, view, messages)
+  - Added `grading.*` keys (submitting, errors, labels)
+  - Fixed all hardcoded English strings in new components
+
+- **Files Created:**
+  | File | Type |
+  |------|------|
+  | `server/src/database/queries/lessonChat.queries.ts` | Backend |
+  | `server/src/database/queries/homeworkSubmissions.queries.ts` | Backend |
+  | `server/src/services/lessonChat.service.ts` | Backend |
+  | `server/src/services/homeworkGrading.service.ts` | Backend |
+  | `server/src/controllers/lessonChat.controller.ts` | Backend |
+  | `server/src/controllers/homeworkSubmission.controller.ts` | Backend |
+  | `client/src/hooks/useLessonChat.ts` | Frontend |
+  | `client/src/hooks/useHomeworkForm.ts` | Frontend |
+  | `client/src/components/student/LessonChatInterface.tsx` | Frontend |
+  | `client/src/components/student/HomeworkFormContainer.tsx` | Frontend |
+  | `client/src/components/student/HomeworkQuestionCard.tsx` | Frontend |
+  | `client/src/components/teacher/HomeworkSubmissionsTab.tsx` | Frontend |
+  | `client/src/components/teacher/HomeworkGradingModal.tsx` | Frontend |
+  | `client/src/components/teacher/StudentLessonChats.tsx` | Frontend |
+  | `client/src/components/teacher/LessonChatViewer.tsx` | Frontend |
+
+- **Files Modified:**
+  | File | Change |
+  |------|--------|
+  | `server/src/database/schema.sql` | Added 3 new tables + indexes |
+  | `server/src/routes/studentPortal.routes.ts` | Added lesson chat + homework submit routes |
+  | `server/src/routes/teacher.routes.ts` | Added grading + oversight routes |
+  | `shared/types/lesson.types.ts` | Added lesson chat + homework types |
+  | `client/src/types/index.ts` | Re-exported new types |
+  | `client/src/components/student/MyLessons.tsx` | Navigate to full-screen chat |
+  | `client/src/components/student/MyHomework.tsx` | Navigate to full-screen form |
+  | `client/src/pages/StudentDashboard.tsx` | Added nested routes |
+  | `client/src/components/teacher/HomeworkPanel.tsx` | Added tabs for assignments/submissions |
+  | `client/src/services/teacherApi.ts` | Added grading + oversight methods |
+  | `client/src/locales/es-MX.json` | Added all new translation keys |
+  | `CLAUDE.md` | Documented new features and API endpoints |
+  | `ARCHITECT.md` | Added data flow diagrams and component updates |
+
+- **Documentation Updated:**
+  - CLAUDE.md: Added "Interactive Lesson Chat & Homework Forms" section
+  - ARCHITECT.md: Added new data flow diagrams, updated component hierarchy
+  - JOURNAL.md: This entry
+
+---
 
 ### 2026-02-08
 

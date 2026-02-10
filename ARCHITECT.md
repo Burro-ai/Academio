@@ -296,6 +296,144 @@ Academio is an AI-powered tutoring platform with two portals:
 | PUT | `/api/homework/:id` | `{...updates}` | `{homework}` | Yes (Teacher) |
 | DELETE | `/api/homework/:id` | - | `{message}` | Yes (Teacher) |
 
+### Interactive Lesson Chat Endpoints
+
+| Method | Endpoint | Request/Query | Response | Auth Required |
+|--------|----------|---------------|----------|---------------|
+| GET | `/api/student/lesson-chat/stream` | `?lessonId&message` | SSE stream | Yes (Student) |
+| GET | `/api/student/lesson-chat/:lessonId` | - | `{session, messages, lesson}` | Yes (Student) |
+| GET | `/api/teacher/students/:id/lesson-chats` | - | `[sessions]` | Yes (Teacher) |
+| GET | `/api/teacher/lesson-chats/:sessionId` | - | `{session, messages, lesson}` | Yes (Teacher) |
+
+### Homework Submission Endpoints
+
+| Method | Endpoint | Request Body | Response | Auth Required |
+|--------|----------|--------------|----------|---------------|
+| POST | `/api/student/homework/:id/submit` | `{answers: [{questionId, value}]}` | `{message, submissionId}` | Yes (Student) |
+| GET | `/api/student/homework/:id/submission` | - | `{submitted, submission?}` | Yes (Student) |
+| GET | `/api/teacher/homework/pending` | - | `[submissions]` | Yes (Teacher) |
+| GET | `/api/teacher/homework/:id/submissions` | - | `{submissions, stats}` | Yes (Teacher) |
+| PUT | `/api/teacher/homework/submissions/:id/grade` | `{grade, feedback}` | `{message, submission}` | Yes (Teacher) |
+| POST | `/api/teacher/homework/submissions/:id/regenerate-ai` | - | `{aiSuggestedGrade, aiSuggestedFeedback}` | Yes (Teacher) |
+
+---
+
+## Interactive Data Flow Diagrams
+
+### 4. Lesson Chat Flow (Student ↔ AI Tutor)
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         LESSON CHAT FLOW                                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Student opens lesson → LessonChatInterface.tsx                              │
+│       │                                                                      │
+│       │  GET /api/student/lesson-chat/:lessonId                              │
+│       ▼                                                                      │
+│  ┌────────────────────────────────────────────────────────────┐              │
+│  │  lesson_chat_sessions                                       │              │
+│  │  ┌─────────────────────────────────────────────────────┐   │              │
+│  │  │ id | personalized_lesson_id | student_id | timestamps│   │              │
+│  │  └─────────────────────────────────────────────────────┘   │              │
+│  │                    │                                        │              │
+│  │                    ▼                                        │              │
+│  │  lesson_chat_messages                                       │              │
+│  │  ┌─────────────────────────────────────────────────────┐   │              │
+│  │  │ id | session_id | role | content | timestamp        │   │              │
+│  │  └─────────────────────────────────────────────────────┘   │              │
+│  └────────────────────────────────────────────────────────────┘              │
+│       │                                                                      │
+│       │  Student sends message                                               │
+│       │  GET /api/student/lesson-chat/stream?lessonId=X&message=Y            │
+│       ▼                                                                      │
+│  ┌────────────────────────────────────────────────────────────┐              │
+│  │  lessonChat.service.ts                                      │              │
+│  │  1. Get/create session                                      │              │
+│  │  2. Load lesson content (personalized_lessons)              │              │
+│  │  3. Build Socratic system prompt with lesson context        │              │
+│  │  4. Include last 10 messages for continuity                 │              │
+│  │  5. Stream response from AI                                 │              │
+│  │  6. Save messages to DB                                     │              │
+│  └────────────────────────────────────────────────────────────┘              │
+│       │                                                                      │
+│       │  SSE stream: {type: 'token', content: '...'} ...                     │
+│       ▼                                                                      │
+│  LessonChatInterface renders AI response in real-time                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5. Homework Submission & Grading Flow
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                    HOMEWORK SUBMISSION & GRADING FLOW                         │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  STUDENT FLOW                                                                │
+│  ────────────                                                                │
+│  1. Student opens homework → HomeworkFormContainer.tsx                       │
+│       │                                                                      │
+│       │  Parse questions from homework content                               │
+│       │  (useHomeworkForm.ts extracts numbered/bulleted items)               │
+│       ▼                                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐             │
+│  │  HomeworkQuestionCard (for each question)                    │             │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │             │
+│  │  │ Question 1  │  │ Question 2  │  │ Question 3  │          │             │
+│  │  │ [textarea]  │  │ [textarea]  │  │ [textarea]  │          │             │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘          │             │
+│  └─────────────────────────────────────────────────────────────┘             │
+│       │                                                                      │
+│       │  Submit: POST /api/student/homework/:id/submit                       │
+│       │  Body: {answers: [{questionId, value}, ...]}                         │
+│       ▼                                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐             │
+│  │  homework_submissions                                        │             │
+│  │  ┌───────────────────────────────────────────────────────┐  │             │
+│  │  │ id | personalized_homework_id | student_id | answers  │  │             │
+│  │  │ submitted_at | grade | feedback | ai_suggested_*      │  │             │
+│  │  └───────────────────────────────────────────────────────┘  │             │
+│  └─────────────────────────────────────────────────────────────┘             │
+│       │                                                                      │
+│       │  Background: AI generates grade suggestion                           │
+│       │  (homeworkGrading.service.ts)                                        │
+│       ▼                                                                      │
+│  ai_suggested_grade: 85, ai_suggested_feedback: "Good work on..."            │
+│                                                                              │
+│  TEACHER FLOW                                                                │
+│  ────────────                                                                │
+│  1. Teacher views pending submissions                                        │
+│       │  GET /api/teacher/homework/pending                                   │
+│       ▼                                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐             │
+│  │  HomeworkSubmissionsTab.tsx                                  │             │
+│  │  Lists: student name, homework title, AI suggested grade     │             │
+│  └─────────────────────────────────────────────────────────────┘             │
+│       │                                                                      │
+│       │  Click "View & Grade"                                                │
+│       ▼                                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐             │
+│  │  HomeworkGradingModal.tsx                                    │             │
+│  │  ┌─────────────────────┐  ┌────────────────────────────────┐│             │
+│  │  │ Student Answers     │  │ Grading Panel                  ││             │
+│  │  │ Q1: [their answer]  │  │ AI Suggested: 85/100           ││             │
+│  │  │ Q2: [their answer]  │  │ [Use AI Suggestion]            ││             │
+│  │  │ Q3: [their answer]  │  │ Your Grade: [____]             ││             │
+│  │  │                     │  │ Feedback: [__________]         ││             │
+│  │  │                     │  │ [Submit Grade]                 ││             │
+│  │  └─────────────────────┘  └────────────────────────────────┘│             │
+│  └─────────────────────────────────────────────────────────────┘             │
+│       │                                                                      │
+│       │  PUT /api/teacher/homework/submissions/:id/grade                     │
+│       │  Body: {grade: 88, feedback: "Excellent understanding..."}           │
+│       ▼                                                                      │
+│  Student can now see grade + feedback in HomeworkFormContainer               │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Component Hierarchy
@@ -317,8 +455,13 @@ App.tsx
     │   ├── ChatCanvas.tsx
     │   │   ├── ChatMessage.tsx
     │   │   └── StreamingIndicator.tsx
-    │   └── ChatInput.tsx
-    │       └── FileUploadButton.tsx
+    │   ├── ChatInput.tsx
+    │   │   └── FileUploadButton.tsx
+    │   ├── MyLessons.tsx → LessonChatInterface.tsx (full-screen)
+    │   │   └── useLessonChat.ts (SSE streaming hook)
+    │   └── MyHomework.tsx → HomeworkFormContainer.tsx (full-screen)
+    │       ├── HomeworkQuestionCard.tsx
+    │       └── useHomeworkForm.ts (form state hook)
     │
     ├── TeacherDashboard.tsx
     │   ├── TeacherSidebar.tsx
@@ -326,11 +469,15 @@ App.tsx
     │   │   └── StudentCard.tsx
     │   ├── StudentProfile.tsx
     │   │   ├── GradeHistory.tsx
-    │   │   └── LearningActivity.tsx
+    │   │   ├── LearningActivity.tsx
+    │   │   └── StudentLessonChats.tsx (view student's lesson chats)
+    │   │       └── LessonChatViewer.tsx (read-only chat view)
     │   ├── LessonsPanel.tsx
     │   │   └── LessonCreator.tsx
     │   └── HomeworkPanel.tsx
-    │       └── HomeworkCreator.tsx
+    │       ├── HomeworkCreator.tsx
+    │       ├── HomeworkSubmissionsTab.tsx (pending submissions list)
+    │       └── HomeworkGradingModal.tsx (grade with AI suggestions)
     │
     └── AdminPage.tsx
         ├── AdminLogin.tsx
@@ -351,12 +498,16 @@ server/src/
 │   ├── student.controller.ts
 │   ├── classroom.controller.ts
 │   ├── lesson.controller.ts
-│   └── homework.controller.ts
+│   ├── homework.controller.ts
+│   ├── lessonChat.controller.ts       # NEW: Lesson chat streaming
+│   └── homeworkSubmission.controller.ts # NEW: Homework submission & grading
 ├── services/
 │   ├── ollama.service.ts
 │   ├── student.service.ts
 │   ├── lesson.service.ts
-│   └── homework.service.ts
+│   ├── homework.service.ts
+│   ├── lessonChat.service.ts          # NEW: Socratic AI tutoring within lessons
+│   └── homeworkGrading.service.ts     # NEW: AI grading suggestions
 ├── middleware/
 │   ├── auth.middleware.ts
 │   └── errorHandler.middleware.ts
@@ -369,7 +520,9 @@ server/src/
         ├── messages.queries.ts
         ├── studentProfiles.queries.ts
         ├── lessons.queries.ts
-        └── homework.queries.ts
+        ├── homework.queries.ts
+        ├── lessonChat.queries.ts       # NEW: Lesson chat sessions & messages
+        └── homeworkSubmissions.queries.ts # NEW: Homework submissions
 ```
 
 ---

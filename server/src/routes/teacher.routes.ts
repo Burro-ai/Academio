@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { teacherController } from '../controllers/teacher.controller';
 import { teacherChatController } from '../controllers/teacherChat.controller';
+import { lessonChatController } from '../controllers/lessonChat.controller';
+import { homeworkSubmissionController } from '../controllers/homeworkSubmission.controller';
 import { asyncHandler } from '../middleware/asyncHandler.middleware';
 import { authMiddleware, teacherOnly } from '../middleware/auth.middleware';
 import { teacherAuth } from '../middleware/teacherAuth.middleware';
@@ -43,5 +45,16 @@ router.get('/chat/sessions/:id', asyncHandler(teacherChatController.getSession))
 router.post('/chat/sessions', asyncHandler(teacherChatController.createSession));
 router.patch('/chat/sessions/:id', asyncHandler(teacherChatController.updateSession));
 router.delete('/chat/sessions/:id', asyncHandler(teacherChatController.deleteSession));
+
+// Student Lesson Chats (Teacher Oversight)
+router.get('/students/:studentId/lesson-chats', asyncHandler(lessonChatController.getStudentLessonChats));
+router.get('/lesson-chats/:sessionId', asyncHandler(lessonChatController.viewLessonChat));
+
+// Homework Submissions (Grading)
+router.get('/homework/pending', asyncHandler(homeworkSubmissionController.getPending));
+router.get('/homework/:homeworkId/submissions', asyncHandler(homeworkSubmissionController.getAllByHomework));
+router.get('/homework/submissions/:id', asyncHandler(homeworkSubmissionController.getSubmission));
+router.put('/homework/submissions/:id/grade', asyncHandler(homeworkSubmissionController.grade));
+router.post('/homework/submissions/:id/regenerate-ai', asyncHandler(homeworkSubmissionController.regenerateAISuggestion));
 
 export default router;

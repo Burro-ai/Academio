@@ -208,6 +208,27 @@
       },
       "successSelect": "¡Maestro seleccionado exitosamente! Tu maestro ahora puede ver tu perfil.",
       "successRemove": "Maestro removido de tu perfil."
+    },
+    "lessonChat": {
+      "welcome": "Pregúntame sobre esta lección",
+      "welcomeMessage": "Estoy aquí para ayudarte a entender el contenido de esta lección. Hazme cualquier pregunta y te guiaré a descubrir la respuesta.",
+      "askQuestion": "Pregunta sobre esta lección...",
+      "expandLesson": "Ver contenido",
+      "collapseLesson": "Ocultar contenido"
+    },
+    "homeworkForm": {
+      "question": "Pregunta {{number}}",
+      "yourAnswer": "Tu respuesta",
+      "progress": "{{answered}} de {{total}} preguntas",
+      "submitHomework": "Entregar tarea",
+      "submitting": "Entregando...",
+      "submitted": "Entregada",
+      "awaitingGrade": "Esperando calificación",
+      "gradeReceived": "Calificación recibida",
+      "gradedAt": "Calificada el {{date}}",
+      "feedback": "Retroalimentación del maestro",
+      "instructions": "Instrucciones",
+      "questions": "Preguntas"
     }
   },
 
@@ -296,6 +317,8 @@
       "subtitle": "Crea una nueva tarea",
       "details": "Detalles de la tarea",
       "content": "Contenido de la tarea",
+      "assignmentsTab": "Tareas",
+      "submissionsTab": "Entregas",
       "form": {
         "titleLabel": "Título *",
         "titlePlaceholder": "ej., Práctica de fracciones",
@@ -314,6 +337,29 @@
         "autoPersonalizeHint": "La IA creará una versión personalizada para cada estudiante basándose en su perfil"
       },
       "creating": "Creando..."
+    },
+    "submissions": {
+      "title": "Entregas pendientes",
+      "noSubmissions": "No hay entregas pendientes",
+      "allGraded": "¡Todas las entregas han sido calificadas!",
+      "viewAndGrade": "Ver y calificar",
+      "aiSuggested": "Sugerencia de IA",
+      "studentAnswers": "Respuestas del estudiante",
+      "grading": "Calificación",
+      "yourGrade": "Tu calificación",
+      "yourFeedback": "Tu retroalimentación",
+      "feedbackPlaceholder": "Escribe retroalimentación constructiva para el estudiante...",
+      "useAISuggestion": "Usar sugerencia",
+      "submitGrade": "Guardar calificación"
+    },
+    "lessonChats": {
+      "title": "Chats de lecciones",
+      "viewChat": "Ver chat",
+      "messages": "{{count}} mensajes",
+      "noChats": "{{name}} aún no ha iniciado ningún chat de lección",
+      "noMessages": "No hay mensajes en este chat",
+      "startedAt": "Iniciado el {{date}}",
+      "readOnlyNotice": "Esta es una vista de solo lectura de la conversación del estudiante"
     },
     "login": {
       "goToStudentPortal": "¿Eres estudiante? Ve al Portal de Estudiantes"
@@ -402,6 +448,19 @@
     "networkError": "Error de conexión. Verifica tu internet.",
     "unauthorized": "No autorizado. Por favor inicia sesión de nuevo.",
     "notFound": "No encontrado.",
-    "serverError": "Error del servidor. Por favor intenta más tarde."
+    "serverError": "Error del servidor. Por favor intenta más tarde.",
+    "homeworkNotFound": "Tarea no encontrada",
+    "failedToLoad": "Error al cargar"
+  },
+
+  "grading": {
+    "noAnswerProvided": "(Sin respuesta)",
+    "regenerate": "Regenerar",
+    "regenerating": "Regenerando...",
+    "gradeLabel": "Calificación:",
+    "submittedAt": "Entregado el {{date}}",
+    "submitting": "Guardando...",
+    "gradeError": "La calificación debe ser entre 0 y 100",
+    "feedbackRequired": "La retroalimentación es requerida"
   }
 }

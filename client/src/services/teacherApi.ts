@@ -17,6 +17,11 @@ import {
   UpdateStudentRequest,
   CreateClassroomRequest,
   Subject,
+  HomeworkSubmission,
+  HomeworkSubmissionWithDetails,
+  LessonChatSession,
+  LessonChatMessage,
+  LessonChatSessionWithDetails,
 } from '@/types';
 import { authApi } from './authApi';
 
@@ -253,6 +258,64 @@ class TeacherApiService {
       params.append('materialType', materialType);
     }
     return `${API_BASE}/teacher/chat/stream?${params}`;
+  }
+
+  // ============ Homework Submissions (Grading) ============
+
+  async getPendingSubmissions(): Promise<HomeworkSubmissionWithDetails[]> {
+    return this.request<HomeworkSubmissionWithDetails[]>('/teacher/homework/pending');
+  }
+
+  async getHomeworkSubmissions(homeworkId: string): Promise<{
+    submissions: HomeworkSubmissionWithDetails[];
+    stats: { total: number; graded: number };
+  }> {
+    return this.request(`/teacher/homework/${homeworkId}/submissions`);
+  }
+
+  async getSubmission(submissionId: string): Promise<HomeworkSubmission> {
+    return this.request(`/teacher/homework/submissions/${submissionId}`);
+  }
+
+  async gradeSubmission(
+    submissionId: string,
+    grade: number,
+    feedback: string
+  ): Promise<{ message: string; submission: HomeworkSubmission }> {
+    return this.request(`/teacher/homework/submissions/${submissionId}/grade`, {
+      method: 'PUT',
+      body: JSON.stringify({ grade, feedback }),
+    });
+  }
+
+  async regenerateAISuggestion(submissionId: string): Promise<{
+    aiSuggestedGrade: number;
+    aiSuggestedFeedback: string;
+  }> {
+    return this.request(`/teacher/homework/submissions/${submissionId}/regenerate-ai`, {
+      method: 'POST',
+    });
+  }
+
+  // ============ Student Lesson Chats (Oversight) ============
+
+  async getStudentLessonChats(studentId: string): Promise<LessonChatSessionWithDetails[]> {
+    return this.request<LessonChatSessionWithDetails[]>(
+      `/teacher/students/${studentId}/lesson-chats`
+    );
+  }
+
+  async viewLessonChat(sessionId: string): Promise<{
+    session: LessonChatSession;
+    messages: LessonChatMessage[];
+    lesson: {
+      id: string;
+      title: string;
+      topic: string;
+      subject?: string;
+    } | null;
+  }> {
+    return this.request(`/teacher/lesson-chats/${sessionId}`);
   }
 }
 

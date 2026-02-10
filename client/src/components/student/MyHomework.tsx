@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/glass';
 import { studentApi } from '@/services/studentApi';
@@ -7,10 +8,10 @@ import { PersonalizedHomeworkWithDetails } from '@/types';
 
 export function MyHomework() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [homework, setHomework] = useState<PersonalizedHomeworkWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedHomework, setSelectedHomework] = useState<PersonalizedHomeworkWithDetails | null>(null);
 
   useEffect(() => {
     loadHomework();
@@ -147,7 +148,7 @@ export function MyHomework() {
                           variant="card"
                           hover
                           className="p-5 cursor-pointer"
-                          onClick={() => setSelectedHomework(hw)}
+                          onClick={() => navigate(`/dashboard/student/homework/${hw.id}`)}
                         >
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -220,7 +221,7 @@ export function MyHomework() {
                         variant="card"
                         hover
                         className="p-5 cursor-pointer opacity-75"
-                        onClick={() => setSelectedHomework(hw)}
+                        onClick={() => navigate(`/dashboard/student/homework/${hw.id}`)}
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-2">
@@ -258,97 +259,6 @@ export function MyHomework() {
           </div>
         )}
       </motion.div>
-
-      {/* Homework Detail Modal */}
-      <AnimatePresence>
-        {selectedHomework && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-            onClick={() => setSelectedHomework(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-3xl max-h-[80vh] overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <GlassCard variant="elevated" className="overflow-hidden">
-                {/* Modal Header */}
-                <div className="p-6 border-b border-white/15">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        {selectedHomework.homework.subject && (
-                          <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-100 rounded-lg capitalize">
-                            {selectedHomework.homework.subject}
-                          </span>
-                        )}
-                        {selectedHomework.homework.dueDate && (
-                          <span className="px-2 py-1 text-xs backdrop-blur-sm bg-white/10 border border-white/20 rounded-lg">
-                            Due: {new Date(selectedHomework.homework.dueDate).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                      <h2 className="text-xl font-bold text-solid">
-                        {selectedHomework.homework.title}
-                      </h2>
-                      <p className="text-prominent mt-1">{selectedHomework.homework.topic}</p>
-                    </div>
-                    <button
-                      onClick={() => setSelectedHomework(null)}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      <svg
-                        className="w-5 h-5 text-prominent"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Modal Content */}
-                <div className="p-6 overflow-y-auto max-h-[60vh]">
-                  <div className="prose prose-invert max-w-none">
-                    <div
-                      className="text-prominent whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{
-                        __html: selectedHomework.personalizedContent.replace(/\n/g, '<br>'),
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="p-4 border-t border-white/15 flex justify-between items-center">
-                  <span className="text-xs text-subtle">
-                    By {selectedHomework.homework.teacherName} •{' '}
-                    {new Date(selectedHomework.createdAt).toLocaleDateString()}
-                  </span>
-                  <button
-                    onClick={() => setSelectedHomework(null)}
-                    className="px-4 py-2 backdrop-blur-md bg-white/20 border border-white/30 rounded-lg text-solid hover:bg-white/30 transition-all"
-                  >
-                    {t('common.close')}
-                  </button>
-                </div>
-              </GlassCard>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

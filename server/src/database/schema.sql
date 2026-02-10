@@ -339,3 +339,64 @@ CREATE INDEX IF NOT EXISTS idx_homework_assignments_classroom_id ON homework_ass
 CREATE INDEX IF NOT EXISTS idx_homework_assignments_school_id ON homework_assignments(school_id);
 CREATE INDEX IF NOT EXISTS idx_personalized_homework_homework_id ON personalized_homework(homework_id);
 CREATE INDEX IF NOT EXISTS idx_personalized_homework_student_id ON personalized_homework(student_id);
+
+-- ============================================
+-- LESSON CHAT SYSTEM (Interactive AI Tutoring)
+-- ============================================
+
+-- Lesson Chat Sessions (one per student per lesson)
+CREATE TABLE IF NOT EXISTS lesson_chat_sessions (
+    id TEXT PRIMARY KEY,
+    personalized_lesson_id TEXT NOT NULL,
+    student_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (personalized_lesson_id) REFERENCES personalized_lessons(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(personalized_lesson_id, student_id)
+);
+
+-- Lesson Chat Messages
+CREATE TABLE IF NOT EXISTS lesson_chat_messages (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (session_id) REFERENCES lesson_chat_sessions(id) ON DELETE CASCADE
+);
+
+-- ============================================
+-- HOMEWORK SUBMISSIONS SYSTEM (Structured Grading)
+-- ============================================
+
+-- Homework Submissions (structured answers + grading)
+CREATE TABLE IF NOT EXISTS homework_submissions (
+    id TEXT PRIMARY KEY,
+    personalized_homework_id TEXT NOT NULL,
+    student_id TEXT NOT NULL,
+    answers TEXT NOT NULL,                    -- JSON array of {questionId, value}
+    submitted_at TEXT NOT NULL DEFAULT (datetime('now')),
+    grade REAL,                               -- 0-100
+    feedback TEXT,
+    ai_suggested_grade REAL,
+    ai_suggested_feedback TEXT,
+    graded_by TEXT,                           -- Teacher user ID
+    graded_at TEXT,
+    FOREIGN KEY (personalized_homework_id) REFERENCES personalized_homework(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (graded_by) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE(personalized_homework_id, student_id)
+);
+
+-- ============================================
+-- LESSON CHAT & HOMEWORK SUBMISSIONS INDEXES
+-- ============================================
+
+CREATE INDEX IF NOT EXISTS idx_lesson_chat_sessions_lesson ON lesson_chat_sessions(personalized_lesson_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_chat_sessions_student ON lesson_chat_sessions(student_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_chat_messages_session ON lesson_chat_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_chat_messages_timestamp ON lesson_chat_messages(timestamp);
+CREATE INDEX IF NOT EXISTS idx_homework_submissions_homework ON homework_submissions(personalized_homework_id);
+CREATE INDEX IF NOT EXISTS idx_homework_submissions_student ON homework_submissions(student_id);
+CREATE INDEX IF NOT EXISTS idx_homework_submissions_pending ON homework_submissions(graded_at) WHERE graded_at IS NULL;

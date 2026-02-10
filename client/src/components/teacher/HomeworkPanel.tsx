@@ -1,17 +1,23 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { GlassCard, GlassButton } from '@/components/glass';
 import { HomeworkCreator } from './HomeworkCreator';
+import { HomeworkSubmissionsTab } from './HomeworkSubmissionsTab';
 import { lessonApi } from '@/services/lessonApi';
 import { HomeworkWithTeacher } from '@/types';
 
+type Tab = 'assignments' | 'submissions';
+
 export function HomeworkPanel() {
+  const { t } = useTranslation();
   const [homework, setHomework] = useState<HomeworkWithTeacher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreator, setShowCreator] = useState(false);
   const [selectedHomework, setSelectedHomework] = useState<HomeworkWithTeacher | null>(null);
   const [isPersonalizing, setIsPersonalizing] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>('assignments');
 
   useEffect(() => {
     loadHomework();
@@ -105,15 +111,45 @@ export function HomeworkPanel() {
           </GlassButton>
         </div>
 
-        {/* Error */}
-        {error && (
-          <GlassCard variant="card" className="p-4 mb-6 backdrop-blur-md bg-red-500/20 border-red-400/30">
-            <p className="text-red-100">{error}</p>
-          </GlassCard>
-        )}
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('assignments')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'assignments'
+                ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/30 text-blue-100'
+                : 'text-prominent hover:backdrop-blur-md hover:bg-white/20'
+            }`}
+          >
+            {t('teacher.homework.assignmentsTab')}
+          </button>
+          <button
+            onClick={() => setActiveTab('submissions')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'submissions'
+                ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/30 text-blue-100'
+                : 'text-prominent hover:backdrop-blur-md hover:bg-white/20'
+            }`}
+          >
+            {t('teacher.homework.submissionsTab')}
+          </button>
+        </div>
 
-        {/* Loading */}
-        {isLoading ? (
+        {/* Submissions Tab Content */}
+        {activeTab === 'submissions' && <HomeworkSubmissionsTab />}
+
+        {/* Assignments Tab Content */}
+        {activeTab === 'assignments' && (
+          <>
+            {/* Error */}
+            {error && (
+              <GlassCard variant="card" className="p-4 mb-6 backdrop-blur-md bg-red-500/20 border-red-400/30">
+                <p className="text-red-100">{error}</p>
+              </GlassCard>
+            )}
+
+            {/* Loading */}
+            {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400" />
           </div>
@@ -228,6 +264,8 @@ export function HomeworkPanel() {
               );
             })}
           </div>
+        )}
+          </>
         )}
       </motion.div>
 

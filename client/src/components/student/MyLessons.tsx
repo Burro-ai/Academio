@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/glass';
 import { studentApi } from '@/services/studentApi';
@@ -7,10 +8,10 @@ import { PersonalizedLessonWithDetails } from '@/types';
 
 export function MyLessons() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [lessons, setLessons] = useState<PersonalizedLessonWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedLesson, setSelectedLesson] = useState<PersonalizedLessonWithDetails | null>(null);
 
   useEffect(() => {
     loadLessons();
@@ -44,10 +45,11 @@ export function MyLessons() {
   };
 
   const handleOpenLesson = (lesson: PersonalizedLessonWithDetails) => {
-    setSelectedLesson(lesson);
     if (!lesson.viewedAt) {
       markAsViewed(lesson.id);
     }
+    // Navigate to the lesson chat interface
+    navigate(`/dashboard/student/lessons/${lesson.id}`);
   };
 
   if (isLoading) {
@@ -179,92 +181,6 @@ export function MyLessons() {
           </div>
         )}
       </motion.div>
-
-      {/* Lesson Detail Modal */}
-      <AnimatePresence>
-        {selectedLesson && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-            onClick={() => setSelectedLesson(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-3xl max-h-[80vh] overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <GlassCard variant="elevated" className="overflow-hidden">
-                {/* Modal Header */}
-                <div className="p-6 border-b border-white/15">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        {selectedLesson.lesson.subject && (
-                          <span className="px-2 py-1 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-100 rounded-lg capitalize">
-                            {selectedLesson.lesson.subject}
-                          </span>
-                        )}
-                      </div>
-                      <h2 className="text-xl font-bold text-solid">
-                        {selectedLesson.lesson.title}
-                      </h2>
-                      <p className="text-prominent mt-1">{selectedLesson.lesson.topic}</p>
-                    </div>
-                    <button
-                      onClick={() => setSelectedLesson(null)}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      <svg
-                        className="w-5 h-5 text-prominent"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Modal Content */}
-                <div className="p-6 overflow-y-auto max-h-[60vh]">
-                  <div className="prose prose-invert max-w-none">
-                    <div
-                      className="text-prominent whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{
-                        __html: selectedLesson.personalizedContent.replace(/\n/g, '<br>'),
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="p-4 border-t border-white/15 flex justify-between items-center">
-                  <span className="text-xs text-subtle">
-                    By {selectedLesson.lesson.teacherName} •{' '}
-                    {new Date(selectedLesson.createdAt).toLocaleDateString()}
-                  </span>
-                  <button
-                    onClick={() => setSelectedLesson(null)}
-                    className="px-4 py-2 backdrop-blur-md bg-white/20 border border-white/30 rounded-lg text-solid hover:bg-white/30 transition-all"
-                  >
-                    {t('common.close')}
-                  </button>
-                </div>
-              </GlassCard>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
