@@ -68,30 +68,35 @@ export interface StudentStats {
 export const studentStatsQueries = {
   /**
    * Get chat statistics for a student
-   * Counts lesson chat sessions and messages
+   * Counts lesson chat sessions and messages using proper JOINs
    */
   getChatStats(studentId: string): StudentChatStats {
     const db = getDb();
 
-    const result = db.prepare(`
+    // Get session count and last chat date
+    const sessionResult = db.prepare(`
       SELECT
-        COUNT(DISTINCT lcs.id) as total_sessions,
-        COALESCE(SUM(
-          (SELECT COUNT(*) FROM lesson_chat_messages lcm WHERE lcm.session_id = lcs.id)
-        ), 0) as total_messages,
-        MAX(lcs.updated_at) as last_chat_date
-      FROM lesson_chat_sessions lcs
-      WHERE lcs.student_id = ?
+        COUNT(*) as total_sessions,
+        MAX(updated_at) as last_chat_date
+      FROM lesson_chat_sessions
+      WHERE student_id = ?
     `).get(studentId) as {
       total_sessions: number;
-      total_messages: number;
       last_chat_date: string | null;
     };
 
+    // Get total message count with proper JOIN
+    const messageResult = db.prepare(`
+      SELECT COUNT(lcm.id) as total_messages
+      FROM lesson_chat_messages lcm
+      INNER JOIN lesson_chat_sessions lcs ON lcm.session_id = lcs.id
+      WHERE lcs.student_id = ?
+    `).get(studentId) as { total_messages: number };
+
     return {
-      totalSessions: result.total_sessions || 0,
-      totalMessages: result.total_messages || 0,
-      lastChatDate: result.last_chat_date,
+      totalSessions: sessionResult.total_sessions || 0,
+      totalMessages: messageResult.total_messages || 0,
+      lastChatDate: sessionResult.last_chat_date,
     };
   },
 
@@ -235,6 +240,7 @@ export const studentStatsQueries = {
   /**
    * Get activity summary for multiple students in a single batch query
    * Used for the Activity Pulse feature in the student grid
+   * Uses efficient JOINs to avoid N+1 queries
    */
   getActivitySummaryBatch(studentIds: string[]): ActivitySummary[] {
     if (studentIds.length === 0) return [];
@@ -242,68 +248,74 @@ export const studentStatsQueries = {
     const db = getDb();
     const placeholders = studentIds.map(() => '?').join(',');
 
-    const rows = db.prepare(`
+    // Query 1: Get last activity for each student
+    const activityRows = db.prepare(`
       SELECT
-        s.student_id,
-        MAX(s.last_activity) as last_activity,
-        COALESCE(p.pending_homework, 0) as pending_homework,
-        COALESCE(c.total_messages, 0) as total_messages
-      FROM (
-        -- Get all student IDs with their last activity
-        SELECT
-          u.id as student_id,
-          MAX(COALESCE(lcs.updated_at, hs.submitted_at)) as last_activity
-        FROM users u
-        LEFT JOIN lesson_chat_sessions lcs ON lcs.student_id = u.id
-        LEFT JOIN homework_submissions hs ON hs.student_id = u.id
-        WHERE u.id IN (${placeholders})
-        GROUP BY u.id
-      ) s
-      LEFT JOIN (
-        -- Count pending homework (assigned but not submitted)
-        SELECT
-          ph.student_id,
-          COUNT(*) - COUNT(hs.id) as pending_homework
-        FROM personalized_homework ph
-        LEFT JOIN homework_submissions hs ON hs.personalized_homework_id = ph.id AND hs.student_id = ph.student_id
-        WHERE ph.student_id IN (${placeholders})
-        GROUP BY ph.student_id
-      ) p ON p.student_id = s.student_id
-      LEFT JOIN (
-        -- Count total chat messages
-        SELECT
-          lcs.student_id,
-          COUNT(lcm.id) as total_messages
-        FROM lesson_chat_sessions lcs
-        JOIN lesson_chat_messages lcm ON lcm.session_id = lcs.id
-        WHERE lcs.student_id IN (${placeholders})
-        GROUP BY lcs.student_id
-      ) c ON c.student_id = s.student_id
-    `).all(...studentIds, ...studentIds, ...studentIds) as Array<{
+        u.id as student_id,
+        MAX(
+          CASE
+            WHEN lcs.updated_at IS NOT NULL AND (hs.submitted_at IS NULL OR lcs.updated_at > hs.submitted_at)
+              THEN lcs.updated_at
+            WHEN hs.submitted_at IS NOT NULL
+              THEN hs.submitted_at
+            ELSE NULL
+          END
+        ) as last_activity
+      FROM users u
+      LEFT JOIN lesson_chat_sessions lcs ON lcs.student_id = u.id
+      LEFT JOIN homework_submissions hs ON hs.student_id = u.id
+      WHERE u.id IN (${placeholders})
+      GROUP BY u.id
+    `).all(...studentIds) as Array<{
       student_id: string;
       last_activity: string | null;
+    }>;
+
+    // Query 2: Count pending homework for each student
+    const pendingRows = db.prepare(`
+      SELECT
+        ph.student_id,
+        COUNT(ph.id) - COUNT(hs.id) as pending_homework
+      FROM personalized_homework ph
+      LEFT JOIN homework_submissions hs ON hs.personalized_homework_id = ph.id
+      WHERE ph.student_id IN (${placeholders})
+      GROUP BY ph.student_id
+    `).all(...studentIds) as Array<{
+      student_id: string;
       pending_homework: number;
+    }>;
+
+    // Query 3: Count total messages for each student (with proper JOIN)
+    const messageRows = db.prepare(`
+      SELECT
+        lcs.student_id,
+        COUNT(lcm.id) as total_messages
+      FROM lesson_chat_sessions lcs
+      INNER JOIN lesson_chat_messages lcm ON lcm.session_id = lcs.id
+      WHERE lcs.student_id IN (${placeholders})
+      GROUP BY lcs.student_id
+    `).all(...studentIds) as Array<{
+      student_id: string;
       total_messages: number;
     }>;
 
-    // Create a map for quick lookup
-    const resultMap = new Map<string, ActivitySummary>();
-    rows.forEach(row => {
-      resultMap.set(row.student_id, {
-        studentId: row.student_id,
-        lastActivity: row.last_activity,
-        pendingHomework: row.pending_homework,
-        totalChatMessages: row.total_messages,
-      });
-    });
+    // Build maps for quick lookup
+    const activityMap = new Map<string, string | null>();
+    activityRows.forEach(r => activityMap.set(r.student_id, r.last_activity));
 
-    // Ensure all requested students are included (with defaults if no data)
-    return studentIds.map(id => resultMap.get(id) || {
+    const pendingMap = new Map<string, number>();
+    pendingRows.forEach(r => pendingMap.set(r.student_id, r.pending_homework));
+
+    const messageMap = new Map<string, number>();
+    messageRows.forEach(r => messageMap.set(r.student_id, r.total_messages));
+
+    // Combine results for all requested students
+    return studentIds.map(id => ({
       studentId: id,
-      lastActivity: null,
-      pendingHomework: 0,
-      totalChatMessages: 0,
-    });
+      lastActivity: activityMap.get(id) || null,
+      pendingHomework: Math.max(0, pendingMap.get(id) || 0),
+      totalChatMessages: messageMap.get(id) || 0,
+    }));
   },
 
   /**

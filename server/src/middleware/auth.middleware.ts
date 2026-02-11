@@ -46,6 +46,7 @@ export const authMiddleware = (
 /**
  * Role-based Authorization Middleware Factory
  * Creates middleware that checks if user has required role(s)
+ * Uses case-insensitive comparison to handle role string variations
  */
 export const requireRole = (...allowedRoles: UserRole[]) => {
   return (
@@ -58,10 +59,15 @@ export const requireRole = (...allowedRoles: UserRole[]) => {
       return;
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    // Normalize role comparison to uppercase for case-insensitivity
+    const userRole = req.user.role?.toUpperCase();
+    const normalizedAllowedRoles = allowedRoles.map(r => r.toUpperCase());
+
+    if (!userRole || !normalizedAllowedRoles.includes(userRole)) {
+      console.log(`[Auth] Role mismatch - User role: "${req.user.role}", Required: ${allowedRoles.join(', ')}`);
       res.status(403).json({
         error: 'Access denied',
-        message: `This action requires one of these roles: ${allowedRoles.join(', ')}`,
+        message: `This action requires one of these roles: ${allowedRoles.join(', ')}. Your role: ${req.user.role || 'none'}`,
       });
       return;
     }

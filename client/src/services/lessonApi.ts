@@ -133,6 +133,31 @@ class LessonApiService {
   }
 
   /**
+   * Validate auth token for streaming - throws if invalid
+   */
+  private validateStreamAuth(): string {
+    const token = authApi.getToken();
+    if (!token) {
+      throw new Error('Not authenticated. Please log in again.');
+    }
+
+    // Check if token is expired
+    if (authApi.isTokenExpired()) {
+      authApi.clearAll();
+      throw new Error('Session expired. Please log in again.');
+    }
+
+    // Validate role
+    const decoded = decodeToken(token);
+    if (!decoded?.role || decoded.role.toUpperCase() !== 'TEACHER') {
+      console.error('[LessonAPI] Stream auth failed - Token role:', decoded?.role);
+      throw new Error(`Access denied. You need teacher permissions. Current role: ${decoded?.role || 'none'}. Please log out and log in again as a teacher.`);
+    }
+
+    return token;
+  }
+
+  /**
    * Generate master content using AI (streaming)
    * Returns an async generator that yields text chunks
    */
@@ -140,13 +165,13 @@ class LessonApiService {
     topic: string,
     subject?: string
   ): AsyncGenerator<{ text: string; done: boolean }> {
-    const token = authApi.getToken();
-    if (!token) {
-      throw new Error('Not authenticated. Please log in again.');
-    }
+    // Validate auth before starting stream
+    const token = this.validateStreamAuth();
 
     const params = new URLSearchParams({ topic });
     if (subject) params.append('subject', subject);
+
+    console.log('[LessonAPI] Starting lesson content stream...');
 
     const response = await fetch(`${API_BASE}/lessons/generate-content/stream?${params}`, {
       headers: {
@@ -155,7 +180,27 @@ class LessonApiService {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to start stream: ${response.status}`);
+      // Get detailed error message
+      let errorMsg = `Failed to start stream: ${response.status}`;
+      try {
+        const errorBody = await response.text();
+        if (errorBody) {
+          const parsed = JSON.parse(errorBody);
+          errorMsg = parsed.error || parsed.message || errorMsg;
+        }
+      } catch {
+        // Use default error message
+      }
+
+      if (response.status === 403) {
+        throw new Error('Access denied. Please log out and log in again as a teacher.');
+      }
+      if (response.status === 401) {
+        authApi.clearAll();
+        throw new Error('Session expired. Please log in again.');
+      }
+
+      throw new Error(errorMsg);
     }
 
     if (!response.body) {
@@ -277,13 +322,13 @@ class LessonApiService {
     topic: string,
     subject?: string
   ): AsyncGenerator<{ text: string; done: boolean }> {
-    const token = authApi.getToken();
-    if (!token) {
-      throw new Error('Not authenticated. Please log in again.');
-    }
+    // Validate auth before starting stream
+    const token = this.validateStreamAuth();
 
     const params = new URLSearchParams({ topic });
     if (subject) params.append('subject', subject);
+
+    console.log('[LessonAPI] Starting homework content stream...');
 
     const response = await fetch(`${API_BASE}/homework/generate-content/stream?${params}`, {
       headers: {
@@ -292,7 +337,27 @@ class LessonApiService {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to start stream: ${response.status}`);
+      // Get detailed error message
+      let errorMsg = `Failed to start stream: ${response.status}`;
+      try {
+        const errorBody = await response.text();
+        if (errorBody) {
+          const parsed = JSON.parse(errorBody);
+          errorMsg = parsed.error || parsed.message || errorMsg;
+        }
+      } catch {
+        // Use default error message
+      }
+
+      if (response.status === 403) {
+        throw new Error('Access denied. Please log out and log in again as a teacher.');
+      }
+      if (response.status === 401) {
+        authApi.clearAll();
+        throw new Error('Session expired. Please log in again.');
+      }
+
+      throw new Error(errorMsg);
     }
 
     if (!response.body) {

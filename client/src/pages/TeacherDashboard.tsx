@@ -13,19 +13,59 @@ import { ClassroomManager } from '@/components/teacher/ClassroomManager';
 type Tab = 'dashboard' | 'students' | 'classrooms' | 'lessons' | 'homework' | 'assistant';
 
 function TeacherDashboardContent() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isInitializing, refreshUser } = useAuth();
   const { loadInterventionAlerts } = useTeacherContext();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [roleValidated, setRoleValidated] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
+
+  // Pre-flight role validation on mount
+  useEffect(() => {
+    const validateRole = async () => {
+      // Wait for initialization to complete
+      if (isInitializing) return;
+
+      // If no user, will redirect anyway
+      if (!user) {
+        setRoleValidated(true);
+        return;
+      }
+
+      // Check role (case-insensitive)
+      const normalizedRole = user.role?.toUpperCase();
+      if (normalizedRole !== 'TEACHER') {
+        console.error('[TeacherDashboard] Role mismatch:', user.role);
+        setRoleError(`Access denied. Your role is "${user.role}" but TEACHER is required.`);
+        setRoleValidated(true);
+        return;
+      }
+
+      // Refresh user data to ensure sync with server
+      try {
+        await refreshUser();
+        console.log('[TeacherDashboard] Role validated successfully');
+      } catch (err) {
+        console.error('[TeacherDashboard] Failed to refresh user:', err);
+      }
+
+      setRoleValidated(true);
+    };
+
+    validateRole();
+  }, [isInitializing, user, refreshUser]);
 
   useEffect(() => {
-    loadInterventionAlerts();
-  }, [loadInterventionAlerts]);
+    if (roleValidated && user?.role?.toUpperCase() === 'TEACHER') {
+      loadInterventionAlerts();
+    }
+  }, [roleValidated, user, loadInterventionAlerts]);
 
   const handleViewStudent = (_studentId: string) => {
     setActiveTab('students');
   };
 
-  if (authLoading) {
+  // Show loading while initializing or validating role
+  if (authLoading || isInitializing || !roleValidated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400" />
@@ -33,7 +73,31 @@ function TeacherDashboardContent() {
     );
   }
 
-  if (!user || user.role !== 'TEACHER') {
+  // Show role error
+  if (roleError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="glass-card p-8 max-w-md text-center">
+          <div className="w-16 h-16 mx-auto mb-4 backdrop-blur-md bg-red-500/30 border border-red-400/30 rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-solid mb-2">Access Denied</h2>
+          <p className="text-prominent mb-4">{roleError}</p>
+          <button
+            onClick={() => window.location.href = '/login'}
+            className="px-4 py-2 backdrop-blur-md bg-blue-500/30 border border-blue-400/30 rounded-xl text-blue-100 hover:bg-blue-500/40"
+          >
+            Return to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Check role (case-insensitive)
+  if (!user || user.role?.toUpperCase() !== 'TEACHER') {
     return <Navigate to="/login" replace />;
   }
 

@@ -15,12 +15,14 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitializing: boolean;
+  isReady: boolean; // True when auth state is fully loaded and validated
   error: string | null;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
   refreshUser: () => Promise<void>;
+  waitForAuth: () => Promise<boolean>; // Wait for auth to be ready, returns isAuthenticated
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -181,18 +183,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [logout]);
 
+  // Wait for auth to be ready - useful for components that need to ensure auth is loaded
+  const waitForAuth = useCallback(async (): Promise<boolean> => {
+    // If already initialized, return current state
+    if (!isInitializing) {
+      return isAuthenticated;
+    }
+
+    // Wait for initialization to complete
+    return new Promise((resolve) => {
+      const checkInterval = setInterval(() => {
+        // Check if still initializing by looking at authApi state
+        if (!isInitializing) {
+          clearInterval(checkInterval);
+          resolve(!!user);
+        }
+      }, 50);
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        resolve(!!user);
+      }, 5000);
+    });
+  }, [isInitializing, isAuthenticated, user]);
+
+  // isReady = not initializing and we have a definitive auth state
+  const isReady = !isInitializing;
+
   const value: AuthContextType = {
     user,
     profile,
     isAuthenticated,
     isLoading,
     isInitializing,
+    isReady,
     error,
     login,
     register,
     logout,
     clearError,
     refreshUser,
+    waitForAuth,
   };
 
   // Show loading spinner while initializing
