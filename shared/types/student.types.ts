@@ -113,3 +113,52 @@ export interface InterventionAlert {
   recommendedAction: string;
   createdAt: string;
 }
+
+// 360-Degree Student Stats (for Student Oversight System)
+export interface RecentLessonChat {
+  id: string;
+  lessonTitle: string;
+  lessonTopic: string;
+  subject: string | null;
+  messageCount: number;
+  lastActivity: string;
+}
+
+export interface RecentHomework {
+  id: string;
+  title: string;
+  topic: string;
+  subject: string | null;
+  status: 'pending' | 'submitted' | 'graded';
+  grade: number | null;
+  submittedAt: string | null;
+  dueDate: string | null;
+}
+
+export interface StudentStats {
+  // Chat Activity
+  chatHistoryCount: number;
+  lessonChatsCompleted: number;
+  lastChatDate: string | null;
+
+  // Homework Status
+  homeworkAssigned: number;
+  homeworkSubmitted: number;
+  homeworkPending: number;
+  homeworkGraded: number;
+  averageGrade: number | null;
+
+  // Session List (for drill-down)
+  recentSessions: RecentLessonChat[];
+
+  // Homework Details
+  recentHomework: RecentHomework[];
+}
+
+// Activity Summary for Grid View (Activity Pulse)
+export interface ActivitySummary {
+  studentId: string;
+  lastActivity: string | null;
+  pendingHomework: number;
+  totalChatMessages: number;
+}

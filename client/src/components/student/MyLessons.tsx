@@ -170,7 +170,7 @@ export function MyLessons() {
                   <h3 className="font-semibold text-solid mb-1">{lesson.lesson.title}</h3>
                   <p className="text-sm text-prominent mb-3">{lesson.lesson.topic}</p>
                   <div className="flex items-center justify-between text-xs text-subtle">
-                    <span>By {lesson.lesson.teacherName}</span>
+                    <span>{t('common.by')} {lesson.lesson.teacherName}</span>
                     <span>
                       {new Date(lesson.createdAt).toLocaleDateString()}
                     </span>

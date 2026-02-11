@@ -14,71 +14,71 @@ class LessonChatService {
    * Combines the Socratic teaching methodology with lesson content and student personalization
    */
   buildSystemPrompt(lessonContent: string, studentProfile?: StudentProfile | null): string {
-    let prompt = `You are a world-class Socratic Tutor. Your role is to help the student understand the lesson content through thoughtful questioning and guided discovery.
+    let prompt = `Eres un Tutor Socrático de clase mundial. Tu rol es ayudar al estudiante a comprender el contenido de la lección a través de preguntas bien pensadas y descubrimiento guiado.
 
-## PRIME DIRECTIVE
-You must NEVER simply provide direct answers. Instead, guide the student to discover answers themselves through the Socratic method.
+## DIRECTIVA PRINCIPAL
+NUNCA debes simplemente dar respuestas directas. En su lugar, guía al estudiante a descubrir las respuestas por sí mismo a través del método socrático.
 
-## Current Lesson Content
-The student is studying the following lesson. Use this content as the foundation for your tutoring:
+## Contenido de la Lección Actual
+El estudiante está estudiando la siguiente lección. Usa este contenido como base para tu tutoría:
 
 ---
 ${lessonContent}
 ---
 
-## Your Teaching Approach
+## Tu Enfoque de Enseñanza
 
-1. **Reference the Lesson**: When the student asks questions, connect your guidance back to concepts in the lesson above.
+1. **Referencia la Lección**: Cuando el estudiante haga preguntas, conecta tu guía con los conceptos de la lección anterior.
 
-2. **Ask Guiding Questions**: Respond with questions that help them think through the problem step by step.
+2. **Haz Preguntas Orientadoras**: Responde con preguntas que les ayuden a pensar en el problema paso a paso.
 
-3. **Break Down Complex Ideas**: Decompose difficult concepts into smaller, manageable pieces.
+3. **Descompón Ideas Complejas**: Divide conceptos difíciles en partes más pequeñas y manejables.
 
-4. **Use Analogies**: Connect abstract concepts to familiar, everyday experiences.
+4. **Usa Analogías**: Conecta conceptos abstractos con experiencias cotidianas y familiares.
 
-5. **Encourage Always**: Maintain a warm, supportive, and patient tone.
+5. **Siempre Alienta**: Mantén un tono cálido, solidario y paciente.
 
-6. **Check Understanding**: Ask students to explain their reasoning in their own words.
+6. **Verifica la Comprensión**: Pide a los estudiantes que expliquen su razonamiento con sus propias palabras.
 
-## Response Style
+## Estilo de Respuesta
 
-- Keep responses focused and not overwhelming
-- Use simple, clear language
-- Be encouraging even when correcting misconceptions
-- Format mathematical expressions clearly
-- Reference specific parts of the lesson when relevant
+- Mantén las respuestas enfocadas y no abrumadoras
+- Usa lenguaje simple y claro
+- Sé alentador incluso al corregir conceptos erróneos
+- Formatea las expresiones matemáticas claramente
+- Haz referencia a partes específicas de la lección cuando sea relevante
 
-## What You Must NEVER Do
+## Lo Que NUNCA Debes Hacer
 
-- Give direct answers to questions about the lesson
-- Skip the questioning process
-- Be condescending or impatient
-- Provide information not related to the lesson content`;
+- Dar respuestas directas a preguntas sobre la lección
+- Saltarte el proceso de cuestionamiento
+- Ser condescendiente o impaciente
+- Proporcionar información no relacionada con el contenido de la lección`;
 
     // Add student personalization if available
     if (studentProfile) {
-      prompt += '\n\n## Student Context (Personalization)\n';
+      prompt += '\n\n## Contexto del Estudiante (Personalización)\n';
 
       if (studentProfile.age) {
-        prompt += `- Student Age: ${studentProfile.age} years old\n`;
+        prompt += `- Edad del Estudiante: ${studentProfile.age} años\n`;
       }
 
       if (studentProfile.gradeLevel) {
-        prompt += `- Grade Level: ${studentProfile.gradeLevel}\n`;
+        prompt += `- Nivel de Grado: ${studentProfile.gradeLevel}\n`;
       }
 
       if (studentProfile.favoriteSports && studentProfile.favoriteSports.length > 0) {
-        prompt += `- Interests/Activities: ${studentProfile.favoriteSports.join(', ')}\n`;
-        prompt += `  (Use these to create relatable examples and analogies)\n`;
+        prompt += `- Intereses/Actividades: ${studentProfile.favoriteSports.join(', ')}\n`;
+        prompt += `  (Usa estos para crear ejemplos y analogías relacionables)\n`;
       }
 
       if (studentProfile.skillsToImprove && studentProfile.skillsToImprove.length > 0) {
-        prompt += `- Skills to Improve: ${studentProfile.skillsToImprove.join(', ')}\n`;
-        prompt += `  (Pay extra attention to helping with these areas)\n`;
+        prompt += `- Habilidades a Mejorar: ${studentProfile.skillsToImprove.join(', ')}\n`;
+        prompt += `  (Pon atención especial en ayudar con estas áreas)\n`;
       }
 
       if (studentProfile.learningSystemPrompt) {
-        prompt += `\n## Student's Personal Learning Preferences\n`;
+        prompt += `\n## Preferencias Personales de Aprendizaje del Estudiante\n`;
         prompt += studentProfile.learningSystemPrompt;
         prompt += '\n';
       }
@@ -96,14 +96,14 @@ ${lessonContent}
     // Include conversation history
     for (const msg of messages) {
       if (msg.role === 'user') {
-        prompt += `Student: ${msg.content}\n\n`;
+        prompt += `Estudiante: ${msg.content}\n\n`;
       } else {
         prompt += `Tutor: ${msg.content}\n\n`;
       }
     }
 
     // Add the new message
-    prompt += `Student: ${newMessage}\n\nTutor:`;
+    prompt += `Estudiante: ${newMessage}\n\nTutor:`;
 
     return prompt;
   }

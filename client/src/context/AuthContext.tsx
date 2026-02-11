@@ -14,6 +14,7 @@ interface AuthContextType {
   profile: StudentProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitializing: boolean;
   error: string | null;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
@@ -29,9 +30,11 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<StudentProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize with stored data for instant hydration (no flash)
+  const [user, setUser] = useState<User | null>(() => authApi.getStoredUser());
+  const [profile, setProfile] = useState<StudentProfile | null>(() => authApi.getStoredProfile());
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,23 +46,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return role === 'TEACHER' ? '/dashboard/teacher' : '/dashboard/student';
   };
 
-  // Check authentication on mount
+  // Check and validate authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
+      // If no valid token, clear any stale data and finish
       if (!authApi.isAuthenticated()) {
-        setIsLoading(false);
+        setUser(null);
+        setProfile(null);
+        authApi.clearAll();
+        setIsInitializing(false);
         return;
       }
 
+      // We have a valid token - validate with server and get fresh data
       try {
         const { user: currentUser, profile: currentProfile } = await authApi.getCurrentUser();
         setUser(currentUser);
         setProfile(currentProfile);
+        console.log('[Auth] Session restored for:', currentUser.email);
       } catch (err) {
-        // Token invalid, clear it
-        authApi.removeToken();
+        // Token invalid or expired, clear everything
+        console.log('[Auth] Session validation failed, clearing auth data');
+        setUser(null);
+        setProfile(null);
+        authApi.clearAll();
       } finally {
-        setIsLoading(false);
+        setIsInitializing(false);
       }
     };
 
@@ -68,7 +80,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Redirect to login if not authenticated (except for public routes)
   useEffect(() => {
-    if (isLoading) return;
+    // Wait for initialization to complete before redirecting
+    if (isInitializing) return;
 
     const publicRoutes = ['/login', '/register', '/admin'];
     const isPublicRoute = publicRoutes.some(route => location.pathname.startsWith(route));
@@ -76,7 +89,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!isAuthenticated && !isPublicRoute && location.pathname !== '/') {
       navigate('/login', { state: { from: location.pathname } });
     }
-  }, [isAuthenticated, isLoading, location.pathname, navigate]);
+  }, [isAuthenticated, isInitializing, location.pathname, navigate]);
 
   const login = useCallback(async (data: LoginRequest) => {
     setIsLoading(true);
@@ -86,10 +99,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await authApi.login(data);
       setUser(response.user);
 
-      // Fetch profile if student
+      // Fetch profile if student (this also stores it in localStorage via getCurrentUser)
       if (response.user.role === 'STUDENT') {
         const { profile: userProfile } = await authApi.getCurrentUser();
         setProfile(userProfile);
+      } else {
+        setProfile(null);
+        authApi.setStoredProfile(null);
       }
 
       // Navigate to appropriate dashboard
@@ -112,10 +128,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await authApi.register(data);
       setUser(response.user);
 
-      // Fetch profile if student
+      // Fetch profile if student (this also stores it in localStorage via getCurrentUser)
       if (response.user.role === 'STUDENT') {
         const { profile: userProfile } = await authApi.getCurrentUser();
         setProfile(userProfile);
+      } else {
+        setProfile(null);
+        authApi.setStoredProfile(null);
       }
 
       // Navigate to appropriate dashboard
@@ -134,6 +153,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     try {
       await authApi.logout();
+    } catch {
+      // Even if logout API fails, clear local state
+      authApi.clearAll();
     } finally {
       setUser(null);
       setProfile(null);
@@ -164,6 +186,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     profile,
     isAuthenticated,
     isLoading,
+    isInitializing,
     error,
     login,
     register,
@@ -171,6 +194,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearError,
     refreshUser,
   };
+
+  // Show loading spinner while initializing
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          {/* Liquid Glass style spinner */}
+          <div className="relative w-16 h-16 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full backdrop-blur-xl bg-white/20 border border-white/30 animate-pulse" />
+            <div className="absolute inset-2 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+          </div>
+          <p className="text-white/70 text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

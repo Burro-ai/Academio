@@ -190,7 +190,7 @@ export function MyHomework() {
                           <h3 className="font-semibold text-solid mb-1">{hw.homework.title}</h3>
                           <p className="text-sm text-prominent mb-3">{hw.homework.topic}</p>
                           <div className="flex items-center justify-between text-xs text-subtle">
-                            <span>By {hw.homework.teacherName}</span>
+                            <span>{t('common.by')} {hw.homework.teacherName}</span>
                             <span>
                               {new Date(hw.createdAt).toLocaleDateString()}
                             </span>

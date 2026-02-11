@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { GlassCard, GlassButton } from '@/components/glass';
 import { studentApi } from '@/services/studentApi';
 import { User } from '@/types';
 
 export function FindTeacher() {
+  const { t } = useTranslation();
   const { profile, refreshUser } = useAuth();
   const [teachers, setTeachers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,11 +36,11 @@ export function FindTeacher() {
     try {
       await studentApi.setTeacher(teacherId);
       await refreshUser();
-      setMessage({ type: 'success', text: 'Teacher selected successfully! Your teacher can now see your profile.' });
+      setMessage({ type: 'success', text: t('student.findTeacher.successSelect') });
     } catch (err) {
       setMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : 'Failed to select teacher',
+        text: err instanceof Error ? err.message : t('errors.generic'),
       });
     } finally {
       setIsSaving(false);
@@ -52,11 +54,11 @@ export function FindTeacher() {
     try {
       await studentApi.setTeacher(null);
       await refreshUser();
-      setMessage({ type: 'success', text: 'Teacher removed from your profile.' });
+      setMessage({ type: 'success', text: t('student.findTeacher.successRemove') });
     } catch (err) {
       setMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : 'Failed to remove teacher',
+        text: err instanceof Error ? err.message : t('errors.generic'),
       });
     } finally {
       setIsSaving(false);
@@ -84,9 +86,9 @@ export function FindTeacher() {
       >
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-solid">Find Your Teacher</h1>
+          <h1 className="text-2xl font-bold text-solid">{t('student.findTeacher.title')}</h1>
           <p className="text-prominent mt-1">
-            Select your teacher so they can see your profile and personalize lessons for you
+            {t('student.findTeacher.subtitle')}
           </p>
         </div>
 
@@ -108,7 +110,7 @@ export function FindTeacher() {
         {/* Current Teacher */}
         {currentTeacher && (
           <GlassCard variant="card" className="p-6">
-            <h2 className="text-lg font-semibold text-solid mb-4">Your Current Teacher</h2>
+            <h2 className="text-lg font-semibold text-solid mb-4">{t('student.findTeacher.currentTeacher')}</h2>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 backdrop-blur-md bg-blue-500/30 border border-blue-400/30 rounded-full flex items-center justify-center shadow-glass">
@@ -126,7 +128,7 @@ export function FindTeacher() {
                 onClick={handleRemoveTeacher}
                 disabled={isSaving}
               >
-                {isSaving ? 'Removing...' : 'Remove Teacher'}
+                {isSaving ? t('common.loading') : t('student.findTeacher.removeTeacher')}
               </GlassButton>
             </div>
           </GlassCard>
@@ -135,12 +137,12 @@ export function FindTeacher() {
         {/* Available Teachers */}
         <GlassCard variant="card" className="p-6">
           <h2 className="text-lg font-semibold text-solid mb-4">
-            {currentTeacher ? 'Switch to a Different Teacher' : 'Available Teachers'}
+            {currentTeacher ? t('student.findTeacher.switchTeacher') : t('student.findTeacher.availableTeachers')}
           </h2>
 
           {teachers.length === 0 ? (
             <p className="text-prominent text-center py-8">
-              No teachers available yet. Check back later.
+              {t('student.findTeacher.noTeachersAvailable')}
             </p>
           ) : (
             <div className="space-y-3">
@@ -181,7 +183,7 @@ export function FindTeacher() {
                       </div>
                       {isSelected ? (
                         <span className="px-3 py-1 text-sm font-medium backdrop-blur-sm bg-blue-500/30 border border-blue-400/40 rounded-full text-blue-100">
-                          Selected
+                          {t('student.findTeacher.selected')}
                         </span>
                       ) : (
                         <GlassButton
@@ -189,7 +191,7 @@ export function FindTeacher() {
                           onClick={() => handleSelectTeacher(teacher.id)}
                           disabled={isSaving}
                         >
-                          {isSaving ? 'Selecting...' : 'Select'}
+                          {isSaving ? t('student.findTeacher.selecting') : t('student.findTeacher.select')}
                         </GlassButton>
                       )}
                     </div>
@@ -217,12 +219,12 @@ export function FindTeacher() {
               />
             </svg>
             <div className="text-sm text-prominent">
-              <p className="font-medium text-solid mb-1">What happens when you select a teacher?</p>
+              <p className="font-medium text-solid mb-1">{t('student.findTeacher.whatHappens.title')}</p>
               <ul className="list-disc list-inside space-y-1 text-subtle">
-                <li>Your teacher will see your profile in their student list</li>
-                <li>They can create personalized lessons and homework for you</li>
-                <li>The AI tutor will use your preferences to customize learning</li>
-                <li>You can change your teacher at any time</li>
+                <li>{t('student.findTeacher.whatHappens.item1')}</li>
+                <li>{t('student.findTeacher.whatHappens.item2')}</li>
+                <li>{t('student.findTeacher.whatHappens.item3')}</li>
+                <li>{t('student.findTeacher.whatHappens.item4')}</li>
               </ul>
             </div>
           </div>

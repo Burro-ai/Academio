@@ -1,18 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { GlassCard, GlassButton, GlassInput } from '@/components/glass';
 import { lessonApi } from '@/services/lessonApi';
 import { teacherApi } from '@/services/teacherApi';
 import { LessonWithTeacher, Classroom } from '@/types';
 
-const SUBJECTS = [
-  { id: 'math', label: 'Math' },
-  { id: 'science', label: 'Science' },
-  { id: 'history', label: 'History' },
-  { id: 'english', label: 'English' },
-  { id: 'geography', label: 'Geography' },
-  { id: 'general', label: 'General' },
-];
+// Subject keys map to translation keys in topics.*
+const SUBJECT_KEYS = ['math', 'science', 'history', 'english', 'geography', 'general'];
 
 interface LessonCreatorProps {
   onBack: () => void;
@@ -20,6 +15,7 @@ interface LessonCreatorProps {
 }
 
 export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [topic, setTopic] = useState('');
   const [subject, setSubject] = useState('');
@@ -38,7 +34,7 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
 
   const handleGenerateContent = async () => {
     if (!topic) {
-      setError('Please enter a topic first');
+      setError(t('teacher.lessons.form.topicRequired', 'El tema es requerido'));
       return;
     }
 
@@ -57,7 +53,7 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate content');
+      setError(err instanceof Error ? err.message : t('errors.generic'));
     } finally {
       setIsGenerating(false);
     }
@@ -65,7 +61,7 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
 
   const handleCreate = async () => {
     if (!title || !topic) {
-      setError('Title and topic are required');
+      setError(t('teacher.lessons.form.titleTopicRequired', 'El título y tema son requeridos'));
       return;
     }
 
@@ -84,7 +80,7 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
 
       onCreated(lesson as LessonWithTeacher);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create lesson');
+      setError(err instanceof Error ? err.message : t('errors.generic'));
       setIsCreating(false);
     }
   };
@@ -107,8 +103,8 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
             </svg>
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-solid">Create Lesson</h1>
-            <p className="text-prominent">Create a new lesson for your students</p>
+            <h1 className="text-2xl font-bold text-solid">{t('teacher.lessons.createNew')}</h1>
+            <p className="text-prominent">{t('teacher.lessons.subtitle')}</p>
           </div>
         </div>
 
@@ -125,48 +121,48 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
 
         {/* Basic Info */}
         <GlassCard variant="card" className="p-6">
-          <h2 className="text-lg font-semibold text-solid mb-4">Lesson Details</h2>
+          <h2 className="text-lg font-semibold text-solid mb-4">{t('teacher.lessons.details')}</h2>
 
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-prominent mb-1.5">
-                Title *
+                {t('teacher.lessons.form.titleLabel')}
               </label>
               <GlassInput
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Introduction to Fractions"
+                placeholder={t('teacher.lessons.form.titlePlaceholder')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-prominent mb-1.5">
-                Topic *
+                {t('teacher.lessons.form.topicLabel')}
               </label>
               <GlassInput
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g., Understanding basic fractions and their parts"
+                placeholder={t('teacher.lessons.form.topicPlaceholder')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-prominent mb-1.5">
-                Subject
+                {t('teacher.lessons.form.subjectLabel')}
               </label>
               <div className="flex flex-wrap gap-2">
-                {SUBJECTS.map((s) => (
+                {SUBJECT_KEYS.map((subjectKey) => (
                   <button
-                    key={s.id}
+                    key={subjectKey}
                     type="button"
-                    onClick={() => setSubject(subject === s.id ? '' : s.id)}
+                    onClick={() => setSubject(subject === subjectKey ? '' : subjectKey)}
                     className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                      subject === s.id
+                      subject === subjectKey
                         ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/40 text-blue-100'
                         : 'backdrop-blur-md bg-white/10 border border-white/20 text-prominent hover:bg-white/20'
                     }`}
                   >
-                    {s.label}
+                    {t(`topics.${subjectKey}`)}
                   </button>
                 ))}
               </div>
@@ -174,22 +170,22 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
 
             <div>
               <label className="block text-sm font-medium text-prominent mb-1.5">
-                Send to Classroom
+                {t('teacher.lessons.form.sendToClassroom')}
               </label>
               <select
                 value={classroomId}
                 onChange={(e) => setClassroomId(e.target.value)}
                 className="w-full px-4 py-2.5 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-solid focus:outline-none focus:ring-2 focus:ring-white/30"
               >
-                <option value="">All students</option>
+                <option value="">{t('teacher.lessons.form.allStudents')}</option>
                 {classrooms.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} {c.subject ? `(${c.subject})` : ''} - {c.studentCount || 0} students
+                    {c.name} {c.subject ? `(${c.subject})` : ''} - {c.studentCount || 0} {t('nav.students').toLowerCase()}
                   </option>
                 ))}
               </select>
               <p className="text-xs text-subtle mt-1">
-                Select a classroom to send this lesson only to students in that class
+                {t('teacher.lessons.form.classroomHint')}
               </p>
             </div>
           </div>
@@ -198,7 +194,7 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
         {/* Content */}
         <GlassCard variant="card" className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-solid">Lesson Content</h2>
+            <h2 className="text-lg font-semibold text-solid">{t('teacher.lessons.content')}</h2>
             <GlassButton
               variant="default"
               onClick={handleGenerateContent}
@@ -210,14 +206,14 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Generating...
+                  {t('teacher.lessons.form.generating')}
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  Generate with AI
+                  {t('teacher.lessons.form.generateWithAI')}
                 </span>
               )}
             </GlassButton>
@@ -226,18 +222,18 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
           <textarea
             value={masterContent}
             onChange={(e) => setMasterContent(e.target.value)}
-            placeholder="Enter your lesson content here, or click 'Generate with AI' to create content automatically..."
+            placeholder={t('teacher.lessons.form.contentPlaceholder')}
             className="w-full h-64 px-4 py-3 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-solid placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-white/30 resize-none"
           />
 
           <p className="text-xs text-subtle mt-2">
-            This is the master content that will be personalized for each student based on their profile.
+            {t('teacher.lessons.form.masterContentHint')}
           </p>
         </GlassCard>
 
         {/* Options */}
         <GlassCard variant="card" className="p-6">
-          <h2 className="text-lg font-semibold text-solid mb-4">Options</h2>
+          <h2 className="text-lg font-semibold text-solid mb-4">{t('teacher.lessons.options')}</h2>
 
           <label className="flex items-center gap-3 cursor-pointer">
             <input
@@ -248,10 +244,10 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
             />
             <div>
               <span className="text-solid font-medium">
-                Automatically personalize for all students
+                {t('teacher.lessons.form.autoPersonalize')}
               </span>
               <p className="text-sm text-prominent">
-                The AI will create a personalized version for each student based on their profile
+                {t('teacher.lessons.form.autoPersonalizeHint')}
               </p>
             </div>
           </label>
@@ -260,7 +256,7 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
         {/* Actions */}
         <div className="flex justify-end gap-3">
           <GlassButton variant="default" onClick={onBack}>
-            Cancel
+            {t('common.cancel')}
           </GlassButton>
           <GlassButton
             variant="primary"
@@ -273,10 +269,10 @@ export function LessonCreator({ onBack, onCreated }: LessonCreatorProps) {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Creating...
+                {t('teacher.lessons.creating')}
               </span>
             ) : (
-              'Create Lesson'
+              t('teacher.lessons.createLesson')
             )}
           </GlassButton>
         </div>

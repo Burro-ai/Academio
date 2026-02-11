@@ -23,7 +23,8 @@
     "or": "o",
     "and": "y",
     "tryAgain": "Intentar de nuevo",
-    "signOut": "Cerrar sesión"
+    "signOut": "Cerrar sesión",
+    "by": "Por"
   },
 
   "auth": {
@@ -360,6 +361,58 @@
       "noMessages": "No hay mensajes en este chat",
       "startedAt": "Iniciado el {{date}}",
       "readOnlyNotice": "Esta es una vista de solo lectura de la conversación del estudiante"
+    },
+    "studentProfile": {
+      "backToStudents": "Regresar a estudiantes",
+      "tabs": {
+        "learningContext": "Contexto de Aprendizaje",
+        "chatTranscripts": "Transcripciones de Chat",
+        "academicPerformance": "Rendimiento Académico"
+      },
+      "learningContext": {
+        "title": "Perfil de Aprendizaje",
+        "age": "Edad",
+        "yearsOld": "años",
+        "interests": "Intereses",
+        "skillsToImprove": "Habilidades a Mejorar",
+        "learningPreferences": "Preferencias de Aprendizaje",
+        "struggleScore": "Indicador de Dificultad",
+        "lowStruggle": "Progresando bien",
+        "mediumStruggle": "Necesita apoyo",
+        "highStruggle": "Requiere intervención",
+        "interventionNeeded": "Este estudiante necesita atención"
+      },
+      "chatTranscripts": {
+        "title": "Historial de Conversaciones",
+        "totalMessages": "Total de mensajes",
+        "sessionsCompleted": "Sesiones completadas",
+        "lastActivity": "Última actividad"
+      },
+      "academicPerformance": {
+        "title": "Rendimiento Académico",
+        "homeworkCompletion": "Tareas Completadas",
+        "ofAssigned": "de {{total}} asignadas",
+        "averageGrade": "Calificación Promedio",
+        "recentHomework": "Tareas Recientes",
+        "gradesBySubject": "Calificaciones por Materia",
+        "pending": "Pendiente",
+        "submitted": "Entregada",
+        "graded": "Calificada",
+        "noGrades": "Sin calificaciones registradas",
+        "assignments": "{{count}} tareas"
+      },
+      "activityPulse": {
+        "active": "Activo recientemente",
+        "recent": "Actividad reciente",
+        "inactive": "Sin actividad reciente",
+        "pendingHomework": "{{count}} tareas pendientes"
+      },
+      "noData": "Sin actividad registrada",
+      "stats": {
+        "totalSessions": "Total de sesiones",
+        "questionsThisWeek": "Preguntas esta semana",
+        "struggleScore": "Indicador de dificultad"
+      }
     },
     "login": {
       "goToStudentPortal": "¿Eres estudiante? Ve al Portal de Estudiantes"

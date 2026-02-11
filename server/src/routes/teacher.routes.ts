@@ -3,6 +3,7 @@ import { teacherController } from '../controllers/teacher.controller';
 import { teacherChatController } from '../controllers/teacherChat.controller';
 import { lessonChatController } from '../controllers/lessonChat.controller';
 import { homeworkSubmissionController } from '../controllers/homeworkSubmission.controller';
+import { studentController } from '../controllers/student.controller';
 import { asyncHandler } from '../middleware/asyncHandler.middleware';
 import { authMiddleware, teacherOnly } from '../middleware/auth.middleware';
 import { teacherAuth } from '../middleware/teacherAuth.middleware';
@@ -45,6 +46,10 @@ router.get('/chat/sessions/:id', asyncHandler(teacherChatController.getSession))
 router.post('/chat/sessions', asyncHandler(teacherChatController.createSession));
 router.patch('/chat/sessions/:id', asyncHandler(teacherChatController.updateSession));
 router.delete('/chat/sessions/:id', asyncHandler(teacherChatController.deleteSession));
+
+// Student Stats (360-Degree View)
+router.get('/students/activity-summary', asyncHandler(studentController.getActivitySummary));
+router.get('/students/:studentId/stats', asyncHandler(studentController.getStudentStats));
 
 // Student Lesson Chats (Teacher Oversight)
 router.get('/students/:studentId/lesson-chats', asyncHandler(lessonChatController.getStudentLessonChats));

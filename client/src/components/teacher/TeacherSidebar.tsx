@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useTeacherContext } from '@/context/TeacherContext';
 
 interface TeacherSidebarProps {
@@ -6,12 +7,13 @@ interface TeacherSidebarProps {
 }
 
 export function TeacherSidebar({ activeTab, onTabChange }: TeacherSidebarProps) {
+  const { t } = useTranslation();
   const { teacher, logout, interventionAlerts } = useTeacherContext();
 
   const navItems = [
     {
       id: 'dashboard' as const,
-      label: 'Dashboard',
+      label: t('nav.dashboard'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -25,7 +27,7 @@ export function TeacherSidebar({ activeTab, onTabChange }: TeacherSidebarProps) 
     },
     {
       id: 'students' as const,
-      label: 'Students',
+      label: t('nav.students'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -40,7 +42,7 @@ export function TeacherSidebar({ activeTab, onTabChange }: TeacherSidebarProps) 
     },
     {
       id: 'assistant' as const,
-      label: 'AI Assistant',
+      label: t('nav.aiAssistant'),
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -66,7 +68,7 @@ export function TeacherSidebar({ activeTab, onTabChange }: TeacherSidebarProps) 
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-solid truncate">
-              {teacher?.name || 'Teacher'}
+              {teacher?.name || t('auth.teacher')}
             </p>
             <p className="text-xs text-prominent truncate">
               {teacher?.email || 'teacher@academio.com'}
@@ -112,7 +114,7 @@ export function TeacherSidebar({ activeTab, onTabChange }: TeacherSidebarProps) 
               d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
             />
           </svg>
-          <span className="font-medium">Sign Out</span>
+          <span className="font-medium">{t('common.signOut')}</span>
         </button>
       </div>
     </aside>

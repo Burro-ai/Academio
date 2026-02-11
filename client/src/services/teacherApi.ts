@@ -7,6 +7,8 @@ import {
   GradesBySubject,
   StudentActivity,
   StudentGrade,
+  StudentStats,
+  ActivitySummary,
   AddGradeRequest,
   ClassroomStats,
   InterventionAlert,
@@ -295,6 +297,16 @@ class TeacherApiService {
     return this.request(`/teacher/homework/submissions/${submissionId}/regenerate-ai`, {
       method: 'POST',
     });
+  }
+
+  // ============ Student Stats (360-Degree View) ============
+
+  async getStudentStats(studentId: string): Promise<StudentStats> {
+    return this.request<StudentStats>(`/teacher/students/${studentId}/stats`);
+  }
+
+  async getStudentsActivitySummary(): Promise<ActivitySummary[]> {
+    return this.request<ActivitySummary[]>('/teacher/students/activity-summary');
   }
 
   // ============ Student Lesson Chats (Oversight) ============

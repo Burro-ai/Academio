@@ -4,6 +4,7 @@ import { gradesService } from '../services/grades.service';
 import { learningAnalyticsService } from '../services/learningAnalytics.service';
 import { teachersQueries } from '../database/queries/teachers.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
+import { studentStatsQueries } from '../database/queries/studentStats.queries';
 import { CreateStudentRequest, UpdateStudentRequest, AddGradeRequest, JwtAuthenticatedRequest } from '../types';
 import { AppError } from '../middleware/errorHandler.middleware';
 
@@ -182,5 +183,51 @@ export const studentController = {
     }
 
     res.status(204).send();
+  },
+
+  /**
+   * Get comprehensive stats for a student (360-degree view)
+   * GET /api/teacher/students/:id/stats
+   */
+  async getStudentStats(req: Request, res: Response) {
+    const { id } = req.params;
+    const jwtReq = req as JwtAuthenticatedRequest;
+
+    // Verify teacher has access to this student
+    if (jwtReq.user && jwtReq.user.role === 'TEACHER') {
+      const studentProfile = studentProfilesQueries.getByUserId(id);
+      if (studentProfile && studentProfile.teacherId !== jwtReq.user.id) {
+        throw new AppError('Access denied: student not assigned to you', 403);
+      }
+    }
+
+    const stats = studentStatsQueries.getStudentStats(id);
+    res.json(stats);
+  },
+
+  /**
+   * Get activity summary for all students (batch query for Activity Pulse)
+   * GET /api/teacher/students/activity-summary
+   */
+  async getActivitySummary(req: Request, res: Response) {
+    const jwtReq = req as JwtAuthenticatedRequest;
+
+    // Get all students for this teacher
+    let studentIds: string[] = [];
+
+    if (jwtReq.user && jwtReq.user.role === 'TEACHER') {
+      const students = studentProfilesQueries.getByTeacherId(jwtReq.user.id);
+      studentIds = students.map(s => s.userId);
+    } else {
+      // Legacy fallback: get students for first teacher
+      const teachers = teachersQueries.getAll();
+      if (teachers.length > 0) {
+        const students = studentService.getStudentsByTeacher(teachers[0].id);
+        studentIds = students.map(s => s.id);
+      }
+    }
+
+    const activitySummary = studentStatsQueries.getActivitySummaryBatch(studentIds);
+    res.json(activitySummary);
   },
 };

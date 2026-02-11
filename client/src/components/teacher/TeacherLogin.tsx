@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTeacherContext } from '@/context/TeacherContext';
 
 export function TeacherLogin() {
+  const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -14,7 +16,7 @@ export function TeacherLogin() {
 
     const success = await login(password);
     if (!success) {
-      setError('Invalid password');
+      setError(t('auth.errors.invalidCredentials'));
     }
     setIsLoading(false);
   };
@@ -38,14 +40,14 @@ export function TeacherLogin() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Teacher Portal</h1>
-          <p className="text-gray-600 mt-2">Academio Learning Platform</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('teacher.portal')}</h1>
+          <p className="text-gray-600 mt-2">{t('teacher.platformName')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
+              {t('auth.password')}
             </label>
             <input
               type="password"
@@ -53,7 +55,7 @@ export function TeacherLogin() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors"
-              placeholder="Enter teacher password"
+              placeholder={t('auth.placeholders.password')}
               autoFocus
             />
           </div>
@@ -69,12 +71,12 @@ export function TeacherLogin() {
             disabled={isLoading || !password}
             className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isLoading ? 'Signing in...' : 'Sign In'}
+            {isLoading ? t('auth.signingIn') : t('auth.signIn')}
           </button>
         </form>
 
         <p className="text-center text-gray-500 text-sm mt-6">
-          Student? <a href="/" className="text-emerald-600 hover:underline">Go to Student Portal</a>
+          {t('teacher.login.goToStudentPortal')}
         </p>
       </div>
     </div>

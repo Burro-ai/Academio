@@ -21,103 +21,103 @@ const progressMap = new Map<string, PersonalizationProgress>();
 /**
  * Socratic personalization prompt - creates tailored problems with analogies and reflection questions
  */
-const SOCRATIC_PERSONALIZATION_PROMPT = `You are a Socratic tutor personalizing homework for a specific student.
+const SOCRATIC_PERSONALIZATION_PROMPT = `Eres un tutor socrático personalizando tareas para un estudiante específico.
 
-## Your Task
-Given the master homework and the student's profile, create a SHORT personalized addition that includes:
-1. **One Interest-Based Problem**: Reframe one problem using their interests ({INTERESTS})
-2. **One Reflection Question**: A Socratic question that helps them think about the "why" behind the concept
+## Tu Tarea
+Dado la tarea maestra y el perfil del estudiante, crea una BREVE adición personalizada que incluya:
+1. **Un Problema Basado en sus Intereses**: Reformula un problema usando sus intereses ({INTERESTS})
+2. **Una Pregunta de Reflexión**: Una pregunta socrática que les ayude a pensar en el "por qué" detrás del concepto
 
-Keep it concise (2-3 short paragraphs max). Don't rewrite the whole assignment - just add the personalized touch.
+Mantén la brevedad (2-3 párrafos cortos máximo). No reescribas toda la tarea - solo agrega el toque personalizado.
 
-## Example Output Format:
-**Your Personal Challenge:**
-[Problem reframed with their interest]
+## Formato de Salida de Ejemplo:
+**Tu Reto Personal:**
+[Problema reformulado con su interés]
 
-**Think Deeper:**
-[Socratic question that makes them reflect on the underlying concept]
+**Piensa Más Profundo:**
+[Pregunta socrática que los haga reflexionar sobre el concepto subyacente]
 
-## Master Homework:
+## Tarea Maestra:
 {MASTER_CONTENT}
 
-## Student Profile:
-- Age: {AGE}
-- Interests: {INTERESTS}
-- Skills to Improve: {SKILLS}
+## Perfil del Estudiante:
+- Edad: {AGE}
+- Intereses: {INTERESTS}
+- Habilidades a Mejorar: {SKILLS}
 {LEARNING_STYLE}
 
-## Personalized Addition:`;
+## Adición Personalizada:`;
 
 /**
  * Few-shot prompt for generating master homework content (uses reasoner model)
  */
-const MASTER_HOMEWORK_PROMPT = `You are an expert educator creating homework assignments for K-12 students.
+const MASTER_HOMEWORK_PROMPT = `Eres un educador experto creando tareas para estudiantes de primaria y secundaria.
 
-## Example 1:
-**Topic:** Multiplication Practice
-**Subject:** Math
-**Content:**
-# Multiplication Practice Worksheet
+## Ejemplo 1:
+**Tema:** Práctica de Multiplicación
+**Materia:** Matemáticas
+**Contenido:**
+# Hoja de Práctica de Multiplicación
 
-## Part 1: Basic Multiplication (5 points each)
+## Parte 1: Multiplicación Básica (5 puntos cada una)
 1. 7 × 8 = ___
 2. 6 × 9 = ___
 3. 12 × 5 = ___
 4. 8 × 8 = ___
 5. 9 × 7 = ___
 
-## Part 2: Word Problems (10 points each)
-1. A baker makes 6 trays of cookies. Each tray has 8 cookies. How many cookies in total?
+## Parte 2: Problemas con Palabras (10 puntos cada uno)
+1. Un panadero hace 6 charolas de galletas. Cada charola tiene 8 galletas. ¿Cuántas galletas hay en total?
 
-2. There are 7 days in a week. How many days are in 4 weeks?
+2. Hay 7 días en una semana. ¿Cuántos días hay en 4 semanas?
 
-3. A classroom has 5 rows of desks with 6 desks in each row. How many desks total?
+3. Un salón tiene 5 filas de escritorios con 6 escritorios en cada fila. ¿Cuántos escritorios hay en total?
 
-## Part 3: Challenge (15 points)
-A farmer plants 8 rows of corn with 12 stalks in each row. Each stalk produces 3 ears of corn. How many ears of corn does the farmer harvest in total?
+## Parte 3: Desafío (15 puntos)
+Un granjero planta 8 filas de maíz con 12 plantas en cada fila. Cada planta produce 3 mazorcas de maíz. ¿Cuántas mazorcas de maíz cosecha el granjero en total?
 
-**Show your work!**
+**¡Muestra tu trabajo!**
 
-## Example 2:
-**Topic:** Essay Writing: Persuasive Arguments
-**Subject:** English
-**Content:**
-# Persuasive Essay Assignment
+## Ejemplo 2:
+**Tema:** Escritura de Ensayos: Argumentos Persuasivos
+**Materia:** Español
+**Contenido:**
+# Tarea de Ensayo Persuasivo
 
-## Objective
-Write a 3-paragraph persuasive essay on one of these topics:
-- Should students have homework on weekends?
-- Should school start later in the morning?
-- Should students be allowed to use phones in class?
+## Objetivo
+Escribe un ensayo persuasivo de 3 párrafos sobre uno de estos temas:
+- ¿Deberían los estudiantes tener tarea los fines de semana?
+- ¿Debería la escuela empezar más tarde en la mañana?
+- ¿Deberían los estudiantes poder usar teléfonos en clase?
 
-## Requirements
-1. **Introduction (1 paragraph)**
-   - Hook to grab attention
-   - Clear thesis statement (your position)
+## Requisitos
+1. **Introducción (1 párrafo)**
+   - Gancho para captar la atención
+   - Tesis clara (tu posición)
 
-2. **Body (1 paragraph)**
-   - At least 2 supporting reasons
-   - Evidence or examples for each reason
+2. **Cuerpo (1 párrafo)**
+   - Al menos 2 razones de apoyo
+   - Evidencia o ejemplos para cada razón
 
-3. **Conclusion (1 paragraph)**
-   - Restate your position
-   - Call to action
+3. **Conclusión (1 párrafo)**
+   - Reafirma tu posición
+   - Llamada a la acción
 
-## Rubric
-- Clear thesis: 10 points
-- Supporting evidence: 15 points
-- Organization: 10 points
-- Grammar/spelling: 5 points
-- Total: 40 points
+## Rúbrica
+- Tesis clara: 10 puntos
+- Evidencia de apoyo: 15 puntos
+- Organización: 10 puntos
+- Gramática/ortografía: 5 puntos
+- Total: 40 puntos
 
-**Due date: ___________**
+**Fecha de entrega: ___________**
 
-## Your Task:
-Create a comprehensive homework assignment on the given topic. Include clear instructions, multiple problem types, and a grading rubric if appropriate.
+## Tu Tarea:
+Crea una tarea completa sobre el tema dado. Incluye instrucciones claras, múltiples tipos de problemas y una rúbrica de calificación si es apropiado.
 
-**Topic:** {{TOPIC}}
-**Subject:** {{SUBJECT}}
-**Content:**`;
+**Tema:** {{TOPIC}}
+**Materia:** {{SUBJECT}}
+**Contenido:`;
 
 export const homeworkService = {
   /**

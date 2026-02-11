@@ -1,23 +1,27 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { GlassCard, GlassButton, GlassInput } from '@/components/glass';
 import { studentApi } from '@/services/studentApi';
 import { UpdateStudentProfileRequest } from '@/types';
 
-const SPORTS_OPTIONS = [
-  'Soccer', 'Basketball', 'Baseball', 'Football', 'Tennis', 'Swimming',
-  'Volleyball', 'Hockey', 'Track', 'Gymnastics', 'Dance', 'Cheerleading',
-  'Lacrosse', 'Golf', 'Skateboarding', 'Cycling', 'Martial Arts', 'Other'
+// Sport keys map to translation keys in student.settings.sports
+const SPORTS_KEYS = [
+  'soccer', 'basketball', 'baseball', 'football', 'tennis', 'swimming',
+  'volleyball', 'hockey', 'track', 'gymnastics', 'dance', 'cheerleading',
+  'lacrosse', 'golf', 'skateboarding', 'cycling', 'martialArts', 'other'
 ];
 
-const SKILLS_OPTIONS = [
-  'Math', 'Reading', 'Writing', 'Science', 'History', 'Geography',
-  'Vocabulary', 'Critical Thinking', 'Problem Solving', 'Creativity',
-  'Logic', 'Comprehension', 'English', 'Study Skills'
+// Skill keys map to translation keys in student.settings.skills
+const SKILLS_KEYS = [
+  'math', 'reading', 'writing', 'science', 'history', 'geography',
+  'vocabulary', 'criticalThinking', 'problemSolving', 'creativity',
+  'logic', 'comprehension', 'english', 'studySkills'
 ];
 
 export function StudentSettings() {
+  const { t } = useTranslation();
   const { profile, refreshUser } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -71,11 +75,11 @@ export function StudentSettings() {
 
       await studentApi.updateProfile(data);
       await refreshUser();
-      setMessage({ type: 'success', text: 'Profile saved successfully!' });
+      setMessage({ type: 'success', text: t('student.settings.savedSuccess') });
     } catch (err) {
       setMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : 'Failed to save profile',
+        text: err instanceof Error ? err.message : t('errors.generic'),
       });
     } finally {
       setIsSaving(false);
@@ -91,9 +95,9 @@ export function StudentSettings() {
       >
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-solid">Profile Settings</h1>
+          <h1 className="text-2xl font-bold text-solid">{t('student.settings.title')}</h1>
           <p className="text-prominent mt-1">
-            Customize how the AI tutor adapts to your learning style
+            {t('student.settings.subtitle')}
           </p>
         </div>
 
@@ -114,12 +118,12 @@ export function StudentSettings() {
 
         {/* Basic Info */}
         <GlassCard variant="card" className="p-6">
-          <h2 className="text-lg font-semibold text-solid mb-4">Basic Information</h2>
+          <h2 className="text-lg font-semibold text-solid mb-4">{t('student.settings.basicInfo')}</h2>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-prominent mb-1.5">
-                Age
+                {t('student.settings.age')}
               </label>
               <GlassInput
                 type="number"
@@ -127,18 +131,18 @@ export function StudentSettings() {
                 max={18}
                 value={age || ''}
                 onChange={(e) => setAge(e.target.value ? parseInt(e.target.value) : undefined)}
-                placeholder="Your age"
+                placeholder={t('student.settings.yourAge')}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-prominent mb-1.5">
-                Grade Level
+                {t('student.settings.gradeLevel')}
               </label>
               <GlassInput
                 type="text"
                 value={gradeLevel}
                 onChange={(e) => setGradeLevel(e.target.value)}
-                placeholder="e.g., 6th Grade"
+                placeholder={t('student.settings.gradePlaceholder')}
               />
             </div>
           </div>
@@ -147,24 +151,24 @@ export function StudentSettings() {
         {/* Interests */}
         <GlassCard variant="card" className="p-6">
           <h2 className="text-lg font-semibold text-solid mb-2">
-            Favorite Sports & Activities
+            {t('student.settings.favoriteSports.title')}
           </h2>
           <p className="text-sm text-prominent mb-4">
-            The AI will use relatable examples from your interests
+            {t('student.settings.favoriteSports.description')}
           </p>
 
           <div className="flex flex-wrap gap-2">
-            {SPORTS_OPTIONS.map((sport) => (
+            {SPORTS_KEYS.map((sportKey) => (
               <button
-                key={sport}
-                onClick={() => toggleSport(sport.toLowerCase())}
+                key={sportKey}
+                onClick={() => toggleSport(sportKey)}
                 className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                  favoriteSports.includes(sport.toLowerCase())
+                  favoriteSports.includes(sportKey)
                     ? 'backdrop-blur-md bg-emerald-500/30 border border-emerald-400/40 text-emerald-100'
                     : 'backdrop-blur-md bg-white/10 border border-white/20 text-prominent hover:bg-white/20'
                 }`}
               >
-                {sport}
+                {t(`student.settings.sports.${sportKey}`)}
               </button>
             ))}
           </div>
@@ -173,24 +177,24 @@ export function StudentSettings() {
         {/* Skills to Improve */}
         <GlassCard variant="card" className="p-6">
           <h2 className="text-lg font-semibold text-solid mb-2">
-            Skills to Improve
+            {t('student.settings.skillsToImprove.title')}
           </h2>
           <p className="text-sm text-prominent mb-4">
-            The AI will focus extra attention on helping you with these areas
+            {t('student.settings.skillsToImprove.description')}
           </p>
 
           <div className="flex flex-wrap gap-2">
-            {SKILLS_OPTIONS.map((skill) => (
+            {SKILLS_KEYS.map((skillKey) => (
               <button
-                key={skill}
-                onClick={() => toggleSkill(skill.toLowerCase())}
+                key={skillKey}
+                onClick={() => toggleSkill(skillKey)}
                 className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                  skillsToImprove.includes(skill.toLowerCase())
+                  skillsToImprove.includes(skillKey)
                     ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/40 text-blue-100'
                     : 'backdrop-blur-md bg-white/10 border border-white/20 text-prominent hover:bg-white/20'
                 }`}
               >
-                {skill}
+                {t(`student.settings.skills.${skillKey}`)}
               </button>
             ))}
           </div>
@@ -199,21 +203,21 @@ export function StudentSettings() {
         {/* Learning Style */}
         <GlassCard variant="card" className="p-6">
           <h2 className="text-lg font-semibold text-solid mb-2">
-            Personal Learning Preferences
+            {t('student.settings.learningPreferences.title')}
           </h2>
           <p className="text-sm text-prominent mb-4">
-            Tell the AI how you learn best. This will be included in every conversation.
+            {t('student.settings.learningPreferences.description')}
           </p>
 
           <textarea
             value={learningSystemPrompt}
             onChange={(e) => setLearningSystemPrompt(e.target.value)}
-            placeholder="Example: I learn best with visual explanations and step-by-step instructions. I like when concepts are connected to video games I play..."
+            placeholder={t('student.settings.learningPreferences.placeholder')}
             className="w-full h-32 px-4 py-3 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-solid placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-white/30 resize-none"
           />
 
           <p className="text-xs text-subtle mt-2">
-            {learningSystemPrompt.length}/500 characters
+            {t('student.settings.learningPreferences.charCount', { count: learningSystemPrompt.length })}
           </p>
         </GlassCard>
 
@@ -241,10 +245,10 @@ export function StudentSettings() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                Saving...
+                {t('student.settings.saving')}
               </span>
             ) : (
-              'Save Changes'
+              t('student.settings.saveChanges')
             )}
           </GlassButton>
         </div>

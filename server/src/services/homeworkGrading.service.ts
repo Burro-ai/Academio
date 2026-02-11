@@ -14,31 +14,31 @@ class HomeworkGradingService {
     answers: HomeworkAnswer[]
   ): string {
     const answersFormatted = answers
-      .map((a, i) => `Question ${i + 1} (ID: ${a.questionId}):\nStudent's Answer: ${a.value}`)
+      .map((a, i) => `Pregunta ${i + 1} (ID: ${a.questionId}):\nRespuesta del Estudiante: ${a.value}`)
       .join('\n\n');
 
-    return `You are an expert educational assessor. Evaluate the student's homework submission and provide a fair, constructive assessment.
+    return `Eres un evaluador educativo experto. Evalúa la entrega de tarea del estudiante y proporciona una evaluación justa y constructiva.
 
-## Homework Assignment Content
+## Contenido de la Tarea
 ${homeworkContent}
 
-## Student's Submitted Answers
+## Respuestas Entregadas por el Estudiante
 ${answersFormatted}
 
-## Your Task
-1. Evaluate each answer for correctness, completeness, and understanding
-2. Consider partial credit for partially correct answers
-3. Provide a numerical grade from 0 to 100
-4. Write constructive feedback that:
-   - Acknowledges what the student did well
-   - Explains any mistakes in an encouraging way
-   - Suggests how they can improve
+## Tu Tarea
+1. Evalúa cada respuesta por corrección, completitud y comprensión
+2. Considera crédito parcial para respuestas parcialmente correctas
+3. Proporciona una calificación numérica de 0 a 100
+4. Escribe retroalimentación constructiva que:
+   - Reconozca lo que el estudiante hizo bien
+   - Explique cualquier error de manera alentadora
+   - Sugiera cómo pueden mejorar
 
-## Response Format
-Respond in the following JSON format ONLY (no additional text):
+## Formato de Respuesta
+Responde ÚNICAMENTE en el siguiente formato JSON (sin texto adicional):
 {
-  "grade": <number 0-100>,
-  "feedback": "<constructive feedback string>"
+  "grade": <número 0-100>,
+  "feedback": "<cadena de retroalimentación constructiva>"
 }`;
   }
 
@@ -50,7 +50,7 @@ Respond in the following JSON format ONLY (no additional text):
     homeworkContent: string,
     answers: HomeworkAnswer[]
   ): Promise<{ grade: number; feedback: string }> {
-    const systemPrompt = `You are an educational assessment AI. You provide fair, encouraging grades and feedback for student homework. Always respond in valid JSON format only.`;
+    const systemPrompt = `Eres una IA de evaluación educativa. Proporcionas calificaciones justas y alentadoras y retroalimentación para las tareas de los estudiantes. Siempre responde únicamente en formato JSON válido.`;
 
     const prompt = this.buildGradingPrompt(homeworkContent, answers);
 
@@ -68,7 +68,7 @@ Respond in the following JSON format ONLY (no additional text):
 
       // Validate grade is in range
       const grade = Math.max(0, Math.min(100, result.grade));
-      const feedback = result.feedback || 'No feedback provided.';
+      const feedback = result.feedback || 'Sin retroalimentación proporcionada.';
 
       // Save the AI suggestion to the database
       homeworkSubmissionsQueries.updateAISuggestion(submissionId, grade, feedback);
@@ -80,7 +80,7 @@ Respond in the following JSON format ONLY (no additional text):
       // Return a neutral response on error
       return {
         grade: 0,
-        feedback: 'Unable to generate AI suggestion. Please grade manually.',
+        feedback: 'No se pudo generar la sugerencia de IA. Por favor califique manualmente.',
       };
     }
   }

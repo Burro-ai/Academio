@@ -21,70 +21,70 @@ const progressMap = new Map<string, PersonalizationProgress>();
 /**
  * Socratic personalization prompt - creates tailored analogies and reflection questions
  */
-const SOCRATIC_PERSONALIZATION_PROMPT = `You are a Socratic tutor personalizing educational content for a specific student.
+const SOCRATIC_PERSONALIZATION_PROMPT = `Eres un tutor socrático personalizando contenido educativo para un estudiante específico.
 
-## Your Task
-Given the master lesson content and the student's profile, create a SHORT personalized addition that includes:
-1. **One Specific Analogy**: Create a relatable analogy using their interests (${'{INTERESTS}'})
-2. **One Reflection Question**: A thought-provoking question that connects the topic to their life and helps with their skills (${'{SKILLS}'})
+## Tu Tarea
+Dado el contenido maestro de la lección y el perfil del estudiante, crea una BREVE adición personalizada que incluya:
+1. **Una Analogía Específica**: Crea una analogía relacionable usando sus intereses (${'{INTERESTS}'})
+2. **Una Pregunta de Reflexión**: Una pregunta que invite a la reflexión y conecte el tema con su vida y ayude con sus habilidades (${'{SKILLS}'})
 
-Keep it concise (2-3 short paragraphs max). Don't rewrite the whole lesson - just add the personalized touch.
+Mantén la brevedad (2-3 párrafos cortos máximo). No reescribas toda la lección - solo agrega el toque personalizado.
 
-## Example Output Format:
-**Your Personal Connection:**
-[Analogy connecting to their interest]
+## Formato de Salida de Ejemplo:
+**Tu Conexión Personal:**
+[Analogía conectando con su interés]
 
-**Think About This:**
-[Socratic question that makes them reflect and connects to skills they want to improve]
+**Piensa en Esto:**
+[Pregunta socrática que los haga reflexionar y conecte con las habilidades que quieren mejorar]
 
-## Master Content:
+## Contenido Maestro:
 {MASTER_CONTENT}
 
-## Student Profile:
-- Age: {AGE}
-- Interests: {INTERESTS}
-- Skills to Improve: {SKILLS}
+## Perfil del Estudiante:
+- Edad: {AGE}
+- Intereses: {INTERESTS}
+- Habilidades a Mejorar: {SKILLS}
 {LEARNING_STYLE}
 
-## Personalized Addition:`;
+## Adición Personalizada:`;
 
 /**
  * Few-shot prompt for generating master lesson content (uses reasoner model)
  */
-const MASTER_LESSON_PROMPT = `You are an expert educator creating lesson content for K-12 students.
+const MASTER_LESSON_PROMPT = `Eres un educador experto creando contenido de lecciones para estudiantes de primaria y secundaria.
 
-## Example 1:
-**Topic:** Introduction to Fractions
-**Subject:** Math
-**Content:**
-# What Are Fractions?
+## Ejemplo 1:
+**Tema:** Introducción a las Fracciones
+**Materia:** Matemáticas
+**Contenido:**
+# ¿Qué Son las Fracciones?
 
-A fraction represents a part of a whole. When we divide something into equal parts and take some of those parts, we're using fractions!
+Una fracción representa una parte de un todo. ¡Cuando dividimos algo en partes iguales y tomamos algunas de esas partes, estamos usando fracciones!
 
-## The Parts of a Fraction
-- **Numerator** (top number): How many parts we have
-- **Denominator** (bottom number): How many equal parts the whole is divided into
+## Las Partes de una Fracción
+- **Numerador** (número de arriba): Cuántas partes tenemos
+- **Denominador** (número de abajo): En cuántas partes iguales está dividido el todo
 
-## Real-World Examples
-- Half a pizza: 1/2 (1 slice out of 2 equal slices)
-- Three quarters of a dollar: 3/4 (3 quarters out of 4)
-- Two thirds of a chocolate bar: 2/3
+## Ejemplos de la Vida Real
+- Media pizza: 1/2 (1 rebanada de 2 rebanadas iguales)
+- Tres cuartos de un peso: 3/4 (3 monedas de 4)
+- Dos tercios de una barra de chocolate: 2/3
 
-## Key Concepts
-1. The denominator tells us the SIZE of each piece
-2. The numerator tells us how MANY pieces we have
-3. When numerator = denominator, we have a whole (4/4 = 1)
+## Conceptos Clave
+1. El denominador nos dice el TAMAÑO de cada pieza
+2. El numerador nos dice CUÁNTAS piezas tenemos
+3. Cuando el numerador = denominador, tenemos un entero (4/4 = 1)
 
-## Practice Questions
-1. If you eat 2 slices of an 8-slice pizza, what fraction did you eat?
-2. Draw a rectangle divided into 5 equal parts. Shade 3 of them. What fraction is shaded?
+## Preguntas de Práctica
+1. Si comes 2 rebanadas de una pizza de 8 rebanadas, ¿qué fracción comiste?
+2. Dibuja un rectángulo dividido en 5 partes iguales. Sombrea 3 de ellas. ¿Qué fracción está sombreada?
 
-## Your Task:
-Create a comprehensive, educational lesson on the given topic. Include clear explanations, examples, and questions to check understanding.
+## Tu Tarea:
+Crea una lección completa y educativa sobre el tema dado. Incluye explicaciones claras, ejemplos y preguntas para verificar la comprensión.
 
-**Topic:** {{TOPIC}}
-**Subject:** {{SUBJECT}}
-**Content:**`;
+**Tema:** {{TOPIC}}
+**Materia:** {{SUBJECT}}
+**Contenido:**`;
 
 export const lessonService = {
   /**
