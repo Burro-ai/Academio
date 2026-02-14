@@ -104,17 +104,42 @@ class AuthApiService {
 
   /**
    * Check if token is expired (with 1 minute buffer)
+   * Returns false (not expired) if we can't parse the token - let server validate
    */
   isTokenExpired(): boolean {
+    const token = this.getToken();
+    if (!token) {
+      console.log('[Auth] No token found');
+      return true;
+    }
+
     const payload = this.getTokenPayload();
-    if (!payload || !payload.exp) return true;
+
+    // If we can't parse the payload, don't assume expired - let server validate
+    // This prevents logout due to parsing issues
+    if (!payload) {
+      console.warn('[Auth] Could not parse token payload, assuming valid - server will validate');
+      return false;
+    }
+
+    // If no exp claim, assume valid (server will validate)
+    if (!payload.exp) {
+      console.warn('[Auth] Token has no exp claim, assuming valid');
+      return false;
+    }
 
     // Check if expired (with 1 minute buffer to account for clock drift)
     const expiryTime = payload.exp * 1000; // Convert to milliseconds
     const now = Date.now();
     const bufferMs = 60 * 1000; // 1 minute buffer
 
-    return now >= (expiryTime - bufferMs);
+    const isExpired = now >= (expiryTime - bufferMs);
+
+    if (isExpired) {
+      console.log('[Auth] Token expired at', new Date(expiryTime).toISOString(), 'current time:', new Date(now).toISOString());
+    }
+
+    return isExpired;
   }
 
   /**
@@ -178,17 +203,46 @@ class AuthApiService {
   }
 
   /**
+   * Decode base64url (JWT uses URL-safe base64, not standard base64)
+   */
+  private base64UrlDecode(str: string): string {
+    // Replace URL-safe characters with standard base64 characters
+    let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+
+    // Add padding if needed
+    const padding = base64.length % 4;
+    if (padding) {
+      base64 += '='.repeat(4 - padding);
+    }
+
+    try {
+      return atob(base64);
+    } catch (e) {
+      console.error('[Auth] Failed to decode base64:', e);
+      throw e;
+    }
+  }
+
+  /**
    * Debug: Get decoded token payload (without verification)
    */
-  getTokenPayload(): { id?: string; email?: string; role?: string; exp?: number } | null {
+  getTokenPayload(): { id?: string; email?: string; role?: string; exp?: number; iat?: number } | null {
     const token = this.getToken();
     if (!token) return null;
 
     try {
       const parts = token.split('.');
-      if (parts.length !== 3) return null;
-      return JSON.parse(atob(parts[1]));
-    } catch {
+      if (parts.length !== 3) {
+        console.warn('[Auth] Invalid token format - expected 3 parts, got', parts.length);
+        return null;
+      }
+
+      const decoded = this.base64UrlDecode(parts[1]);
+      const payload = JSON.parse(decoded);
+
+      return payload;
+    } catch (e) {
+      console.error('[Auth] Failed to parse token payload:', e);
       return null;
     }
   }
@@ -277,16 +331,27 @@ class AuthApiService {
 
   /**
    * Check if user is authenticated (has token and it's not expired)
+   * Only clears data if token is definitively expired, not on parsing errors
    */
   isAuthenticated(): boolean {
     const token = this.getToken();
-    if (!token) return false;
+    if (!token) {
+      return false;
+    }
 
     // Check if token is expired
+    // isTokenExpired now returns false on parsing errors (let server validate)
     if (this.isTokenExpired()) {
       console.log('[Auth] Token is expired, clearing auth data');
       this.clearAll();
       return false;
+    }
+
+    // Also verify we have stored user data for consistency
+    const storedUser = this.getStoredUser();
+    if (!storedUser) {
+      console.warn('[Auth] Token exists but no stored user, will validate with server');
+      // Don't clear token - let the AuthContext try to fetch user from server
     }
 
     return true;

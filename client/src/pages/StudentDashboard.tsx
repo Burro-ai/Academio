@@ -16,7 +16,7 @@ import { ChatHistory } from '@/components/sidebar/ChatHistory';
 type Tab = 'chat' | 'lessons' | 'homework' | 'teacher' | 'settings';
 
 export function StudentDashboard() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isInitializing } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('chat');
   const location = useLocation();
 
@@ -24,7 +24,8 @@ export function StudentDashboard() {
   const isFullScreenRoute =
     location.pathname.includes('/lessons/') || location.pathname.includes('/homework/');
 
-  if (isLoading) {
+  // Wait for both loading and initialization to complete
+  if (isLoading || isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400" />
@@ -32,7 +33,10 @@ export function StudentDashboard() {
     );
   }
 
-  if (!user || user.role !== 'STUDENT') {
+  // Check role case-insensitively
+  const normalizedRole = user?.role?.toUpperCase();
+  if (!user || normalizedRole !== 'STUDENT') {
+    console.log('[StudentDashboard] Access denied - user role:', user?.role);
     return <Navigate to="/login" replace />;
   }
 

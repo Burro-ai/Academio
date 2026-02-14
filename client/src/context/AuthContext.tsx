@@ -51,8 +51,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Check and validate authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
-      // If no valid token, clear any stale data and finish
-      if (!authApi.isAuthenticated()) {
+      const token = authApi.getToken();
+
+      // If no token exists at all, user is not logged in
+      if (!token) {
+        console.log('[Auth] No token found, user not logged in');
+        setUser(null);
+        setProfile(null);
+        setIsInitializing(false);
+        return;
+      }
+
+      // We have a token - first try to use stored data for instant hydration
+      const storedUser = authApi.getStoredUser();
+      const storedProfile = authApi.getStoredProfile();
+
+      if (storedUser) {
+        // Immediately set stored user for instant UI (no flash)
+        setUser(storedUser);
+        setProfile(storedProfile);
+        console.log('[Auth] Hydrated from localStorage:', storedUser.email, 'role:', storedUser.role);
+      }
+
+      // Check if token appears expired (client-side check)
+      if (authApi.isTokenExpired()) {
+        console.log('[Auth] Token appears expired, clearing auth data');
         setUser(null);
         setProfile(null);
         authApi.clearAll();
@@ -60,15 +83,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
-      // We have a valid token - validate with server and get fresh data
+      // Token looks valid - validate with server and get fresh data
       try {
         const { user: currentUser, profile: currentProfile } = await authApi.getCurrentUser();
         setUser(currentUser);
         setProfile(currentProfile);
-        console.log('[Auth] Session restored for:', currentUser.email);
+        console.log('[Auth] Session validated with server for:', currentUser.email, 'role:', currentUser.role);
       } catch (err) {
-        // Token invalid or expired, clear everything
-        console.log('[Auth] Session validation failed, clearing auth data');
+        // Server rejected the token - clear everything
+        console.error('[Auth] Server rejected token:', err);
         setUser(null);
         setProfile(null);
         authApi.clearAll();
@@ -102,7 +125,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(response.user);
 
       // Fetch profile if student (this also stores it in localStorage via getCurrentUser)
-      if (response.user.role === 'STUDENT') {
+      // Use case-insensitive comparison for role
+      if (response.user.role?.toUpperCase() === 'STUDENT') {
         const { profile: userProfile } = await authApi.getCurrentUser();
         setProfile(userProfile);
       } else {
@@ -112,7 +136,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Navigate to appropriate dashboard
       const from = (location.state as { from?: string })?.from;
-      const redirectTo = from || response.redirectTo || getRedirectPath(response.user.role);
+      // Normalize role for redirect path
+      const normalizedRole = response.user.role?.toUpperCase() === 'TEACHER' ? 'TEACHER' : 'STUDENT';
+      const redirectTo = from || response.redirectTo || getRedirectPath(normalizedRole as UserRole);
       navigate(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -131,7 +157,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(response.user);
 
       // Fetch profile if student (this also stores it in localStorage via getCurrentUser)
-      if (response.user.role === 'STUDENT') {
+      // Use case-insensitive comparison for role
+      if (response.user.role?.toUpperCase() === 'STUDENT') {
         const { profile: userProfile } = await authApi.getCurrentUser();
         setProfile(userProfile);
       } else {
@@ -140,7 +167,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       // Navigate to appropriate dashboard
-      const redirectTo = response.redirectTo || getRedirectPath(response.user.role);
+      // Normalize role for redirect path
+      const normalizedRole = response.user.role?.toUpperCase() === 'TEACHER' ? 'TEACHER' : 'STUDENT';
+      const redirectTo = response.redirectTo || getRedirectPath(normalizedRole as UserRole);
       navigate(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { GlassCard, GlassButton, GlassInput } from '@/components/glass';
 import { teacherApi } from '@/services/teacherApi';

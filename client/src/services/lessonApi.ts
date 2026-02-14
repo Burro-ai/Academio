@@ -11,15 +11,33 @@ import {
 const API_BASE = '/api';
 
 /**
+ * Decode base64url (JWT uses URL-safe base64, not standard base64)
+ */
+function base64UrlDecode(str: string): string {
+  // Replace URL-safe characters with standard base64 characters
+  let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+
+  // Add padding if needed
+  const padding = base64.length % 4;
+  if (padding) {
+    base64 += '='.repeat(4 - padding);
+  }
+
+  return atob(base64);
+}
+
+/**
  * Decode JWT token to get payload (without verification)
  */
 function decodeToken(token: string): { id?: string; email?: string; role?: string } | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1]));
+    const decoded = base64UrlDecode(parts[1]);
+    const payload = JSON.parse(decoded);
     return payload;
-  } catch {
+  } catch (e) {
+    console.error('[LessonAPI] Failed to decode token:', e);
     return null;
   }
 }
