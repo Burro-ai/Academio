@@ -31,16 +31,25 @@ export interface SmartMarkdownProps {
 function preprocessContent(content: string): string {
   let processed = content;
 
+  // Convert \(...\) to $...$ for inline math
+  processed = processed.replace(/\\\(([^)]+)\\\)/g, '$$$1$$');
+
+  // Convert \[...\] to $$...$$ for block math
+  processed = processed.replace(/\\\[([^\]]+)\\\]/g, '\n\n$$$$$1$$$$\n\n');
+
   // Fix escaped dollar signs that should be LaTeX delimiters
   // Sometimes AI outputs \$ instead of $
   processed = processed.replace(/\\\$/g, '$');
 
   // Ensure proper spacing around block math
-  processed = processed.replace(/\$\$([^$]+)\$\$/g, '\n\n$$$$1$$\n\n');
+  processed = processed.replace(/\$\$([^$]+)\$\$/g, '\n\n$$$$$1$$$$\n\n');
 
   // Fix common LaTeX escaping issues
   processed = processed.replace(/\\frac\s+/g, '\\frac');
   processed = processed.replace(/\\sqrt\s+/g, '\\sqrt');
+
+  // Clean up excessive newlines
+  processed = processed.replace(/\n{4,}/g, '\n\n\n');
 
   return processed;
 }
