@@ -515,5 +515,61 @@
     "submitting": "Guardando...",
     "gradeError": "La calificación debe ser entre 0 y 100",
     "feedbackRequired": "La retroalimentación es requerida"
+  },
+
+  "panels": {
+    "lessons": {
+      "title": "Lecciones",
+      "subtitle": "Crea y administra lecciones personalizadas para tus estudiantes",
+      "createButton": "Crear Lección",
+      "empty": {
+        "title": "Aún no hay lecciones",
+        "message": "Crea tu primera lección y personalízala para cada estudiante",
+        "createFirst": "Crear Tu Primera Lección"
+      },
+      "students": "estudiantes",
+      "created": "Creado el",
+      "masterContent": "Contenido Maestro",
+      "viewContent": "Ver contenido",
+      "personalizeForStudents": "Personalizar para estudiantes",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Estás seguro de que quieres eliminar esta lección?",
+      "personalizedSuccess": "¡Personalizado para {{count}} estudiantes!",
+      "failedToPersonalize": "Error al personalizar",
+      "failedToDelete": "Error al eliminar",
+      "failedToLoad": "Error al cargar las lecciones"
+    },
+    "homework": {
+      "title": "Tareas",
+      "subtitle": "Crea y administra tareas personalizadas",
+      "createButton": "Crear Tarea",
+      "empty": {
+        "title": "Aún no hay tareas",
+        "message": "Crea tu primera tarea",
+        "createFirst": "Crear Tu Primera Tarea"
+      },
+      "students": "estudiantes",
+      "created": "Creado el",
+      "masterContent": "Contenido Maestro",
+      "viewContent": "Ver contenido",
+      "personalizeForStudents": "Personalizar para estudiantes",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Estás seguro de que quieres eliminar esta tarea?",
+      "personalizedSuccess": "¡Personalizado para {{count}} estudiantes!",
+      "failedToPersonalize": "Error al personalizar",
+      "failedToDelete": "Error al eliminar",
+      "failedToLoad": "Error al cargar las tareas",
+      "dueStatus": {
+        "pastDue": "Vencido",
+        "daysLeft": "{{count}}d restantes"
+      },
+      "due": "Vence el"
+    }
+  },
+
+  "accessDenied": {
+    "title": "Acceso Denegado",
+    "message": "Tu rol es \"{{role}}\" pero se requiere MAESTRO.",
+    "returnToLogin": "Regresar al Inicio de Sesión"
   }
 }

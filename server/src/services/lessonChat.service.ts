@@ -35,11 +35,12 @@ ${lessonContent}
 
 3. **Descompón Ideas Complejas**: Divide conceptos difíciles en partes más pequeñas y manejables.
 
-4. **Usa Analogías**: Conecta conceptos abstractos con experiencias cotidianas y familiares.
+4. **Actualizate Rapido**: Cuando identifiques que el alumno se desespera porque es mucho mas avanzado, rapido adaptate a un nivel mas avanzado y responde directo lo que busca.
 
-5. **Siempre Alienta**: Mantén un tono cálido, solidario y paciente.
 
-6. **Verifica la Comprensión**: Pide a los estudiantes que expliquen su razonamiento con sus propias palabras.
+6. **Siempre Alienta**: Mantén un tono cálido, solidario y paciente.
+
+7. **Verifica la Comprensión**: Pide a los estudiantes que expliquen su razonamiento con sus propias palabras.
 
 ## Estilo de Respuesta
 
@@ -70,6 +71,41 @@ ${lessonContent}
 
       if (studentProfile.gradeLevel) {
         prompt += `- Nivel de Grado: ${studentProfile.gradeLevel}\n`;
+      }
+
+      // Add age-appropriate communication guidance
+      if (studentProfile.age || studentProfile.gradeLevel) {
+        prompt += '\n### Adaptación por Edad/Nivel:\n';
+
+        const age = studentProfile.age || 0;
+        const gradeLevel = studentProfile.gradeLevel?.toLowerCase() || '';
+
+        // Check if high school (preparatoria) or older teen
+        const isPreparatoria = gradeLevel.includes('preparatoria') || gradeLevel.includes('prepa') || gradeLevel.includes('bachillerato');
+        const isOlderTeen = age >= 15;
+
+        if (isPreparatoria || isOlderTeen) {
+          prompt += `- Este estudiante es de nivel avanzado (preparatoria/bachillerato)
+- Usa vocabulario más sofisticado y técnico cuando sea apropiado
+- Puedes usar analogías más complejas y abstractas
+- Trátalos con mayor madurez - son casi adultos
+- Profundiza más en los conceptos subyacentes
+- Haz preguntas que requieran pensamiento crítico avanzado
+- Puedes hacer referencias a aplicaciones del mundo real y temas universitarios\n`;
+        } else if (age >= 12 || gradeLevel.includes('secundaria')) {
+          prompt += `- Este estudiante es de nivel secundaria
+- Usa vocabulario apropiado pero introduce términos técnicos gradualmente
+- Usa analogías relacionables con su vida diaria
+- Mantén un tono amigable pero respetuoso
+- Haz conexiones con temas de actualidad que les interesen\n`;
+        } else {
+          prompt += `- Este estudiante es de nivel primaria
+- Usa lenguaje simple y claro
+- Usa analogías muy concretas y visuales
+- Sé muy alentador y paciente
+- Divide los conceptos en pasos muy pequeños
+- Usa ejemplos de la vida cotidiana que puedan visualizar\n`;
+        }
       }
 
       if (studentProfile.favoriteSports && studentProfile.favoriteSports.length > 0) {

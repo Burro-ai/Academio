@@ -1125,3 +1125,146 @@ Location: `server/data/teacher-system-prompt.txt`
 # Add to .env
 TEACHER_PASSWORD=your_teacher_password  # For teacher portal access
 ```
+
+---
+
+## AI Gatekeeper Service
+
+> **Added 2026-02-13:** Mandatory formatter that intercepts ALL AI outputs for consistent formatting.
+
+### Overview
+
+The AI Gatekeeper is a centralized service that ensures all AI-generated content has:
+- Proper LaTeX formatting for math expressions ($...$ and $$...$$)
+- Clean markdown structure (headers, lists, code blocks)
+- Metadata extraction (word count, question count, formatting applied)
+- Spanish language enforcement
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `server/src/services/aiGatekeeper.service.ts` | Core gatekeeper service |
+| `client/src/components/shared/SmartMarkdown.tsx` | Frontend LaTeX renderer |
+
+### Usage Pattern
+
+```typescript
+import { aiGatekeeper } from './aiGatekeeper.service';
+
+// For non-streaming responses
+const result = await aiGatekeeper.generateFormattedResponse(
+  prompt,
+  systemPrompt,
+  { contentType: 'lesson', requireLatex: true }
+);
+// Returns: { content: string, metadata: { wordCount, hasLatex, ... } }
+
+// For quick synchronous formatting
+const formatted = aiGatekeeper.formatSync(rawContent, { contentType: 'chat' });
+```
+
+### Content Types
+
+| Type | Usage |
+|------|-------|
+| `lesson` | Lesson content with educational structure |
+| `homework` | Homework with problem numbering |
+| `chat` | Quick responses for tutoring chat |
+| `grading` | Homework feedback formatting |
+| `feedback` | General feedback |
+
+---
+
+## Spanish Language Enforcement
+
+> **Added 2026-02-13:** All AI outputs MUST be in Mexican Spanish (es-MX).
+
+### Guardrails Implemented
+
+1. **System Prompts**: All prompts include explicit Spanish language rules
+2. **AI Gatekeeper**: EDITOR_SYSTEM_PROMPT enforces Spanish output
+3. **Frontend i18n**: All UI text uses `react-i18next` with `es-MX.json`
+
+### System Prompt Template
+
+All AI system prompts include:
+```
+## REGLA CRÍTICA DE IDIOMA
+- TODO tu contenido DEBE estar en ESPAÑOL MEXICANO
+- NUNCA uses inglés bajo ninguna circunstancia
+- Si el estudiante te escribe en inglés, responde siempre en español
+- Mantén el español natural y apropiado para jóvenes mexicanos
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `server/data/system-prompt.txt` | Student tutor prompt (Spanish) |
+| `server/data/teacher-system-prompt.txt` | Teacher assistant prompt (Spanish) |
+| `client/src/locales/es-MX.json` | Frontend translations |
+
+---
+
+## Teacher-Student Content Isolation
+
+> **CRITICAL:** Students MUST only see content from their assigned teacher.
+
+### How It Works
+
+1. Student profiles have a `teacher_id` field linking them to their teacher
+2. When fetching lessons/homework, queries filter by `teacher_id`
+3. If `teacher_id` is NULL, student sees all content (backwards compatibility)
+
+### Database Query Pattern
+
+```sql
+-- Homework query filters by assigned teacher
+SELECT ph.* FROM personalized_homework ph
+JOIN homework_assignments h ON ph.homework_id = h.id
+LEFT JOIN student_profiles sp ON sp.user_id = ph.student_id
+WHERE ph.student_id = ?
+  AND (sp.teacher_id IS NULL OR h.teacher_id = sp.teacher_id)
+```
+
+### Key Files
+
+| File | Query |
+|------|-------|
+| `server/src/database/queries/homework.queries.ts` | `getPersonalizedByStudentId()` |
+| `server/src/database/queries/lessons.queries.ts` | `getPersonalizedByStudentId()` |
+
+---
+
+## Age-Adaptive AI Prompts
+
+> **Added 2026-02-13:** AI tutor adapts communication style based on student age/grade.
+
+### Adaptation Levels
+
+| Level | Age/Grade | AI Behavior |
+|-------|-----------|-------------|
+| **Preparatoria** | 15+ / Prepa | Sophisticated vocabulary, complex analogies, treats as near-adults, advanced critical thinking |
+| **Secundaria** | 12-15 | Balanced vocabulary, relatable analogies, friendly but respectful |
+| **Primaria** | <12 | Simple language, concrete/visual analogies, very encouraging, small steps |
+
+### Implementation
+
+The `lessonChat.service.ts` dynamically builds prompts based on `studentProfile.age` and `studentProfile.gradeLevel`:
+
+```typescript
+if (isPreparatoria || isOlderTeen) {
+  prompt += `- Usa vocabulario más sofisticado y técnico
+- Puedes usar analogías más complejas y abstractas
+- Trátalos con mayor madurez - son casi adultos
+- Haz preguntas que requieran pensamiento crítico avanzado`;
+}
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `server/src/services/lessonChat.service.ts` | Dynamic prompt building with age adaptation |
+| `server/src/database/queries/studentProfiles.queries.ts` | Student age/grade storage |

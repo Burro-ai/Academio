@@ -30,7 +30,7 @@ export function StudentLessonChats({ studentId, studentName }: StudentLessonChat
       const data = await teacherApi.getStudentLessonChats(studentId);
       setSessions(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load lesson chats');
+      setError(err instanceof Error ? err.message : t('errors.failedToLoad'));
     } finally {
       setIsLoading(false);
     }

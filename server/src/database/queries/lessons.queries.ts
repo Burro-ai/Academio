@@ -275,6 +275,7 @@ export const lessonsQueries = {
 
   /**
    * Get all personalized lessons for a student
+   * IMPORTANT: Only returns lessons from the student's assigned teacher
    */
   getPersonalizedByStudentId(studentId: string): PersonalizedLessonWithDetails[] {
     const db = getDb();
@@ -289,7 +290,9 @@ export const lessonsQueries = {
         FROM personalized_lessons pl
         JOIN lessons l ON pl.lesson_id = l.id
         JOIN users u ON l.teacher_id = u.id
+        LEFT JOIN student_profiles sp ON sp.user_id = pl.student_id
         WHERE pl.student_id = ?
+          AND (sp.teacher_id IS NULL OR l.teacher_id = sp.teacher_id)
         ORDER BY pl.created_at DESC
       `)
       .all(studentId) as PersonalizedLessonWithDetailsRow[];

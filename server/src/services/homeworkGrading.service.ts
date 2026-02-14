@@ -39,8 +39,10 @@ ${answersFormatted}
 Responde ÚNICAMENTE en el siguiente formato JSON (sin texto adicional):
 {
   "grade": <número 0-100>,
-  "feedback": "<cadena de retroalimentación constructiva>"
-}`;
+  "feedback": "<retroalimentación constructiva EN ESPAÑOL>"
+}
+
+IMPORTANTE: El campo "feedback" DEBE estar completamente en ESPAÑOL MEXICANO. No uses inglés bajo ninguna circunstancia.`;
   }
 
   /**
@@ -51,7 +53,11 @@ Responde ÚNICAMENTE en el siguiente formato JSON (sin texto adicional):
     homeworkContent: string,
     answers: HomeworkAnswer[]
   ): Promise<{ grade: number; feedback: string }> {
-    const systemPrompt = `Eres una IA de evaluación educativa. Proporcionas calificaciones justas y alentadoras y retroalimentación para las tareas de los estudiantes. Siempre responde únicamente en formato JSON válido.`;
+    const systemPrompt = `Eres una IA de evaluación educativa. Proporcionas calificaciones justas y alentadoras y retroalimentación para las tareas de los estudiantes.
+
+REGLA CRÍTICA DE IDIOMA: SIEMPRE debes responder en ESPAÑOL MEXICANO. Nunca uses inglés. Toda la retroalimentación debe estar en español.
+
+Siempre responde únicamente en formato JSON válido con el campo "feedback" en español.`;
 
     const prompt = this.buildGradingPrompt(homeworkContent, answers);
 

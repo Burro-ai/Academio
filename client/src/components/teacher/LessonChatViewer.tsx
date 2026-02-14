@@ -33,7 +33,7 @@ export function LessonChatViewer({ sessionId, onClose }: LessonChatViewerProps) 
       setMessages(data.messages);
       setLesson(data.lesson);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load chat');
+      setError(err instanceof Error ? err.message : t('errors.failedToLoad'));
     } finally {
       setIsLoading(false);
     }

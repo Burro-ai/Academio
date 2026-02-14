@@ -25,7 +25,7 @@ export function MyLessons() {
       const data = await studentApi.getMyLessons();
       setLessons(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load lessons');
+      setError(err instanceof Error ? err.message : t('errors.failedToLoad'));
     } finally {
       setIsLoading(false);
     }

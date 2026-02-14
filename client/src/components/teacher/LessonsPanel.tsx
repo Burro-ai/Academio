@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { GlassCard, GlassButton } from '@/components/glass';
 import { LessonCreator } from './LessonCreator';
 import { lessonApi } from '@/services/lessonApi';
 import { LessonWithTeacher } from '@/types';
 
 export function LessonsPanel() {
+  const { t } = useTranslation();
   const [lessons, setLessons] = useState<LessonWithTeacher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,7 @@ export function LessonsPanel() {
       const data = await lessonApi.getLessons();
       setLessons(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load lessons');
+      setError(err instanceof Error ? err.message : t('panels.lessons.failedToLoad'));
     } finally {
       setIsLoading(false);
     }
@@ -38,22 +40,22 @@ export function LessonsPanel() {
       const result = await lessonApi.personalizeLesson(lessonId);
       // Reload lessons to get updated counts
       await loadLessons();
-      alert(`Personalized for ${result.count} students!`);
+      alert(t('panels.lessons.personalizedSuccess', { count: result.count }));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to personalize');
+      alert(err instanceof Error ? err.message : t('panels.lessons.failedToPersonalize'));
     } finally {
       setIsPersonalizing(null);
     }
   };
 
   const handleDelete = async (lessonId: string) => {
-    if (!confirm('Are you sure you want to delete this lesson?')) return;
+    if (!confirm(t('panels.lessons.confirmDelete'))) return;
 
     try {
       await lessonApi.deleteLesson(lessonId);
       setLessons((prev) => prev.filter((l) => l.id !== lessonId));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete');
+      alert(err instanceof Error ? err.message : t('panels.lessons.failedToDelete'));
     }
   };
 
@@ -81,9 +83,9 @@ export function LessonsPanel() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-solid">Lessons</h1>
+            <h1 className="text-2xl font-bold text-solid">{t('panels.lessons.title')}</h1>
             <p className="text-prominent mt-1">
-              Create and manage personalized lessons for your students
+              {t('panels.lessons.subtitle')}
             </p>
           </div>
           <GlassButton variant="primary" onClick={() => setShowCreator(true)}>
@@ -95,7 +97,7 @@ export function LessonsPanel() {
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            Create Lesson
+            {t('panels.lessons.createButton')}
           </GlassButton>
         </div>
 
@@ -126,12 +128,12 @@ export function LessonsPanel() {
                 d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
               />
             </svg>
-            <h2 className="text-lg font-semibold text-solid mb-2">No lessons yet</h2>
+            <h2 className="text-lg font-semibold text-solid mb-2">{t('panels.lessons.empty.title')}</h2>
             <p className="text-prominent mb-4">
-              Create your first lesson and personalize it for each student
+              {t('panels.lessons.empty.message')}
             </p>
             <GlassButton variant="primary" onClick={() => setShowCreator(true)}>
-              Create Your First Lesson
+              {t('panels.lessons.empty.createFirst')}
             </GlassButton>
           </GlassCard>
         ) : (
@@ -153,13 +155,13 @@ export function LessonsPanel() {
                           </span>
                         )}
                         <span className="px-2 py-1 text-xs backdrop-blur-sm bg-white/10 border border-white/20 rounded-lg">
-                          {lesson.personalizedCount || 0} students
+                          {lesson.personalizedCount || 0} {t('panels.lessons.students')}
                         </span>
                       </div>
                       <h3 className="font-semibold text-solid mb-1">{lesson.title}</h3>
                       <p className="text-sm text-prominent">{lesson.topic}</p>
                       <p className="text-xs text-subtle mt-2">
-                        Created {new Date(lesson.createdAt).toLocaleDateString()}
+                        {t('panels.lessons.created')} {new Date(lesson.createdAt).toLocaleDateString()}
                       </p>
                     </div>
 
@@ -167,7 +169,7 @@ export function LessonsPanel() {
                       <button
                         onClick={() => setSelectedLesson(lesson)}
                         className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                        title="View content"
+                        title={t('panels.lessons.viewContent')}
                       >
                         <svg className="w-5 h-5 text-prominent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -178,7 +180,7 @@ export function LessonsPanel() {
                         onClick={() => handlePersonalize(lesson.id)}
                         disabled={isPersonalizing === lesson.id}
                         className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
-                        title="Personalize for students"
+                        title={t('panels.lessons.personalizeForStudents')}
                       >
                         {isPersonalizing === lesson.id ? (
                           <svg className="w-5 h-5 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -194,7 +196,7 @@ export function LessonsPanel() {
                       <button
                         onClick={() => handleDelete(lesson.id)}
                         className="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
-                        title="Delete"
+                        title={t('panels.lessons.delete')}
                       >
                         <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -244,7 +246,7 @@ export function LessonsPanel() {
                   </div>
                 </div>
                 <div className="p-6 overflow-y-auto max-h-[60vh]">
-                  <h3 className="font-semibold text-solid mb-3">Master Content</h3>
+                  <h3 className="font-semibold text-solid mb-3">{t('panels.lessons.masterContent')}</h3>
                   <div className="whitespace-pre-wrap text-prominent bg-white/5 p-4 rounded-xl border border-white/10">
                     {selectedLesson.masterContent}
                   </div>

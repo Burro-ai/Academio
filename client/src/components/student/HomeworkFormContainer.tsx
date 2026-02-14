@@ -28,11 +28,11 @@ export function HomeworkFormContainer() {
         const allHomework = await studentApi.getMyHomework();
         const found = allHomework.find((h) => h.id === homeworkId);
         if (!found) {
-          throw new Error('Homework not found');
+          throw new Error(t('errors.homeworkNotFound'));
         }
         setHomework(found);
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : 'Failed to load homework');
+        setLoadError(err instanceof Error ? err.message : t('errors.failedToLoad'));
       } finally {
         setIsLoadingHomework(false);
       }

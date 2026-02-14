@@ -25,7 +25,7 @@ export function MyHomework() {
       const data = await studentApi.getMyHomework();
       setHomework(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load homework');
+      setError(err instanceof Error ? err.message : t('errors.failedToLoad'));
     } finally {
       setIsLoading(false);
     }

@@ -266,7 +266,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             <div className="absolute inset-0 rounded-full backdrop-blur-xl bg-white/20 border border-white/30 animate-pulse" />
             <div className="absolute inset-2 rounded-full border-2 border-white/40 border-t-white animate-spin" />
           </div>
-          <p className="text-white/70 text-sm">Loading...</p>
+          <p className="text-white/70 text-sm">Cargando...</p>
         </div>
       </div>
     );

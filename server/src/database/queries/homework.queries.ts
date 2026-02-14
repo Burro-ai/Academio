@@ -294,6 +294,7 @@ export const homeworkQueries = {
 
   /**
    * Get all personalized homework for a student
+   * IMPORTANT: Only returns homework from the student's assigned teacher
    */
   getPersonalizedByStudentId(studentId: string): PersonalizedHomeworkWithDetails[] {
     const db = getDb();
@@ -309,7 +310,9 @@ export const homeworkQueries = {
         FROM personalized_homework ph
         JOIN homework_assignments h ON ph.homework_id = h.id
         JOIN users u ON h.teacher_id = u.id
+        LEFT JOIN student_profiles sp ON sp.user_id = ph.student_id
         WHERE ph.student_id = ?
+          AND (sp.teacher_id IS NULL OR h.teacher_id = sp.teacher_id)
         ORDER BY h.due_date ASC, ph.created_at DESC
       `)
       .all(studentId) as PersonalizedHomeworkWithDetailsRow[];

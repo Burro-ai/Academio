@@ -31,7 +31,7 @@ export function HomeworkPanel() {
       const data = await lessonApi.getHomework();
       setHomework(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load homework');
+      setError(err instanceof Error ? err.message : t('panels.homework.failedToLoad'));
     } finally {
       setIsLoading(false);
     }
@@ -43,22 +43,22 @@ export function HomeworkPanel() {
     try {
       const result = await lessonApi.personalizeHomework(homeworkId);
       await loadHomework();
-      alert(`Personalized for ${result.count} students!`);
+      alert(t('panels.homework.personalizedSuccess', { count: result.count }));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to personalize');
+      alert(err instanceof Error ? err.message : t('panels.homework.failedToPersonalize'));
     } finally {
       setIsPersonalizing(null);
     }
   };
 
   const handleDelete = async (homeworkId: string) => {
-    if (!confirm('Are you sure you want to delete this homework?')) return;
+    if (!confirm(t('panels.homework.confirmDelete'))) return;
 
     try {
       await lessonApi.deleteHomework(homeworkId);
       setHomework((prev) => prev.filter((h) => h.id !== homeworkId));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete');
+      alert(err instanceof Error ? err.message : t('panels.homework.failedToDelete'));
     }
   };
 
@@ -74,8 +74,8 @@ export function HomeworkPanel() {
     const now = new Date();
     const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) return { label: 'Past due', color: 'red' };
-    if (diffDays <= 3) return { label: `${diffDays}d left`, color: 'yellow' };
+    if (diffDays < 0) return { label: t('panels.homework.dueStatus.pastDue'), color: 'red' };
+    if (diffDays <= 3) return { label: t('panels.homework.dueStatus.daysLeft', { count: diffDays }), color: 'yellow' };
     return { label: due.toLocaleDateString(), color: 'emerald' };
   };
 
@@ -98,16 +98,16 @@ export function HomeworkPanel() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-solid">Homework</h1>
+            <h1 className="text-2xl font-bold text-solid">{t('panels.homework.title')}</h1>
             <p className="text-prominent mt-1">
-              Create and manage personalized homework assignments
+              {t('panels.homework.subtitle')}
             </p>
           </div>
           <GlassButton variant="primary" onClick={() => setShowCreator(true)}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Create Homework
+            {t('panels.homework.createButton')}
           </GlassButton>
         </div>
 
@@ -168,12 +168,12 @@ export function HomeworkPanel() {
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
               />
             </svg>
-            <h2 className="text-lg font-semibold text-solid mb-2">No homework yet</h2>
+            <h2 className="text-lg font-semibold text-solid mb-2">{t('panels.homework.empty.title')}</h2>
             <p className="text-prominent mb-4">
-              Create your first homework assignment
+              {t('panels.homework.empty.message')}
             </p>
             <GlassButton variant="primary" onClick={() => setShowCreator(true)}>
-              Create Your First Homework
+              {t('panels.homework.empty.createFirst')}
             </GlassButton>
           </GlassCard>
         ) : (
@@ -197,7 +197,7 @@ export function HomeworkPanel() {
                             </span>
                           )}
                           <span className="px-2 py-1 text-xs backdrop-blur-sm bg-white/10 border border-white/20 rounded-lg">
-                            {hw.personalizedCount || 0} students
+                            {hw.personalizedCount || 0} {t('panels.homework.students')}
                           </span>
                           {dueStatus && (
                             <span
@@ -216,7 +216,7 @@ export function HomeworkPanel() {
                         <h3 className="font-semibold text-solid mb-1">{hw.title}</h3>
                         <p className="text-sm text-prominent">{hw.topic}</p>
                         <p className="text-xs text-subtle mt-2">
-                          Created {new Date(hw.createdAt).toLocaleDateString()}
+                          {t('panels.homework.created')} {new Date(hw.createdAt).toLocaleDateString()}
                         </p>
                       </div>
 
@@ -224,7 +224,7 @@ export function HomeworkPanel() {
                         <button
                           onClick={() => setSelectedHomework(hw)}
                           className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                          title="View content"
+                          title={t('panels.homework.viewContent')}
                         >
                           <svg className="w-5 h-5 text-prominent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -235,7 +235,7 @@ export function HomeworkPanel() {
                           onClick={() => handlePersonalize(hw.id)}
                           disabled={isPersonalizing === hw.id}
                           className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
-                          title="Personalize for students"
+                          title={t('panels.homework.personalizeForStudents')}
                         >
                           {isPersonalizing === hw.id ? (
                             <svg className="w-5 h-5 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -251,7 +251,7 @@ export function HomeworkPanel() {
                         <button
                           onClick={() => handleDelete(hw.id)}
                           className="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
-                          title="Delete"
+                          title={t('panels.homework.delete')}
                         >
                           <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -294,7 +294,7 @@ export function HomeworkPanel() {
                       <p className="text-prominent mt-1">{selectedHomework.topic}</p>
                       {selectedHomework.dueDate && (
                         <p className="text-sm text-subtle mt-2">
-                          Due: {new Date(selectedHomework.dueDate).toLocaleDateString()}
+                          {t('panels.homework.due')} {new Date(selectedHomework.dueDate).toLocaleDateString()}
                         </p>
                       )}
                     </div>
@@ -309,7 +309,7 @@ export function HomeworkPanel() {
                   </div>
                 </div>
                 <div className="p-6 overflow-y-auto max-h-[60vh]">
-                  <h3 className="font-semibold text-solid mb-3">Master Content</h3>
+                  <h3 className="font-semibold text-solid mb-3">{t('panels.homework.masterContent')}</h3>
                   <div className="whitespace-pre-wrap text-prominent bg-white/5 p-4 rounded-xl border border-white/10">
                     {selectedHomework.masterContent}
                   </div>

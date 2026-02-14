@@ -25,7 +25,7 @@ export function HomeworkSubmissionsTab() {
       const data = await teacherApi.getPendingSubmissions();
       setSubmissions(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load submissions');
+      setError(err instanceof Error ? err.message : t('errors.failedToLoad'));
     } finally {
       setIsLoading(false);
     }
