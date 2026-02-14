@@ -1,4 +1,5 @@
 import { ollamaService, ModelType } from './ollama.service';
+import { aiGatekeeper } from './aiGatekeeper.service';
 import { lessonsQueries } from '../database/queries/lessons.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
 import { Lesson, PersonalizationContext, StudentProfileWithUser } from '../types';
@@ -114,6 +115,7 @@ export const lessonService = {
   /**
    * Generate master lesson content using AI (non-streaming)
    * Uses 'reasoner' model for high-quality content generation
+   * Content is formatted through the AI Gatekeeper for proper LaTeX and structure
    */
   async generateMasterContent(topic: string, subject?: string): Promise<string> {
     const prompt = MASTER_LESSON_PROMPT.replace('{{TOPIC}}', topic).replace(
@@ -122,12 +124,19 @@ export const lessonService = {
     );
 
     // Use reasoner model for high-quality master content
-    const content = await ollamaService.generate(prompt, undefined, undefined, 'reasoner');
-    return content.trim();
+    const rawContent = await ollamaService.generate(prompt, undefined, undefined, 'reasoner');
+
+    // Format through gatekeeper for proper LaTeX and structure
+    const formatted = await aiGatekeeper.formatLessonContent(rawContent.trim(), subject);
+
+    console.log(`[Lesson] Generated master content: ${formatted.metadata.wordCount} words, LaTeX: ${formatted.metadata.hasLatex}`);
+
+    return formatted.content;
   },
 
   /**
    * Personalize lesson content for a specific student (uses chat model for speed)
+   * Personalized content is formatted through the AI Gatekeeper
    */
   async personalizeContent(
     masterContent: string,
@@ -153,8 +162,15 @@ export const lessonService = {
     }
 
     // Use chat model for fast personalization
-    const content = await ollamaService.generate(prompt, undefined, undefined, 'chat');
-    return content.trim();
+    const rawContent = await ollamaService.generate(prompt, undefined, undefined, 'chat');
+
+    // Format through gatekeeper (quick format for speed)
+    const formatted = aiGatekeeper.formatSync(rawContent.trim(), {
+      contentType: 'lesson',
+      requireLatex: true,
+    });
+
+    return formatted.content;
   },
 
   /**

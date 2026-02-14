@@ -1,4 +1,5 @@
 import { Message } from '@/types';
+import { SmartMarkdown } from '@/components/shared';
 
 interface ChatMessageProps {
   message: Message;
@@ -27,8 +28,14 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
             : 'glass-message-ai text-solid'
         }`}
       >
-        <div className="whitespace-pre-wrap break-words">
-          {message.content}
+        <div className="break-words">
+          {isUser ? (
+            // User messages: plain text
+            <span className="whitespace-pre-wrap">{message.content}</span>
+          ) : (
+            // AI messages: SmartMarkdown with LaTeX support
+            <SmartMarkdown content={message.content} variant="chat" compact />
+          )}
           {isStreaming && (
             <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse rounded-sm" />
           )}

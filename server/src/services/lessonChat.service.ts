@@ -1,4 +1,5 @@
 import { ollamaService } from './ollama.service';
+import { aiGatekeeper } from './aiGatekeeper.service';
 import { lessonChatQueries, LessonChatMessage } from '../database/queries/lessonChat.queries';
 import { lessonsQueries } from '../database/queries/lessons.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
@@ -45,8 +46,12 @@ ${lessonContent}
 - Mantén las respuestas enfocadas y no abrumadoras
 - Usa lenguaje simple y claro
 - Sé alentador incluso al corregir conceptos erróneos
-- Formatea las expresiones matemáticas claramente
+- **IMPORTANTE: Formatea TODAS las expresiones matemáticas usando LaTeX**:
+  - Usa $...$ para matemáticas en línea (ej: $x^2 + y^2 = z^2$)
+  - Usa $$...$$ para ecuaciones en bloque
+  - Fórmulas químicas: $H_2O$, $CO_2$, etc.
 - Haz referencia a partes específicas de la lección cuando sea relevante
+- Usa listas con viñetas (•) o numeradas para organizar información
 
 ## Lo Que NUNCA Debes Hacer
 
@@ -190,13 +195,20 @@ ${lessonContent}
         }
       }
 
-      // Save the complete response
-      lessonChatQueries.updateMessageContent(assistantMessage.id, fullResponse);
+      // Format the complete response through the gatekeeper
+      const formattedResult = aiGatekeeper.formatSync(fullResponse, {
+        contentType: 'chat',
+        requireLatex: true,
+      });
 
-      // Send completion event
+      // Save the formatted response
+      lessonChatQueries.updateMessageContent(assistantMessage.id, formattedResult.content);
+
+      // Send completion event with metadata
       yield {
         type: 'done',
         assistantMessageId: assistantMessage.id,
+        content: formattedResult.metadata ? JSON.stringify(formattedResult.metadata) : undefined,
       };
     } catch (error) {
       console.error('[LessonChat] Stream error:', error);

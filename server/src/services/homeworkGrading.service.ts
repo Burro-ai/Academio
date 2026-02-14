@@ -1,4 +1,5 @@
 import { ollamaService } from './ollama.service';
+import { aiGatekeeper } from './aiGatekeeper.service';
 import { homeworkSubmissionsQueries, HomeworkAnswer } from '../database/queries/homeworkSubmissions.queries';
 
 /**
@@ -68,7 +69,15 @@ Responde ÚNICAMENTE en el siguiente formato JSON (sin texto adicional):
 
       // Validate grade is in range
       const grade = Math.max(0, Math.min(100, result.grade));
-      const feedback = result.feedback || 'Sin retroalimentación proporcionada.';
+      const rawFeedback = result.feedback || 'Sin retroalimentación proporcionada.';
+
+      // Format the feedback through the gatekeeper for proper LaTeX and structure
+      const formattedResult = aiGatekeeper.formatSync(rawFeedback, {
+        contentType: 'grading',
+        requireLatex: true,
+      });
+
+      const feedback = formattedResult.content;
 
       // Save the AI suggestion to the database
       homeworkSubmissionsQueries.updateAISuggestion(submissionId, grade, feedback);
