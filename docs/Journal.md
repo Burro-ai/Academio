@@ -4,6 +4,129 @@
 
 ---
 
+## 2026-02-15: Focus Mode UI, Pedagogical Personas & Multi-Teacher Selection
+
+### Summary
+Major UI/UX transformation implementing "Focus Mode" for lessons and homework following the Liquid Glass (2026) design system. Also added Pedagogical Persona system for age-adaptive AI interactions, multi-teacher selection for students, and grade-level specific suggested prompts.
+
+### Focus Mode UI Transformation
+
+#### LessonChatInterface.tsx - 60/40 Split Layout
+- **Left Pane (60%)**: Educational Reader with `GlassCard variant="elevated"` and xl backdrop blur
+- **Right Pane (40%)**: Socratic Sidekick chat interface
+- **Specular Highlights**: `useSpecularHighlight` hook applied to reader surface
+- **Responsive Design**: Stacks vertically on tablets (`lg:flex-row`)
+- **AnimatePresence**: Smooth morphing transitions between dashboard and reader
+
+#### HomeworkFormContainer.tsx - Centered Question Stack
+- **Single-column layout**: `max-width: 800px` to prevent eye strain
+- **Visual Progress Bar**: Gradient bar at top + circular progress indicator in header
+- **Collapsible Instructions**: Smart instructions card with show/hide toggle
+- **Enhanced Loading States**: Glass-styled loading indicators
+
+#### HomeworkQuestionCard.tsx - Enhanced Question Cards
+- **GlassCard variant="elevated"**: Distinct glass surfaces with xl blur
+- **Primary Focus Ring**: `focus:ring-emerald-400/60` on all inputs
+- **Progress Indicator**: Left-edge gradient bar (emerald→blue when answered)
+- **Visual Feedback**: Checkmark overlay, ring highlight, gradient corner decorations
+- **Character Counter**: Live character count for textarea inputs
+
+#### SmartMarkdown.tsx - Enhanced Typography
+- **Focus Variant**: 1.8 line-height, 1.5rem paragraph spacing
+- **Analogy Boxes**: Blockquotes styled with gradient backgrounds and 💡 icon for Socratic content
+- **Key Vocabulary**: Bold text with emerald glow effect
+- **Headers**: Border-bottom styling in Focus Mode
+
+### Pedagogical Persona System
+
+Added 5 age-adapted AI personas in `aiGatekeeper.service.ts`:
+
+| Persona | Age | Grade | Tone |
+|---------|-----|-------|------|
+| El Explicador | 7-9 | 1º-3º Primaria | Simple, visual, celebratory |
+| El Motivador | 10-12 | 4º-6º Primaria | Energetic, detective-like |
+| El Mentor | 13-15 | Secundaria | Respectful, real-world |
+| El Retador | 16-18 | Preparatoria | Intellectually challenging |
+| El Colega | 19+ | Universidad | Academic peer |
+
+**Implementation**: `getPedagogicalPersona(age, gradeLevel)` function returns persona with full Spanish system prompt segment. Priority: gradeLevel > age.
+
+**Used by**: `lessonChat.service.ts`, `lesson.service.ts`, `homework.service.ts`, `homeworkGrading.service.ts`
+
+### Multi-Teacher Selection
+
+Students can now select multiple teachers instead of just one.
+
+#### Database Changes
+- Added `teacher_ids TEXT` column to `student_profiles` (JSON array)
+- Migration function `addTeacherIdsColumn()` in `db.ts`
+- Backwards compatible with single `teacher_id`
+
+#### API Changes
+- New endpoint: `PUT /api/student/teachers` with `{ teacherIds: string[] }`
+- Updated `studentProfiles.queries.ts` with `setTeachers()` method
+- `getByTeacherId()` now checks both `teacher_id` and `teacher_ids` array
+
+#### Frontend Changes
+- `FindTeacher.tsx`: Complete rewrite with toggle selection UI
+- Checkboxes for multi-select, click to add/remove
+- Shows "Your Teachers" section with count
+
+### Grade-Level Specific Prompts
+
+#### SuggestedPrompts.tsx
+- Added `getEducationalTier()` function to map gradeLevel to tier
+- Fetches grade-specific prompts with fallback to default
+
+#### es-MX.json Structure
+```json
+"suggestedPrompts": {
+  "primaria": { "math": [...], "science": [...], ... },
+  "secundaria": { "math": [...], ... },
+  "preparatoria": { "math": [...], ... },
+  "universidad": { "math": [...], ... },
+  "default": { "math": [...], ... }
+}
+```
+
+### CSS Additions (index.css)
+- `.focus-content`: Line-height 1.8, enhanced paragraph spacing
+- `.analogy-box`: Gradient backgrounds for Socratic context
+- `.key-term`: Emerald glow effect for vocabulary
+- `.focus-input`: Primary focus ring styling
+- `.focus-reader`: Specular highlight base
+- Responsive tablet stacking rules
+
+### Bug Fixes
+- Fixed `sessions.queries.ts` foreign key constraint error (was setting `student_id` to `userId` instead of `null`)
+
+### Files Changed (23 files, +2050/-726 lines)
+- `client/src/components/student/LessonChatInterface.tsx`
+- `client/src/components/student/HomeworkFormContainer.tsx`
+- `client/src/components/student/HomeworkQuestionCard.tsx`
+- `client/src/components/shared/SmartMarkdown.tsx`
+- `client/src/components/student/FindTeacher.tsx`
+- `client/src/components/student/StudentSettings.tsx`
+- `client/src/components/chat/SuggestedPrompts.tsx`
+- `client/src/index.css`
+- `client/src/locales/es-MX.json`
+- `client/src/services/studentApi.ts`
+- `server/src/services/aiGatekeeper.service.ts`
+- `server/src/services/lessonChat.service.ts`
+- `server/src/services/lesson.service.ts`
+- `server/src/services/homework.service.ts`
+- `server/src/services/homeworkGrading.service.ts`
+- `server/src/controllers/studentPortal.controller.ts`
+- `server/src/routes/studentPortal.routes.ts`
+- `server/src/database/queries/studentProfiles.queries.ts`
+- `server/src/database/queries/sessions.queries.ts`
+- `server/src/database/schema.sql`
+- `server/src/database/db.ts`
+- `server/src/types/index.ts`
+- `shared/types/studentProfile.types.ts`
+
+---
+
 ## 2026-02-09: Mexican Spanish (es-MX) Internationalization
 
 ### Summary
