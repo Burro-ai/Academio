@@ -93,12 +93,22 @@ class StudentApiService {
   }
 
   /**
-   * Set the student's selected teacher
+   * Set the student's selected teacher (single - backwards compatible)
    */
   async setTeacher(teacherId: string | null): Promise<StudentProfile> {
     return this.request('/student/teacher', {
       method: 'PUT',
       body: JSON.stringify({ teacherId }),
+    });
+  }
+
+  /**
+   * Set the student's selected teachers (multiple)
+   */
+  async setTeachers(teacherIds: string[]): Promise<StudentProfile> {
+    return this.request('/student/teachers', {
+      method: 'PUT',
+      body: JSON.stringify({ teacherIds }),
     });
   }
 }

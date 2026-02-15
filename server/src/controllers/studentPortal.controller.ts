@@ -158,4 +158,38 @@ export const studentPortalController = {
     profile = studentProfilesQueries.setTeacher(req.user.id, teacherId || null);
     res.json(profile);
   },
+
+  /**
+   * PUT /api/student/teachers
+   * Set the student's selected teachers (multiple)
+   */
+  async setTeachers(req: JwtAuthenticatedRequest, res: Response) {
+    if (!req.user) {
+      throw new AppError('Not authenticated', 401);
+    }
+
+    const { teacherIds } = req.body;
+
+    if (!Array.isArray(teacherIds)) {
+      throw new AppError('teacherIds must be an array', 400);
+    }
+
+    // Validate all teachers exist
+    for (const teacherId of teacherIds) {
+      const teacher = usersQueries.findById(teacherId);
+      if (!teacher || teacher.role !== 'TEACHER') {
+        throw new AppError(`Teacher not found: ${teacherId}`, 404);
+      }
+    }
+
+    // Check if profile exists, create if not
+    let profile = studentProfilesQueries.getByUserId(req.user.id);
+    if (!profile) {
+      profile = studentProfilesQueries.create(req.user.id, {});
+    }
+
+    // Update teachers
+    profile = studentProfilesQueries.setTeachers(req.user.id, teacherIds);
+    res.json(profile);
+  },
 };

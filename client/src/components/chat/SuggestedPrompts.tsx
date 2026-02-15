@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/context/AuthContext';
 import { Topic } from '@/types';
 
 interface SuggestedPromptsProps {
@@ -8,9 +9,51 @@ interface SuggestedPromptsProps {
   disabled?: boolean;
 }
 
+/**
+ * Maps a gradeLevel key to the educational tier for prompt selection
+ */
+function getEducationalTier(gradeLevel?: string): string {
+  if (!gradeLevel) return 'default';
+
+  const level = gradeLevel.toLowerCase();
+
+  // Universidad
+  if (level.includes('universidad') || level.includes('uni')) {
+    return 'universidad';
+  }
+
+  // Preparatoria
+  if (level.includes('preparatoria') || level.includes('prepa') || level.includes('bachillerato')) {
+    return 'preparatoria';
+  }
+
+  // Secundaria
+  if (level.includes('secundaria')) {
+    return 'secundaria';
+  }
+
+  // Primaria (check for specific grades or default)
+  if (level.includes('primaria')) {
+    return 'primaria';
+  }
+
+  return 'default';
+}
+
 export function SuggestedPrompts({ topic, onSelectPrompt, disabled }: SuggestedPromptsProps) {
   const { t } = useTranslation();
-  const prompts = t(`suggestedPrompts.${topic}`, { returnObjects: true }) as string[];
+  const { profile } = useAuth();
+
+  // Get educational tier based on student's grade level
+  const educationalTier = getEducationalTier(profile?.gradeLevel);
+
+  // Try to get grade-specific prompts, fall back to default
+  let prompts = t(`suggestedPrompts.${educationalTier}.${topic}`, { returnObjects: true, defaultValue: null }) as string[] | null;
+
+  // Fallback to default if specific tier not found
+  if (!prompts || !Array.isArray(prompts)) {
+    prompts = t(`suggestedPrompts.default.${topic}`, { returnObjects: true }) as string[];
+  }
 
   return (
     <div className="grid grid-cols-2 gap-3">

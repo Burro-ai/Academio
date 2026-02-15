@@ -10,7 +10,8 @@ export interface StudentProfile {
   learningSystemPrompt?: string;
   gradeLevel?: string;
   classroomId?: string;
-  teacherId?: string;
+  teacherId?: string;          // Primary teacher (backwards compatible)
+  teacherIds?: string[];       // Multiple teachers
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +60,7 @@ export interface StudentProfileSummary {
 // For the personalization context sent to AI
 export interface PersonalizationContext {
   age?: number;
+  gradeLevel?: string;
   interests: string[];
   skillsToImprove: string[];
   learningSystemPrompt?: string;

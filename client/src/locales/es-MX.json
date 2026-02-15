@@ -134,7 +134,25 @@
       "age": "Edad",
       "yourAge": "Tu edad",
       "gradeLevel": "Grado escolar",
-      "gradePlaceholder": "ej., 1ro de Secundaria",
+      "gradePlaceholder": "Selecciona tu grado",
+      "gradeLevels": {
+        "primaria1": "1º de Primaria",
+        "primaria2": "2º de Primaria",
+        "primaria3": "3º de Primaria",
+        "primaria4": "4º de Primaria",
+        "primaria5": "5º de Primaria",
+        "primaria6": "6º de Primaria",
+        "secundaria1": "1º de Secundaria",
+        "secundaria2": "2º de Secundaria",
+        "secundaria3": "3º de Secundaria",
+        "preparatoria1": "1º de Preparatoria",
+        "preparatoria2": "2º de Preparatoria",
+        "preparatoria3": "3º de Preparatoria",
+        "universidad1": "1º de Universidad",
+        "universidad2": "2º de Universidad",
+        "universidad3": "3º de Universidad",
+        "universidad4": "4º+ de Universidad"
+      },
       "favoriteSports": {
         "title": "Deportes y actividades favoritas",
         "description": "La IA usará ejemplos relacionados con tus intereses"
@@ -190,10 +208,12 @@
       }
     },
     "findTeacher": {
-      "title": "Encuentra a tu maestro",
-      "subtitle": "Selecciona a tu maestro para que pueda ver tu perfil y personalizar lecciones para ti",
+      "title": "Selecciona tus maestros",
+      "subtitle": "Selecciona uno o más maestros para recibir sus lecciones y tareas personalizadas",
       "currentTeacher": "Tu maestro actual",
+      "currentTeachers": "Tus maestros ({{count}})",
       "availableTeachers": "Maestros disponibles",
+      "selectMultiple": "Puedes seleccionar múltiples maestros. Haz clic para agregar o quitar.",
       "switchTeacher": "Cambiar a otro maestro",
       "removeTeacher": "Quitar maestro",
       "select": "Seleccionar",
@@ -201,13 +221,13 @@
       "selected": "Seleccionado",
       "noTeachersAvailable": "No hay maestros disponibles aún. Vuelve más tarde.",
       "whatHappens": {
-        "title": "¿Qué pasa cuando seleccionas un maestro?",
-        "item1": "Tu maestro verá tu perfil en su lista de estudiantes",
-        "item2": "Podrá crear lecciones y tareas personalizadas para ti",
+        "title": "¿Qué pasa cuando seleccionas maestros?",
+        "item1": "Cada maestro verá tu perfil en su lista de estudiantes",
+        "item2": "Podrán crear lecciones y tareas personalizadas para ti",
         "item3": "El tutor IA usará tus preferencias para personalizar el aprendizaje",
-        "item4": "Puedes cambiar de maestro cuando quieras"
+        "item4": "Puedes agregar o quitar maestros cuando quieras"
       },
-      "successSelect": "¡Maestro seleccionado exitosamente! Tu maestro ahora puede ver tu perfil.",
+      "successSelect": "¡Maestro agregado exitosamente!",
       "successRemove": "Maestro removido de tu perfil."
     },
     "lessonChat": {
@@ -215,21 +235,34 @@
       "welcomeMessage": "Estoy aquí para ayudarte a entender el contenido de esta lección. Hazme cualquier pregunta y te guiaré a descubrir la respuesta.",
       "askQuestion": "Pregunta sobre esta lección...",
       "expandLesson": "Ver contenido",
-      "collapseLesson": "Ocultar contenido"
+      "collapseLesson": "Ocultar contenido",
+      "lessonContent": "Contenido de la Lección",
+      "noContent": "Sin contenido disponible",
+      "socraticSidekick": "Tu Tutor Socrático",
+      "askAnything": "Pregúntame cualquier cosa sobre la lección",
+      "suggestion1": "¿Puedes explicarme el concepto principal?",
+      "suggestion2": "¿Por qué es importante este tema?",
+      "suggestion3": "Dame un ejemplo práctico"
     },
     "homeworkForm": {
       "question": "Pregunta {{number}}",
-      "yourAnswer": "Tu respuesta",
-      "progress": "{{answered}} de {{total}} preguntas",
+      "yourAnswer": "Escribe tu respuesta aquí...",
+      "progress": "{{answered}} de {{total}}",
       "submitHomework": "Entregar tarea",
       "submitting": "Entregando...",
       "submitted": "Entregada",
       "awaitingGrade": "Esperando calificación",
+      "awaitingGradeDescription": "Tu maestro revisará tu tarea pronto",
       "gradeReceived": "Calificación recibida",
       "gradedAt": "Calificada el {{date}}",
       "feedback": "Retroalimentación del maestro",
       "instructions": "Instrucciones",
-      "questions": "Preguntas"
+      "questions": "Preguntas",
+      "showInstructions": "Mostrar instrucciones",
+      "questionOf": "Pregunta {{current}} de {{total}}",
+      "enterNumber": "Ingresa un número",
+      "characters": "caracteres",
+      "answerHint": "Escribe tu respuesta con tus propias palabras"
     }
   },
 
@@ -448,36 +481,166 @@
   },
 
   "suggestedPrompts": {
-    "math": [
-      "Ayúdame a entender las fracciones",
-      "¿Cuál es el orden de las operaciones?",
-      "¿Cómo resuelvo problemas con palabras?",
-      "Explícame las tablas de multiplicar"
-    ],
-    "science": [
-      "¿Qué es la fotosíntesis?",
-      "¿Cómo funciona el ciclo del agua?",
-      "¿Por qué el cielo es azul?",
-      "Explícame los átomos y las moléculas"
-    ],
-    "history": [
-      "Cuéntame sobre el México antiguo",
-      "¿Qué causó la Revolución Mexicana?",
-      "¿Quiénes fueron los héroes de la Independencia?",
-      "Explícame la Conquista de México"
-    ],
-    "writing": [
-      "¿Cómo escribo un párrafo?",
-      "Ayúdame con la estructura de mi ensayo",
-      "¿Qué hace buena a una historia?",
-      "Explícame las reglas de gramática"
-    ],
-    "general": [
-      "Ayúdame con mi tarea",
-      "Necesito tips de estudio",
-      "¿Cómo tomo buenos apuntes?",
-      "Explícame este concepto de manera sencilla"
-    ]
+    "primaria": {
+      "math": [
+        "Ayúdame a entender las fracciones",
+        "¿Cuál es el orden de las operaciones?",
+        "¿Cómo resuelvo problemas con palabras?",
+        "Explícame las tablas de multiplicar"
+      ],
+      "science": [
+        "¿Qué es la fotosíntesis?",
+        "¿Cómo funciona el ciclo del agua?",
+        "¿Por qué el cielo es azul?",
+        "¿De qué están hechas las cosas?"
+      ],
+      "history": [
+        "Cuéntame sobre el México antiguo",
+        "¿Quiénes fueron los aztecas?",
+        "¿Por qué celebramos el 16 de septiembre?",
+        "Cuéntame sobre los mayas"
+      ],
+      "writing": [
+        "¿Cómo escribo un párrafo?",
+        "Ayúdame con mi cuento",
+        "¿Qué hace buena a una historia?",
+        "¿Cómo uso los signos de puntuación?"
+      ],
+      "general": [
+        "Ayúdame con mi tarea",
+        "¿Cómo estudio mejor?",
+        "Explícame esto de forma simple",
+        "¿Cómo organizo mis apuntes?"
+      ]
+    },
+    "secundaria": {
+      "math": [
+        "Ayúdame a resolver ecuaciones lineales",
+        "¿Cómo funciona el teorema de Pitágoras?",
+        "Explícame los números negativos",
+        "¿Cómo grafico funciones?"
+      ],
+      "science": [
+        "¿Cómo funciona la tabla periódica?",
+        "Explícame las leyes de Newton",
+        "¿Qué es el ADN y cómo funciona?",
+        "¿Cómo se forma la electricidad?"
+      ],
+      "history": [
+        "¿Qué causó la Revolución Mexicana?",
+        "Explícame la Conquista de México",
+        "¿Cómo fue la Independencia de México?",
+        "¿Qué pasó en la Segunda Guerra Mundial?"
+      ],
+      "writing": [
+        "Ayúdame con mi ensayo argumentativo",
+        "¿Cómo analizo un texto literario?",
+        "¿Qué técnicas narrativas existen?",
+        "¿Cómo estructuro una reseña?"
+      ],
+      "general": [
+        "Ayúdame a estudiar para mi examen",
+        "¿Cómo hago un resumen efectivo?",
+        "Necesito entender este concepto",
+        "¿Cómo mejoro mi comprensión lectora?"
+      ]
+    },
+    "preparatoria": {
+      "math": [
+        "Ayúdame con cálculo diferencial",
+        "¿Cómo resuelvo límites y derivadas?",
+        "Explícame las matrices y determinantes",
+        "¿Cómo aplico la trigonometría avanzada?"
+      ],
+      "science": [
+        "Explícame la mecánica cuántica básica",
+        "¿Cómo funciona la termodinámica?",
+        "¿Qué es la química orgánica?",
+        "Ayúdame con biología molecular"
+      ],
+      "history": [
+        "Analiza las causas de la Guerra Fría",
+        "¿Cómo impactó la globalización a México?",
+        "Explícame las corrientes filosóficas del siglo XX",
+        "¿Qué factores llevaron a la Revolución Industrial?"
+      ],
+      "writing": [
+        "Ayúdame con mi tesis de investigación",
+        "¿Cómo estructuro un argumento académico?",
+        "¿Cómo analizo críticamente un texto?",
+        "¿Cómo cito fuentes correctamente?"
+      ],
+      "general": [
+        "¿Cómo me preparo para el examen de admisión?",
+        "Ayúdame a desarrollar pensamiento crítico",
+        "¿Cómo investigo temas académicos?",
+        "¿Qué carreras se relacionan con esto?"
+      ]
+    },
+    "universidad": {
+      "math": [
+        "Ayúdame con ecuaciones diferenciales",
+        "Explícame el álgebra lineal avanzada",
+        "¿Cómo aplico métodos numéricos?",
+        "¿Cómo funciona el análisis real?"
+      ],
+      "science": [
+        "Explícame la relatividad especial",
+        "¿Cómo funciona la bioinformática?",
+        "Ayúdame con química computacional",
+        "¿Qué metodologías de investigación uso?"
+      ],
+      "history": [
+        "Analiza la historiografía contemporánea",
+        "¿Cómo se aplica la teoría crítica?",
+        "Explícame las perspectivas poscoloniales",
+        "¿Cómo analizo fuentes primarias?"
+      ],
+      "writing": [
+        "Ayúdame con mi artículo de investigación",
+        "¿Cómo estructuro una revisión sistemática?",
+        "¿Qué estilo de citación debo usar?",
+        "¿Cómo defiendo mi tesis?"
+      ],
+      "general": [
+        "¿Cómo desarrollo mi proyecto de investigación?",
+        "Ayúdame a analizar esta literatura académica",
+        "¿Cómo presento mis resultados?",
+        "¿Qué metodología es apropiada?"
+      ]
+    },
+    "default": {
+      "math": [
+        "Ayúdame a entender las fracciones",
+        "¿Cuál es el orden de las operaciones?",
+        "¿Cómo resuelvo problemas con palabras?",
+        "Explícame las tablas de multiplicar"
+      ],
+      "science": [
+        "¿Qué es la fotosíntesis?",
+        "¿Cómo funciona el ciclo del agua?",
+        "¿Por qué el cielo es azul?",
+        "Explícame los átomos y las moléculas"
+      ],
+      "history": [
+        "Cuéntame sobre el México antiguo",
+        "¿Qué causó la Revolución Mexicana?",
+        "¿Quiénes fueron los héroes de la Independencia?",
+        "Explícame la Conquista de México"
+      ],
+      "writing": [
+        "¿Cómo escribo un párrafo?",
+        "Ayúdame con la estructura de mi ensayo",
+        "¿Qué hace buena a una historia?",
+        "Explícame las reglas de gramática"
+      ],
+      "general": [
+        "Ayúdame con mi tarea",
+        "Necesito tips de estudio",
+        "¿Cómo tomo buenos apuntes?",
+        "Explícame este concepto de manera sencilla"
+      ]
+    }
   },
 
   "topicGreetings": {

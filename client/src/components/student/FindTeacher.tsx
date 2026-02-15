@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
-import { GlassCard, GlassButton } from '@/components/glass';
+import { GlassCard } from '@/components/glass';
 import { studentApi } from '@/services/studentApi';
 import { User } from '@/types';
 
@@ -29,14 +29,35 @@ export function FindTeacher() {
     }
   };
 
-  const handleSelectTeacher = async (teacherId: string) => {
+  // Get selected teacher IDs (supports both old single teacherId and new teacherIds array)
+  const selectedTeacherIds: string[] = profile?.teacherIds || (profile?.teacherId ? [profile.teacherId] : []);
+
+  const isTeacherSelected = (teacherId: string) => selectedTeacherIds.includes(teacherId);
+
+  const handleToggleTeacher = async (teacherId: string) => {
     setIsSaving(true);
     setMessage(null);
 
     try {
-      await studentApi.setTeacher(teacherId);
+      const isCurrentlySelected = isTeacherSelected(teacherId);
+      let newTeacherIds: string[];
+
+      if (isCurrentlySelected) {
+        // Remove teacher
+        newTeacherIds = selectedTeacherIds.filter(id => id !== teacherId);
+      } else {
+        // Add teacher
+        newTeacherIds = [...selectedTeacherIds, teacherId];
+      }
+
+      await studentApi.setTeachers(newTeacherIds);
       await refreshUser();
-      setMessage({ type: 'success', text: t('student.findTeacher.successSelect') });
+      setMessage({
+        type: 'success',
+        text: isCurrentlySelected
+          ? t('student.findTeacher.successRemove')
+          : t('student.findTeacher.successSelect'),
+      });
     } catch (err) {
       setMessage({
         type: 'error',
@@ -47,27 +68,8 @@ export function FindTeacher() {
     }
   };
 
-  const handleRemoveTeacher = async () => {
-    setIsSaving(true);
-    setMessage(null);
-
-    try {
-      await studentApi.setTeacher(null);
-      await refreshUser();
-      setMessage({ type: 'success', text: t('student.findTeacher.successRemove') });
-    } catch (err) {
-      setMessage({
-        type: 'error',
-        text: err instanceof Error ? err.message : t('errors.generic'),
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const currentTeacher = profile?.teacherId
-    ? teachers.find((t) => t.id === profile.teacherId)
-    : null;
+  // Get currently selected teachers
+  const currentTeachers = teachers.filter(t => isTeacherSelected(t.id));
 
   if (isLoading) {
     return (
@@ -107,29 +109,37 @@ export function FindTeacher() {
           </motion.div>
         )}
 
-        {/* Current Teacher */}
-        {currentTeacher && (
+        {/* Current Teachers */}
+        {currentTeachers.length > 0 && (
           <GlassCard variant="card" className="p-6">
-            <h2 className="text-lg font-semibold text-solid mb-4">{t('student.findTeacher.currentTeacher')}</h2>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 backdrop-blur-md bg-blue-500/30 border border-blue-400/30 rounded-full flex items-center justify-center shadow-glass">
-                  <span className="text-blue-100 font-semibold text-lg">
-                    {currentTeacher.name.charAt(0)}
-                  </span>
+            <h2 className="text-lg font-semibold text-solid mb-4">
+              {t('student.findTeacher.currentTeachers', { count: currentTeachers.length })}
+            </h2>
+            <div className="space-y-3">
+              {currentTeachers.map((teacher) => (
+                <div key={teacher.id} className="flex items-center justify-between p-3 rounded-xl backdrop-blur-md bg-blue-500/20 border border-blue-400/30">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 backdrop-blur-md bg-blue-500/40 border border-blue-400/50 rounded-full flex items-center justify-center">
+                      <span className="text-blue-100 font-semibold">
+                        {teacher.name.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-solid">{teacher.name}</p>
+                      <p className="text-sm text-prominent">{teacher.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleTeacher(teacher.id)}
+                    disabled={isSaving}
+                    className="p-2 rounded-lg backdrop-blur-md bg-red-500/20 border border-red-400/30 text-red-200 hover:bg-red-500/30 transition-all disabled:opacity-50"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <div>
-                  <p className="font-medium text-solid">{currentTeacher.name}</p>
-                  <p className="text-sm text-prominent">{currentTeacher.email}</p>
-                </div>
-              </div>
-              <GlassButton
-                variant="secondary"
-                onClick={handleRemoveTeacher}
-                disabled={isSaving}
-              >
-                {isSaving ? t('common.loading') : t('student.findTeacher.removeTeacher')}
-              </GlassButton>
+              ))}
             </div>
           </GlassCard>
         )}
@@ -137,8 +147,11 @@ export function FindTeacher() {
         {/* Available Teachers */}
         <GlassCard variant="card" className="p-6">
           <h2 className="text-lg font-semibold text-solid mb-4">
-            {currentTeacher ? t('student.findTeacher.switchTeacher') : t('student.findTeacher.availableTeachers')}
+            {t('student.findTeacher.availableTeachers')}
           </h2>
+          <p className="text-sm text-prominent mb-4">
+            {t('student.findTeacher.selectMultiple')}
+          </p>
 
           {teachers.length === 0 ? (
             <p className="text-prominent text-center py-8">
@@ -147,20 +160,35 @@ export function FindTeacher() {
           ) : (
             <div className="space-y-3">
               {teachers.map((teacher) => {
-                const isSelected = profile?.teacherId === teacher.id;
+                const isSelected = isTeacherSelected(teacher.id);
                 return (
                   <motion.div
                     key={teacher.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className={`p-4 rounded-xl border transition-all ${
+                    className={`p-4 rounded-xl border transition-all cursor-pointer ${
                       isSelected
                         ? 'backdrop-blur-md bg-blue-500/20 border-blue-400/40'
                         : 'backdrop-blur-md bg-white/10 border-white/20 hover:bg-white/20'
                     }`}
+                    onClick={() => !isSaving && handleToggleTeacher(teacher.id)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
+                        {/* Checkbox indicator */}
+                        <div
+                          className={`w-6 h-6 rounded-md flex items-center justify-center border-2 transition-all ${
+                            isSelected
+                              ? 'backdrop-blur-md bg-blue-500/50 border-blue-400'
+                              : 'backdrop-blur-md bg-white/10 border-white/30'
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg className="w-4 h-4 text-blue-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
                         <div
                           className={`w-10 h-10 rounded-full flex items-center justify-center ${
                             isSelected
@@ -181,18 +209,10 @@ export function FindTeacher() {
                           <p className="text-sm text-prominent">{teacher.email}</p>
                         </div>
                       </div>
-                      {isSelected ? (
+                      {isSelected && (
                         <span className="px-3 py-1 text-sm font-medium backdrop-blur-sm bg-blue-500/30 border border-blue-400/40 rounded-full text-blue-100">
                           {t('student.findTeacher.selected')}
                         </span>
-                      ) : (
-                        <GlassButton
-                          variant="primary"
-                          onClick={() => handleSelectTeacher(teacher.id)}
-                          disabled={isSaving}
-                        >
-                          {isSaving ? t('student.findTeacher.selecting') : t('student.findTeacher.select')}
-                        </GlassButton>
                       )}
                     </div>
                   </motion.div>

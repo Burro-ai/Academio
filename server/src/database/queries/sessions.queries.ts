@@ -102,7 +102,7 @@ export const sessionsQueries = {
     db.prepare(
       `INSERT INTO sessions (id, topic, title, student_id, user_id, school_id, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(id, topic, sessionTitle, userId || null, userId || null, schoolId || null, now, now);
+    ).run(id, topic, sessionTitle, null, userId || null, schoolId || null, now, now);
 
     return {
       id,

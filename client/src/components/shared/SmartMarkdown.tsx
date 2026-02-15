@@ -6,6 +6,9 @@
  * - Proper syntax highlighting for code blocks
  * - Clean markdown formatting (headers, lists, tables)
  * - Responsive styling with glass design system
+ * - Focus Mode typography with 1.8 line-height
+ * - Analogy Boxes for blockquotes (Socratic context)
+ * - Primary-colored text glows for key vocabulary
  */
 
 import React, { useMemo } from 'react';
@@ -21,7 +24,7 @@ import 'katex/dist/katex.min.css';
 export interface SmartMarkdownProps {
   content: string;
   className?: string;
-  variant?: 'default' | 'lesson' | 'homework' | 'chat' | 'feedback';
+  variant?: 'default' | 'lesson' | 'homework' | 'chat' | 'feedback' | 'focus';
   compact?: boolean;
 }
 
@@ -55,169 +58,246 @@ function preprocessContent(content: string): string {
 }
 
 /**
+ * Detect if content looks like an analogy (Socratic personalization)
+ */
+function isAnalogyContent(children: React.ReactNode): boolean {
+  const text = String(children || '').toLowerCase();
+  return (
+    text.includes('imagina') ||
+    text.includes('piensa en') ||
+    text.includes('es como') ||
+    text.includes('analogía') ||
+    text.includes('ejemplo') ||
+    text.includes('💡') ||
+    text.includes('🤔')
+  );
+}
+
+/**
  * Custom components for different markdown elements
  */
-const createComponents = (_variant: SmartMarkdownProps['variant'], compact: boolean) => ({
-  // Headers with proper styling
-  h1: ({ children }: { children?: React.ReactNode }) => (
-    <h1 className={`font-bold text-solid ${compact ? 'text-xl mb-3' : 'text-2xl mb-4'} mt-6 first:mt-0`}>
-      {children}
-    </h1>
-  ),
-  h2: ({ children }: { children?: React.ReactNode }) => (
-    <h2 className={`font-semibold text-solid ${compact ? 'text-lg mb-2' : 'text-xl mb-3'} mt-5 first:mt-0`}>
-      {children}
-    </h2>
-  ),
-  h3: ({ children }: { children?: React.ReactNode }) => (
-    <h3 className={`font-semibold text-solid ${compact ? 'text-base mb-2' : 'text-lg mb-2'} mt-4 first:mt-0`}>
-      {children}
-    </h3>
-  ),
-  h4: ({ children }: { children?: React.ReactNode }) => (
-    <h4 className="font-medium text-solid text-base mb-2 mt-3 first:mt-0">
-      {children}
-    </h4>
-  ),
+const createComponents = (variant: SmartMarkdownProps['variant'], compact: boolean) => {
+  const isFocusMode = variant === 'focus' || variant === 'lesson';
 
-  // Paragraphs
-  p: ({ children }: { children?: React.ReactNode }) => (
-    <p className={`text-prominent ${compact ? 'mb-2 text-sm' : 'mb-3'} leading-relaxed`}>
-      {children}
-    </p>
-  ),
+  return {
+    // Headers with proper styling and border-bottom for Focus Mode
+    h1: ({ children }: { children?: React.ReactNode }) => (
+      <h1 className={`font-bold text-solid ${
+        compact ? 'text-xl mb-3' : isFocusMode ? 'text-3xl mb-6' : 'text-2xl mb-4'
+      } mt-8 first:mt-0 ${
+        isFocusMode ? 'pb-4 border-b border-white/10' : ''
+      }`}>
+        {children}
+      </h1>
+    ),
+    h2: ({ children }: { children?: React.ReactNode }) => (
+      <h2 className={`font-semibold text-solid ${
+        compact ? 'text-lg mb-2' : isFocusMode ? 'text-2xl mb-4' : 'text-xl mb-3'
+      } mt-6 first:mt-0 ${
+        isFocusMode ? 'pb-3 border-b border-white/10' : ''
+      }`}>
+        {children}
+      </h2>
+    ),
+    h3: ({ children }: { children?: React.ReactNode }) => (
+      <h3 className={`font-semibold text-solid ${
+        compact ? 'text-base mb-2' : isFocusMode ? 'text-xl mb-3' : 'text-lg mb-2'
+      } mt-5 first:mt-0`}>
+        {children}
+      </h3>
+    ),
+    h4: ({ children }: { children?: React.ReactNode }) => (
+      <h4 className={`font-medium text-solid ${
+        isFocusMode ? 'text-lg mb-2' : 'text-base mb-2'
+      } mt-4 first:mt-0`}>
+        {children}
+      </h4>
+    ),
 
-  // Lists with proper styling
-  ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul className={`list-disc list-inside ${compact ? 'mb-2 ml-2' : 'mb-3 ml-4'} space-y-1`}>
-      {children}
-    </ul>
-  ),
-  ol: ({ children }: { children?: React.ReactNode }) => (
-    <ol className={`list-decimal list-inside ${compact ? 'mb-2 ml-2' : 'mb-3 ml-4'} space-y-1`}>
-      {children}
-    </ol>
-  ),
-  li: ({ children }: { children?: React.ReactNode }) => (
-    <li className="text-prominent leading-relaxed">
-      {children}
-    </li>
-  ),
+    // Paragraphs with enhanced vertical rhythm for Focus Mode
+    p: ({ children }: { children?: React.ReactNode }) => (
+      <p className={`${
+        isFocusMode ? 'text-prominent text-base leading-[1.8] mb-6'
+          : compact ? 'text-prominent mb-2 text-sm leading-relaxed'
+          : 'text-prominent mb-3 leading-relaxed'
+      }`}>
+        {children}
+      </p>
+    ),
 
-  // Code blocks with syntax highlighting
-  code: ({ className, children, ...props }: { className?: string; children?: React.ReactNode }) => {
-    const isInline = !className;
+    // Lists with proper styling
+    ul: ({ children }: { children?: React.ReactNode }) => (
+      <ul className={`list-disc ${
+        compact ? 'mb-2 ml-2' : isFocusMode ? 'mb-6 ml-6 space-y-3' : 'mb-3 ml-4 space-y-1'
+      }`}>
+        {children}
+      </ul>
+    ),
+    ol: ({ children }: { children?: React.ReactNode }) => (
+      <ol className={`list-decimal ${
+        compact ? 'mb-2 ml-2' : isFocusMode ? 'mb-6 ml-6 space-y-3' : 'mb-3 ml-4 space-y-1'
+      }`}>
+        {children}
+      </ol>
+    ),
+    li: ({ children }: { children?: React.ReactNode }) => (
+      <li className={`${
+        isFocusMode ? 'text-prominent leading-[1.8] pl-2' : 'text-prominent leading-relaxed'
+      }`}>
+        {children}
+      </li>
+    ),
 
-    if (isInline) {
+    // Code blocks with syntax highlighting
+    code: ({ className, children, ...props }: { className?: string; children?: React.ReactNode }) => {
+      const isInline = !className;
+
+      if (isInline) {
+        return (
+          <code
+            className={`px-1.5 py-0.5 rounded ${
+              isFocusMode
+                ? 'bg-emerald-500/20 text-emerald-200 font-medium'
+                : 'bg-white/10 text-emerald-300'
+            } text-sm font-mono`}
+            {...props}
+          >
+            {children}
+          </code>
+        );
+      }
+
       return (
         <code
-          className="px-1.5 py-0.5 rounded bg-white/10 text-emerald-300 text-sm font-mono"
+          className={`block p-4 rounded-xl bg-black/30 backdrop-blur-sm text-sm font-mono overflow-x-auto ${
+            isFocusMode ? 'my-6' : ''
+          } ${className || ''}`}
           {...props}
         >
           {children}
         </code>
       );
-    }
+    },
 
-    return (
-      <code
-        className={`block p-3 rounded-lg bg-black/30 backdrop-blur-sm text-sm font-mono overflow-x-auto ${className || ''}`}
-        {...props}
+    // Pre blocks for code
+    pre: ({ children }: { children?: React.ReactNode }) => (
+      <pre className={`${isFocusMode ? 'mb-6' : 'mb-3'} rounded-xl overflow-hidden`}>
+        {children}
+      </pre>
+    ),
+
+    // Blockquotes - Special "Analogy Boxes" in Focus Mode for Socratic context
+    blockquote: ({ children }: { children?: React.ReactNode }) => {
+      const isAnalogy = isAnalogyContent(children);
+
+      if (isFocusMode) {
+        return (
+          <blockquote className={`relative ${
+            isAnalogy
+              ? 'bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border-l-4 border-emerald-400'
+              : 'bg-white/10 border-l-4 border-blue-400/50'
+          } backdrop-blur-sm rounded-r-xl pl-5 pr-4 py-4 my-6`}>
+            {isAnalogy && (
+              <div className="absolute -left-px top-3 -translate-x-1/2 w-8 h-8 bg-emerald-500/30 backdrop-blur-sm rounded-full flex items-center justify-center border border-emerald-400/50">
+                <span className="text-lg">💡</span>
+              </div>
+            )}
+            <div className={`italic ${isAnalogy ? 'text-emerald-100' : 'text-prominent/90'} leading-[1.7]`}>
+              {children}
+            </div>
+          </blockquote>
+        );
+      }
+
+      return (
+        <blockquote className="border-l-4 border-emerald-400/50 pl-4 py-1 my-3 text-prominent/80 italic">
+          {children}
+        </blockquote>
+      );
+    },
+
+    // Horizontal rules
+    hr: () => (
+      <hr className={`${isFocusMode ? 'my-8' : 'my-4'} border-white/20`} />
+    ),
+
+    // Tables
+    table: ({ children }: { children?: React.ReactNode }) => (
+      <div className={`overflow-x-auto ${isFocusMode ? 'mb-6' : 'mb-3'}`}>
+        <table className="min-w-full border-collapse">
+          {children}
+        </table>
+      </div>
+    ),
+    thead: ({ children }: { children?: React.ReactNode }) => (
+      <thead className="bg-white/10">
+        {children}
+      </thead>
+    ),
+    tbody: ({ children }: { children?: React.ReactNode }) => (
+      <tbody className="divide-y divide-white/10">
+        {children}
+      </tbody>
+    ),
+    tr: ({ children }: { children?: React.ReactNode }) => (
+      <tr className="hover:bg-white/5 transition-colors">
+        {children}
+      </tr>
+    ),
+    th: ({ children }: { children?: React.ReactNode }) => (
+      <th className={`px-4 py-3 text-left ${
+        isFocusMode ? 'text-base' : 'text-sm'
+      } font-semibold text-solid`}>
+        {children}
+      </th>
+    ),
+    td: ({ children }: { children?: React.ReactNode }) => (
+      <td className={`px-4 py-3 ${isFocusMode ? 'text-base' : 'text-sm'} text-prominent`}>
+        {children}
+      </td>
+    ),
+
+    // Links
+    a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+      <a
+        href={href}
+        className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors"
+        target="_blank"
+        rel="noopener noreferrer"
       >
         {children}
-      </code>
-    );
-  },
+      </a>
+    ),
 
-  // Pre blocks for code
-  pre: ({ children }: { children?: React.ReactNode }) => (
-    <pre className="mb-3 rounded-lg overflow-hidden">
-      {children}
-    </pre>
-  ),
-
-  // Blockquotes
-  blockquote: ({ children }: { children?: React.ReactNode }) => (
-    <blockquote className="border-l-4 border-emerald-400/50 pl-4 py-1 my-3 text-prominent/80 italic">
-      {children}
-    </blockquote>
-  ),
-
-  // Horizontal rules
-  hr: () => (
-    <hr className="my-4 border-white/20" />
-  ),
-
-  // Tables
-  table: ({ children }: { children?: React.ReactNode }) => (
-    <div className="overflow-x-auto mb-3">
-      <table className="min-w-full border-collapse">
+    // Strong/Bold - Primary-colored text glow for key vocabulary in Focus Mode
+    strong: ({ children }: { children?: React.ReactNode }) => (
+      <strong className={`font-semibold ${
+        isFocusMode
+          ? 'text-emerald-200 [text-shadow:0_0_20px_rgba(52,211,153,0.3)]'
+          : 'text-solid'
+      }`}>
         {children}
-      </table>
-    </div>
-  ),
-  thead: ({ children }: { children?: React.ReactNode }) => (
-    <thead className="bg-white/10">
-      {children}
-    </thead>
-  ),
-  tbody: ({ children }: { children?: React.ReactNode }) => (
-    <tbody className="divide-y divide-white/10">
-      {children}
-    </tbody>
-  ),
-  tr: ({ children }: { children?: React.ReactNode }) => (
-    <tr className="hover:bg-white/5">
-      {children}
-    </tr>
-  ),
-  th: ({ children }: { children?: React.ReactNode }) => (
-    <th className="px-3 py-2 text-left text-sm font-semibold text-solid">
-      {children}
-    </th>
-  ),
-  td: ({ children }: { children?: React.ReactNode }) => (
-    <td className="px-3 py-2 text-sm text-prominent">
-      {children}
-    </td>
-  ),
+      </strong>
+    ),
 
-  // Links
-  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
-    <a
-      href={href}
-      className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      {children}
-    </a>
-  ),
+    // Emphasis/Italic
+    em: ({ children }: { children?: React.ReactNode }) => (
+      <em className="italic text-prominent">
+        {children}
+      </em>
+    ),
 
-  // Strong/Bold
-  strong: ({ children }: { children?: React.ReactNode }) => (
-    <strong className="font-semibold text-solid">
-      {children}
-    </strong>
-  ),
-
-  // Emphasis/Italic
-  em: ({ children }: { children?: React.ReactNode }) => (
-    <em className="italic text-prominent">
-      {children}
-    </em>
-  ),
-
-  // Images
-  img: ({ src, alt }: { src?: string; alt?: string }) => (
-    <img
-      src={src}
-      alt={alt || ''}
-      className="max-w-full h-auto rounded-lg my-3"
-      loading="lazy"
-    />
-  ),
-});
+    // Images
+    img: ({ src, alt }: { src?: string; alt?: string }) => (
+      <img
+        src={src}
+        alt={alt || ''}
+        className={`max-w-full h-auto rounded-xl ${isFocusMode ? 'my-6' : 'my-3'} shadow-lg`}
+        loading="lazy"
+      />
+    ),
+  };
+};
 
 /**
  * SmartMarkdown Component
@@ -245,6 +325,7 @@ export function SmartMarkdown({
     homework: 'homework-content',
     chat: 'chat-content text-sm',
     feedback: 'feedback-content',
+    focus: 'focus-content',
   };
 
   return (

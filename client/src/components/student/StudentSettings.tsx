@@ -20,6 +20,14 @@ const SKILLS_KEYS = [
   'logic', 'comprehension', 'english', 'studySkills'
 ];
 
+// Grade level keys map to translation keys in student.settings.gradeLevels
+const GRADE_LEVEL_KEYS = [
+  'primaria1', 'primaria2', 'primaria3', 'primaria4', 'primaria5', 'primaria6',
+  'secundaria1', 'secundaria2', 'secundaria3',
+  'preparatoria1', 'preparatoria2', 'preparatoria3',
+  'universidad1', 'universidad2', 'universidad3', 'universidad4'
+];
+
 export function StudentSettings() {
   const { t } = useTranslation();
   const { profile, refreshUser } = useAuth();
@@ -138,12 +146,26 @@ export function StudentSettings() {
               <label className="block text-sm font-medium text-prominent mb-1.5">
                 {t('student.settings.gradeLevel')}
               </label>
-              <GlassInput
-                type="text"
+              <select
                 value={gradeLevel}
                 onChange={(e) => setGradeLevel(e.target.value)}
-                placeholder={t('student.settings.gradePlaceholder')}
-              />
+                className="w-full px-4 py-2.5 backdrop-blur-md bg-white/10 border border-white/20 rounded-xl text-solid focus:outline-none focus:ring-2 focus:ring-white/30 appearance-none cursor-pointer"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                  backgroundSize: '16px',
+                }}
+              >
+                <option value="" className="bg-slate-800 text-white">
+                  {t('student.settings.gradePlaceholder')}
+                </option>
+                {GRADE_LEVEL_KEYS.map((gradeKey) => (
+                  <option key={gradeKey} value={gradeKey} className="bg-slate-800 text-white">
+                    {t(`student.settings.gradeLevels.${gradeKey}`)}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </GlassCard>

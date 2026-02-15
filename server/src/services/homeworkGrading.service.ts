@@ -1,6 +1,7 @@
 import { ollamaService } from './ollama.service';
-import { aiGatekeeper } from './aiGatekeeper.service';
+import { aiGatekeeper, getPedagogicalPersona, PedagogicalPersona } from './aiGatekeeper.service';
 import { homeworkSubmissionsQueries, HomeworkAnswer } from '../database/queries/homeworkSubmissions.queries';
+import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
 
 /**
  * Homework Grading Service
@@ -8,17 +9,28 @@ import { homeworkSubmissionsQueries, HomeworkAnswer } from '../database/queries/
  */
 class HomeworkGradingService {
   /**
-   * Build a prompt for AI grading
+   * Build a prompt for AI grading with age-appropriate feedback
    */
   private buildGradingPrompt(
     homeworkContent: string,
-    answers: HomeworkAnswer[]
+    answers: HomeworkAnswer[],
+    persona: PedagogicalPersona
   ): string {
     const answersFormatted = answers
       .map((a, i) => `Pregunta ${i + 1} (ID: ${a.questionId}):\nRespuesta del Estudiante: ${a.value}`)
       .join('\n\n');
 
     return `Eres un evaluador educativo experto. Evalúa la entrega de tarea del estudiante y proporciona una evaluación justa y constructiva.
+
+## REGLA CRÍTICA DE IDIOMA
+- TODO tu contenido DEBE estar en ESPAÑOL MEXICANO
+- NUNCA uses inglés bajo ninguna circunstancia
+
+## PERFIL DEL ESTUDIANTE
+Este estudiante es de nivel: ${persona.gradeRange} (${persona.ageRange})
+Adapta tu retroalimentación al nivel y tono apropiado para su edad.
+
+${persona.systemPromptSegment}
 
 ## Contenido de la Tarea
 ${homeworkContent}
@@ -32,17 +44,17 @@ ${answersFormatted}
 3. Proporciona una calificación numérica de 0 a 100
 4. Escribe retroalimentación constructiva que:
    - Reconozca lo que el estudiante hizo bien
-   - Explique cualquier error de manera alentadora
-   - Sugiera cómo pueden mejorar
+   - Explique cualquier error de manera alentadora usando el tono apropiado para su edad
+   - Sugiera cómo pueden mejorar de forma motivadora
 
 ## Formato de Respuesta
 Responde ÚNICAMENTE en el siguiente formato JSON (sin texto adicional):
 {
   "grade": <número 0-100>,
-  "feedback": "<retroalimentación constructiva EN ESPAÑOL>"
+  "feedback": "<retroalimentación constructiva EN ESPAÑOL, adaptada a la edad del estudiante>"
 }
 
-IMPORTANTE: El campo "feedback" DEBE estar completamente en ESPAÑOL MEXICANO. No uses inglés bajo ninguna circunstancia.`;
+IMPORTANTE: El campo "feedback" DEBE estar completamente en ESPAÑOL MEXICANO y adaptado al nivel del estudiante.`;
   }
 
   /**
@@ -51,15 +63,28 @@ IMPORTANTE: El campo "feedback" DEBE estar completamente en ESPAÑOL MEXICANO. N
   async generateAISuggestion(
     submissionId: string,
     homeworkContent: string,
-    answers: HomeworkAnswer[]
+    answers: HomeworkAnswer[],
+    studentId?: string
   ): Promise<{ grade: number; feedback: string }> {
+    // Get student profile to determine appropriate persona
+    let persona = getPedagogicalPersona(); // Default
+    if (studentId) {
+      const studentProfile = studentProfilesQueries.getByUserId(studentId);
+      if (studentProfile) {
+        persona = getPedagogicalPersona(studentProfile.age, studentProfile.gradeLevel);
+        console.log(`[HomeworkGrading] Using persona: ${persona.name} for student ${studentId}`);
+      }
+    }
+
     const systemPrompt = `Eres una IA de evaluación educativa. Proporcionas calificaciones justas y alentadoras y retroalimentación para las tareas de los estudiantes.
 
 REGLA CRÍTICA DE IDIOMA: SIEMPRE debes responder en ESPAÑOL MEXICANO. Nunca uses inglés. Toda la retroalimentación debe estar en español.
 
+Adapta tu tono y vocabulario al nivel del estudiante: ${persona.gradeRange} (${persona.ageRange}).
+
 Siempre responde únicamente en formato JSON válido con el campo "feedback" en español.`;
 
-    const prompt = this.buildGradingPrompt(homeworkContent, answers);
+    const prompt = this.buildGradingPrompt(homeworkContent, answers, persona);
 
     try {
       // Use the AI service to generate grading suggestion
@@ -119,13 +144,14 @@ Siempre responde únicamente en formato JSON válido con el campo "feedback" en 
       answers
     );
 
-    // Generate AI suggestion asynchronously
+    // Generate AI suggestion asynchronously with student context
     let aiSuggestion: { grade: number; feedback: string } | undefined;
     try {
       aiSuggestion = await this.generateAISuggestion(
         submission.id,
         homeworkContent,
-        answers
+        answers,
+        studentId
       );
     } catch (error) {
       console.error('[HomeworkGrading] Failed to generate AI suggestion:', error);

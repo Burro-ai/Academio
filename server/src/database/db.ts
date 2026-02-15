@@ -36,6 +36,9 @@ export const initializeDatabase = async (): Promise<void> => {
   // Must run BEFORE schema to avoid index creation errors
   addClassroomColumns();
 
+  // Add teacher_ids column for multiple teachers support
+  addTeacherIdsColumn();
+
   // Read and execute schema
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
@@ -323,6 +326,27 @@ export const addClassroomColumns = (): void => {
       console.log('Adding classroom_id column to homework_assignments table...');
       db.exec('ALTER TABLE homework_assignments ADD COLUMN classroom_id TEXT REFERENCES classrooms(id) ON DELETE SET NULL');
       db.exec('CREATE INDEX IF NOT EXISTS idx_homework_assignments_classroom_id ON homework_assignments(classroom_id)');
+    }
+  }
+};
+
+/**
+ * Add teacher_ids column to student_profiles for multiple teacher support
+ */
+export const addTeacherIdsColumn = (): void => {
+  // Check if student_profiles table exists first
+  const profilesTableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='student_profiles'"
+  ).get();
+
+  if (profilesTableExists) {
+    // Check if teacher_ids column exists
+    const profilesInfo = db.prepare("PRAGMA table_info(student_profiles)").all() as { name: string }[];
+    const hasTeacherIds = profilesInfo.some(col => col.name === 'teacher_ids');
+
+    if (!hasTeacherIds) {
+      console.log('Adding teacher_ids column to student_profiles table...');
+      db.exec('ALTER TABLE student_profiles ADD COLUMN teacher_ids TEXT');
     }
   }
 };

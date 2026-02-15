@@ -27,6 +27,7 @@ const rowToProfile = (row: StudentProfileRow): StudentProfileWithSchool => ({
   gradeLevel: row.grade_level || undefined,
   classroomId: row.classroom_id || undefined,
   teacherId: row.teacher_id || undefined,
+  teacherIds: row.teacher_ids ? JSON.parse(row.teacher_ids) : [],
   schoolId: row.school_id || undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -250,7 +251,7 @@ export const studentProfilesQueries = {
   },
 
   /**
-   * Get personalization context for AI
+   * Get personalization context for AI (includes gradeLevel for persona selection)
    */
   getPersonalizationContext(userId: string): PersonalizationContext | null {
     const profile = this.getByUserId(userId);
@@ -258,6 +259,7 @@ export const studentProfilesQueries = {
 
     return {
       age: profile.age,
+      gradeLevel: profile.gradeLevel,
       interests: profile.favoriteSports || [],
       skillsToImprove: profile.skillsToImprove || [],
       learningSystemPrompt: profile.learningSystemPrompt,
@@ -265,21 +267,42 @@ export const studentProfilesQueries = {
   },
 
   /**
-   * Set teacher for a student
+   * Set teacher for a student (single - backwards compatible)
    */
   setTeacher(userId: string, teacherId: string | null): StudentProfile | null {
     const db = getDb();
+    // Also update teacher_ids to keep in sync
+    const teacherIds = teacherId ? JSON.stringify([teacherId]) : '[]';
     db.prepare(`
       UPDATE student_profiles
-      SET teacher_id = ?, updated_at = datetime('now')
+      SET teacher_id = ?, teacher_ids = ?, updated_at = datetime('now')
       WHERE user_id = ?
-    `).run(teacherId, userId);
+    `).run(teacherId, teacherIds, userId);
+
+    return this.getByUserId(userId);
+  },
+
+  /**
+   * Set multiple teachers for a student
+   */
+  setTeachers(userId: string, teacherIds: string[]): StudentProfile | null {
+    const db = getDb();
+    // Set teacher_ids and also set teacher_id to first teacher for backwards compatibility
+    const primaryTeacherId = teacherIds.length > 0 ? teacherIds[0] : null;
+    const teacherIdsJson = JSON.stringify(teacherIds);
+
+    db.prepare(`
+      UPDATE student_profiles
+      SET teacher_id = ?, teacher_ids = ?, updated_at = datetime('now')
+      WHERE user_id = ?
+    `).run(primaryTeacherId, teacherIdsJson, userId);
 
     return this.getByUserId(userId);
   },
 
   /**
    * Get profiles by teacher ID (students who selected this teacher)
+   * Checks both teacher_id (legacy) and teacher_ids (multi-teacher array)
    */
   getByTeacherId(teacherId: string): StudentProfileWithUser[] {
     const db = getDb();
@@ -296,9 +319,10 @@ export const studentProfilesQueries = {
         JOIN users u ON sp.user_id = u.id
         LEFT JOIN classrooms c ON sp.classroom_id = c.id
         WHERE sp.teacher_id = ?
+           OR (sp.teacher_ids IS NOT NULL AND sp.teacher_ids LIKE '%' || ? || '%')
         ORDER BY u.name
       `)
-      .all(teacherId) as ProfileWithUserRow[];
+      .all(teacherId, teacherId) as ProfileWithUserRow[];
 
     return rows.map((row) => ({
       ...rowToProfile(row),

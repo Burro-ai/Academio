@@ -1,5 +1,5 @@
 import { ollamaService, ModelType } from './ollama.service';
-import { aiGatekeeper } from './aiGatekeeper.service';
+import { aiGatekeeper, getPedagogicalPersona } from './aiGatekeeper.service';
 import { homeworkQueries } from '../database/queries/homework.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
 import { HomeworkAssignment, PersonalizationContext, StudentProfileWithUser } from '../types';
@@ -21,28 +21,38 @@ const progressMap = new Map<string, PersonalizationProgress>();
 
 /**
  * Socratic personalization prompt - creates tailored problems with analogies and reflection questions
+ * Uses pedagogical persona for age-appropriate content
  */
 const SOCRATIC_PERSONALIZATION_PROMPT = `Eres un tutor socrático personalizando tareas para un estudiante específico.
 
+## REGLA CRÍTICA DE IDIOMA
+- TODO tu contenido DEBE estar en ESPAÑOL MEXICANO
+- NUNCA uses inglés bajo ninguna circunstancia
+
+{PERSONA_SEGMENT}
+
 ## Tu Tarea
 Dado la tarea maestra y el perfil del estudiante, crea una BREVE adición personalizada que incluya:
-1. **Un Problema Basado en sus Intereses**: Reformula un problema usando sus intereses ({INTERESTS})
-2. **Una Pregunta de Reflexión**: Una pregunta socrática que les ayude a pensar en el "por qué" detrás del concepto
+1. **Un Problema Basado en sus Intereses**: Reformula un problema usando sus intereses ({INTERESTS}), con vocabulario apropiado para su nivel ({GRADE_LEVEL})
+2. **Una Pregunta de Reflexión**: Una pregunta socrática que les ayude a pensar en el "por qué" detrás del concepto, apropiada para su nivel
+
+IMPORTANTE: Adapta el tono, vocabulario y complejidad a su nivel educativo ({GRADE_LEVEL}).
 
 Mantén la brevedad (2-3 párrafos cortos máximo). No reescribas toda la tarea - solo agrega el toque personalizado.
 
 ## Formato de Salida de Ejemplo:
 **Tu Reto Personal:**
-[Problema reformulado con su interés]
+[Problema reformulado con su interés, apropiado para su edad]
 
 **Piensa Más Profundo:**
-[Pregunta socrática que los haga reflexionar sobre el concepto subyacente]
+[Pregunta socrática que los haga reflexionar, apropiada para su nivel]
 
 ## Tarea Maestra:
 {MASTER_CONTENT}
 
 ## Perfil del Estudiante:
 - Edad: {AGE}
+- Nivel de Grado: {GRADE_LEVEL}
 - Intereses: {INTERESTS}
 - Habilidades a Mejorar: {SKILLS}
 {LEARNING_STYLE}
@@ -169,26 +179,33 @@ export const homeworkService = {
 
   /**
    * Personalize homework content for a specific student (uses chat model for speed)
+   * Uses pedagogical persona for age-appropriate content
    * Personalized content is formatted through the AI Gatekeeper
    */
   async personalizeContent(
     masterContent: string,
     profile: PersonalizationContext
   ): Promise<string> {
-    const interests = profile.interests.length > 0 ? profile.interests.join(', ') : 'general topics';
-    const skills = profile.skillsToImprove.length > 0 ? profile.skillsToImprove.join(', ') : 'general learning';
+    const interests = profile.interests.length > 0 ? profile.interests.join(', ') : 'temas generales';
+    const skills = profile.skillsToImprove.length > 0 ? profile.skillsToImprove.join(', ') : 'aprendizaje general';
+
+    // Get the appropriate pedagogical persona
+    const persona = getPedagogicalPersona(profile.age, profile.gradeLevel);
+    console.log(`[Homework] Personalizing with persona: ${persona.name} for age=${profile.age}, grade=${profile.gradeLevel}`);
 
     let prompt = SOCRATIC_PERSONALIZATION_PROMPT
       .replace('{MASTER_CONTENT}', masterContent)
-      .replace(/\{AGE\}/g, profile.age?.toString() || 'unknown')
+      .replace(/\{AGE\}/g, profile.age?.toString() || 'desconocida')
+      .replace(/\{GRADE_LEVEL\}/g, profile.gradeLevel || persona.gradeRange)
       .replace(/\{INTERESTS\}/g, interests)
-      .replace(/\{SKILLS\}/g, skills);
+      .replace(/\{SKILLS\}/g, skills)
+      .replace('{PERSONA_SEGMENT}', persona.systemPromptSegment);
 
     // Add learning style if present
     if (profile.learningSystemPrompt) {
       prompt = prompt.replace(
         '{LEARNING_STYLE}',
-        `- Learning Style: ${profile.learningSystemPrompt}`
+        `- Estilo de Aprendizaje: ${profile.learningSystemPrompt}`
       );
     } else {
       prompt = prompt.replace('{LEARNING_STYLE}', '');
@@ -298,6 +315,7 @@ export const homeworkService = {
     const personalizationPromises = profilesToPersonalize.map(async (profile) => {
       const context: PersonalizationContext = {
         age: profile.age,
+        gradeLevel: profile.gradeLevel,
         interests: profile.favoriteSports || [],
         skillsToImprove: profile.skillsToImprove || [],
         learningSystemPrompt: profile.learningSystemPrompt,

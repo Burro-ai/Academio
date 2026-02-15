@@ -1,5 +1,5 @@
 import { ollamaService } from './ollama.service';
-import { aiGatekeeper } from './aiGatekeeper.service';
+import { aiGatekeeper, getPedagogicalPersona } from './aiGatekeeper.service';
 import { lessonChatQueries, LessonChatMessage } from '../database/queries/lessonChat.queries';
 import { lessonsQueries } from '../database/queries/lessons.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
@@ -15,10 +15,22 @@ class LessonChatService {
    * Combines the Socratic teaching methodology with lesson content and student personalization
    */
   buildSystemPrompt(lessonContent: string, studentProfile?: StudentProfile | null): string {
+    // Get the appropriate pedagogical persona based on age/grade
+    const persona = getPedagogicalPersona(studentProfile?.age, studentProfile?.gradeLevel);
+
+    console.log(`[LessonChat] Using persona: ${persona.name} (${persona.type}) for student age=${studentProfile?.age}, grade=${studentProfile?.gradeLevel}`);
+
     let prompt = `Eres un Tutor Socrático de clase mundial. Tu rol es ayudar al estudiante a comprender el contenido de la lección a través de preguntas bien pensadas y descubrimiento guiado.
+
+## REGLA CRÍTICA DE IDIOMA
+- TODO tu contenido DEBE estar en ESPAÑOL MEXICANO
+- NUNCA uses inglés bajo ninguna circunstancia
+- Usa expresiones naturales de México
 
 ## DIRECTIVA PRINCIPAL
 NUNCA debes simplemente dar respuestas directas. En su lugar, guía al estudiante a descubrir las respuestas por sí mismo a través del método socrático.
+
+${persona.systemPromptSegment}
 
 ## Contenido de la Lección Actual
 El estudiante está estudiando la siguiente lección. Usa este contenido como base para tu tutoría:
@@ -35,18 +47,14 @@ ${lessonContent}
 
 3. **Descompón Ideas Complejas**: Divide conceptos difíciles en partes más pequeñas y manejables.
 
-4. **Actualizate Rapido**: Cuando identifiques que el alumno se desespera porque es mucho mas avanzado, rapido adaptate a un nivel mas avanzado y responde directo lo que busca.
+4. **Adaptación Dinámica**: Si identificas que el alumno se desespera o está en un nivel diferente al esperado, ajusta tu comunicación apropiadamente.
 
+5. **Siempre Alienta**: Mantén un tono cálido, solidario y paciente.
 
-6. **Siempre Alienta**: Mantén un tono cálido, solidario y paciente.
-
-7. **Verifica la Comprensión**: Pide a los estudiantes que expliquen su razonamiento con sus propias palabras.
+6. **Verifica la Comprensión**: Pide a los estudiantes que expliquen su razonamiento con sus propias palabras.
 
 ## Estilo de Respuesta
 
-- Mantén las respuestas enfocadas y no abrumadoras
-- Usa lenguaje simple y claro
-- Sé alentador incluso al corregir conceptos erróneos
 - **IMPORTANTE: Formatea TODAS las expresiones matemáticas usando LaTeX**:
   - Usa $...$ para matemáticas en línea (ej: $x^2 + y^2 = z^2$)
   - Usa $$...$$ para ecuaciones en bloque
@@ -59,53 +67,19 @@ ${lessonContent}
 - Dar respuestas directas a preguntas sobre la lección
 - Saltarte el proceso de cuestionamiento
 - Ser condescendiente o impaciente
-- Proporcionar información no relacionada con el contenido de la lección`;
+- Proporcionar información no relacionada con el contenido de la lección
+- Usar inglés bajo ninguna circunstancia`;
 
-    // Add student personalization if available
+    // Add additional student context if available
     if (studentProfile) {
-      prompt += '\n\n## Contexto del Estudiante (Personalización)\n';
+      prompt += '\n\n## Contexto Adicional del Estudiante\n';
 
       if (studentProfile.age) {
-        prompt += `- Edad del Estudiante: ${studentProfile.age} años\n`;
+        prompt += `- Edad: ${studentProfile.age} años\n`;
       }
 
       if (studentProfile.gradeLevel) {
         prompt += `- Nivel de Grado: ${studentProfile.gradeLevel}\n`;
-      }
-
-      // Add age-appropriate communication guidance
-      if (studentProfile.age || studentProfile.gradeLevel) {
-        prompt += '\n### Adaptación por Edad/Nivel:\n';
-
-        const age = studentProfile.age || 0;
-        const gradeLevel = studentProfile.gradeLevel?.toLowerCase() || '';
-
-        // Check if high school (preparatoria) or older teen
-        const isPreparatoria = gradeLevel.includes('preparatoria') || gradeLevel.includes('prepa') || gradeLevel.includes('bachillerato');
-        const isOlderTeen = age >= 15;
-
-        if (isPreparatoria || isOlderTeen) {
-          prompt += `- Este estudiante es de nivel avanzado (preparatoria/bachillerato)
-- Usa vocabulario más sofisticado y técnico cuando sea apropiado
-- Puedes usar analogías más complejas y abstractas
-- Trátalos con mayor madurez - son casi adultos
-- Profundiza más en los conceptos subyacentes
-- Haz preguntas que requieran pensamiento crítico avanzado
-- Puedes hacer referencias a aplicaciones del mundo real y temas universitarios\n`;
-        } else if (age >= 12 || gradeLevel.includes('secundaria')) {
-          prompt += `- Este estudiante es de nivel secundaria
-- Usa vocabulario apropiado pero introduce términos técnicos gradualmente
-- Usa analogías relacionables con su vida diaria
-- Mantén un tono amigable pero respetuoso
-- Haz conexiones con temas de actualidad que les interesen\n`;
-        } else {
-          prompt += `- Este estudiante es de nivel primaria
-- Usa lenguaje simple y claro
-- Usa analogías muy concretas y visuales
-- Sé muy alentador y paciente
-- Divide los conceptos en pasos muy pequeños
-- Usa ejemplos de la vida cotidiana que puedan visualizar\n`;
-        }
       }
 
       if (studentProfile.favoriteSports && studentProfile.favoriteSports.length > 0) {

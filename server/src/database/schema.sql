@@ -86,7 +86,8 @@ CREATE TABLE IF NOT EXISTS student_profiles (
     learning_system_prompt TEXT, -- Personal AI customization
     grade_level TEXT,
     classroom_id TEXT,
-    teacher_id TEXT,             -- Selected teacher (for student-teacher connection)
+    teacher_id TEXT,             -- Primary teacher (backwards compatible)
+    teacher_ids TEXT,            -- JSON array of multiple teacher IDs
     school_id TEXT,              -- School scope (nullable for migration)
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),

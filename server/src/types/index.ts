@@ -65,7 +65,8 @@ export interface StudentProfileRow {
   learning_system_prompt: string | null;
   grade_level: string | null;
   classroom_id: string | null;
-  teacher_id: string | null;
+  teacher_id: string | null;    // Primary teacher (backwards compatible)
+  teacher_ids: string | null;   // JSON array of teacher IDs
   school_id: string | null;
   created_at: string;
   updated_at: string;

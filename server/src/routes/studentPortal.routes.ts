@@ -14,9 +14,10 @@ router.use(authMiddleware, studentOnly);
 router.get('/profile', asyncHandler(studentPortalController.getProfile));
 router.put('/profile', asyncHandler(studentPortalController.updateProfile));
 
-// Teachers (for student to find and select their teacher)
+// Teachers (for student to find and select their teachers)
 router.get('/teachers', asyncHandler(studentPortalController.getTeachers));
 router.put('/teacher', asyncHandler(studentPortalController.setTeacher));
+router.put('/teachers', asyncHandler(studentPortalController.setTeachers));
 
 // Lessons
 router.get('/lessons', asyncHandler(studentPortalController.getLessons));
