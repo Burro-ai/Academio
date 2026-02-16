@@ -60,7 +60,7 @@ export function ChatHistory() {
               <button
                 onClick={(e) => handleDelete(e, session.id)}
                 className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/20 rounded-lg
-                           transition-all text-subtle hover:text-red-300"
+                           transition-all text-subtle hover:text-red-600"
                 title="Delete conversation"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

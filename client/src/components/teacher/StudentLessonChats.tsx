@@ -47,7 +47,7 @@ export function StudentLessonChats({ studentId, studentName }: StudentLessonChat
   if (error) {
     return (
       <GlassCard variant="surface" className="p-4 backdrop-blur-md bg-red-500/20 border-red-400/30">
-        <p className="text-red-100 text-sm">{error}</p>
+        <p className="text-red-700 text-sm">{error}</p>
       </GlassCard>
     );
   }
@@ -93,7 +93,7 @@ export function StudentLessonChats({ studentId, studentName }: StudentLessonChat
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   {session.lessonSubject && (
-                    <span className="px-1.5 py-0.5 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-100 rounded capitalize">
+                    <span className="px-1.5 py-0.5 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-700 rounded capitalize">
                       {session.lessonSubject}
                     </span>
                   )}

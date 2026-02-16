@@ -267,6 +267,97 @@ See `client/src/hooks/useHomeworkForm.ts` for implementation.
 
 ---
 
+## RAG Long-Term Memory System
+
+> **Added 2026-02-16:** Persistent student memory using ChromaDB vector database with Retrieval Augmented Generation (RAG).
+
+### Overview
+
+The RAG system provides persistent conversational memory at the student level, allowing the AI tutor to remember past interactions and maintain context across sessions.
+
+### Architecture
+
+| Component | Technology |
+|-----------|------------|
+| **Vector Database** | ChromaDB |
+| **Embeddings** | Ollama `qwen3-embedding` model |
+| **Storage** | Isolated collections per student (`student_memory_{student_id}`) |
+| **Synchronization** | SQLite ↔ ChromaDB auto-sync on startup |
+
+### RAG Pipeline Flow
+
+```
+Student asks question
+       ↓
+┌─────────────────────────────────────────┐
+│ 1. RETRIEVE: memoryService.retrieve()  │
+│    Query ChromaDB for similar Q&As     │
+│    Top 3 memories injected into prompt │
+└─────────────────────────────────────────┘
+       ↓
+┌─────────────────────────────────────────┐
+│ 2. GENERATE: AI responds with context  │
+│    System prompt includes:             │
+│    - Lesson content                    │
+│    - Student profile                   │
+│    - Retrieved memories (RAG)          │
+└─────────────────────────────────────────┘
+       ↓
+┌─────────────────────────────────────────┐
+│ 3. STORE: memoryService.store()        │
+│    Q&A pair → ChromaDB collection      │
+│    Embedded via qwen3-embedding        │
+└─────────────────────────────────────────┘
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `server/src/services/memory.service.ts` | ChromaDB client, RAG pipeline |
+| `server/src/services/lessonChat.service.ts` | Integration point (retrieval + storage) |
+| `server/src/database/queries/studentProfiles.queries.ts` | Hooks for collection lifecycle |
+| `server/src/database/db.ts` | Startup sync verification |
+| `server/src/utils/resetMemory.ts` | Memory reset utility |
+| `server/src/utils/create-test-students.ts` | Test data injection |
+
+### Environment Variables
+
+```bash
+# ChromaDB (Long-Term Memory / RAG)
+CHROMA_HOST=localhost
+CHROMA_PORT=8000
+```
+
+### Lifecycle Hooks
+
+- **Profile Create** → `memoryService.initializeStudentMemory(userId)`
+- **Profile Delete** → `memoryService.deleteStudentMemory(userId)`
+- **Server Start** → `verifySynchronization()` + auto-cleanup orphaned collections
+
+### Graceful Degradation
+
+If ChromaDB is not available:
+- `memoryService.isAvailable()` returns `false`
+- Memory features are silently skipped
+- Core functionality continues without RAG
+
+### NPM Scripts
+
+```bash
+# Create test students with chat history
+npm run create:test-students
+
+# Full RAG test (requires ChromaDB)
+npm run test:rag
+
+# Memory management
+npm run memory:verify    # Check sync status
+npm run memory:reset     # Reset all memories
+```
+
+---
+
 ## Authentication & JWT System
 
 > **CRITICAL:** This section documents how authentication works across all workflows. Many bugs have been caused by missing JWT tokens in API requests. Always verify auth is properly wired.

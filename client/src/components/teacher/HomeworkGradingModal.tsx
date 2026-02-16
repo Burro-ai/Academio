@@ -93,7 +93,7 @@ export function HomeworkGradingModal({
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-100 rounded-lg">
+                    <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-700 rounded-lg">
                       {submission.homeworkSubject || 'General'}
                     </span>
                   </div>
@@ -101,7 +101,7 @@ export function HomeworkGradingModal({
                   <p className="text-prominent mt-1">{submission.homeworkTopic}</p>
                   <div className="flex items-center gap-2 mt-3">
                     <div className="w-6 h-6 backdrop-blur-md bg-emerald-500/30 border border-emerald-400/30 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-medium text-emerald-100">
+                      <span className="text-xs font-medium text-emerald-700">
                         {submission.studentName.charAt(0)}
                       </span>
                     </div>
@@ -158,7 +158,7 @@ export function HomeworkGradingModal({
                         </button>
                         <button
                           onClick={handleUseAISuggestion}
-                          className="text-xs px-2 py-1 backdrop-blur-md bg-blue-500/30 border border-blue-400/30 text-blue-100 rounded-lg hover:bg-blue-500/40 transition-colors"
+                          className="text-xs px-2 py-1 backdrop-blur-md bg-blue-500/30 border border-blue-400/30 text-blue-700 rounded-lg hover:bg-blue-500/40 transition-colors"
                         >
                           {t('teacher.submissions.useAISuggestion')}
                         </button>
@@ -216,7 +216,7 @@ export function HomeworkGradingModal({
 
                 {/* Error */}
                 {error && (
-                  <div className="p-3 mb-4 backdrop-blur-md bg-red-500/20 border border-red-400/30 text-red-100 rounded-lg text-sm">
+                  <div className="p-3 mb-4 backdrop-blur-md bg-red-500/20 border border-red-400/30 text-red-700 rounded-lg text-sm">
                     {error}
                   </div>
                 )}

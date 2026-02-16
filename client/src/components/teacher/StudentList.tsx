@@ -99,7 +99,7 @@ export function StudentList({ classroomId, onSelectStudent }: StudentListProps) 
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-200">{error}</p>
+        <p className="text-red-600">{error}</p>
       </div>
     );
   }
@@ -178,7 +178,7 @@ function StudentCard({ student, activity, activityLoading, onClick, t }: Student
         <div className="absolute top-3 right-3 flex items-center gap-2">
           {pendingHomework > 0 && (
             <span
-              className="px-1.5 py-0.5 text-xs font-medium bg-amber-500/50 border border-amber-400/40 rounded-full text-amber-100"
+              className="px-1.5 py-0.5 text-xs font-medium bg-amber-500/50 border border-amber-400/40 rounded-full text-amber-700"
               title={t('teacher.studentProfile.activityPulse.pendingHomework', { count: pendingHomework })}
             >
               {pendingHomework}
@@ -202,7 +202,7 @@ function StudentCard({ student, activity, activityLoading, onClick, t }: Student
               className="w-12 h-12 rounded-full object-cover"
             />
           ) : (
-            <span className="text-emerald-100 font-semibold">{initials}</span>
+            <span className="text-emerald-700 font-semibold">{initials}</span>
           )}
         </div>
         <div className="min-w-0 flex-1">

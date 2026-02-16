@@ -24,7 +24,7 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
       <div
         className={`max-w-[80%] px-4 py-3 shadow-glass ${
           isUser
-            ? 'glass-message-user text-white'
+            ? 'glass-message-user text-solid'
             : 'glass-message-ai text-solid'
         }`}
       >
@@ -58,7 +58,7 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
 
       {isUser && (
         <div className="flex-shrink-0 w-8 h-8 rounded-full backdrop-blur-md bg-primary-500/40 border border-primary-400/30 flex items-center justify-center shadow-glass">
-          <span className="text-white text-sm font-medium">S</span>
+          <span className="text-solid text-sm font-medium">S</span>
         </div>
       )}
     </div>

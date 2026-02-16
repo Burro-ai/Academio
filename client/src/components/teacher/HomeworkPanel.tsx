@@ -117,7 +117,7 @@ export function HomeworkPanel() {
             onClick={() => setActiveTab('assignments')}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               activeTab === 'assignments'
-                ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/30 text-blue-100'
+                ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/30 text-blue-700'
                 : 'text-prominent hover:backdrop-blur-md hover:bg-white/20'
             }`}
           >
@@ -127,7 +127,7 @@ export function HomeworkPanel() {
             onClick={() => setActiveTab('submissions')}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               activeTab === 'submissions'
-                ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/30 text-blue-100'
+                ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/30 text-blue-700'
                 : 'text-prominent hover:backdrop-blur-md hover:bg-white/20'
             }`}
           >
@@ -144,7 +144,7 @@ export function HomeworkPanel() {
             {/* Error */}
             {error && (
               <GlassCard variant="card" className="p-4 mb-6 backdrop-blur-md bg-red-500/20 border-red-400/30">
-                <p className="text-red-100">{error}</p>
+                <p className="text-red-700">{error}</p>
               </GlassCard>
             )}
 
@@ -192,7 +192,7 @@ export function HomeworkPanel() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           {hw.subject && (
-                            <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-100 rounded-lg capitalize">
+                            <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-700 rounded-lg capitalize">
                               {hw.subject}
                             </span>
                           )}
@@ -203,10 +203,10 @@ export function HomeworkPanel() {
                             <span
                               className={`px-2 py-1 text-xs backdrop-blur-sm rounded-lg ${
                                 dueStatus.color === 'red'
-                                  ? 'bg-red-500/20 border border-red-400/30 text-red-100'
+                                  ? 'bg-red-500/20 border border-red-400/30 text-red-700'
                                   : dueStatus.color === 'yellow'
-                                    ? 'bg-yellow-500/20 border border-yellow-400/30 text-yellow-100'
-                                    : 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-100'
+                                    ? 'bg-yellow-500/20 border border-yellow-400/30 text-yellow-700'
+                                    : 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-700'
                               }`}
                             >
                               {dueStatus.label}

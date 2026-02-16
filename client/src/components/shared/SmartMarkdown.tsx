@@ -157,8 +157,8 @@ const createComponents = (variant: SmartMarkdownProps['variant'], compact: boole
           <code
             className={`px-1.5 py-0.5 rounded ${
               isFocusMode
-                ? 'bg-emerald-500/20 text-emerald-200 font-medium'
-                : 'bg-white/10 text-emerald-300'
+                ? 'bg-emerald-500/20 text-emerald-600 font-medium'
+                : 'bg-white/10 text-emerald-600'
             } text-sm font-mono`}
             {...props}
           >
@@ -202,7 +202,7 @@ const createComponents = (variant: SmartMarkdownProps['variant'], compact: boole
                 <span className="text-lg">💡</span>
               </div>
             )}
-            <div className={`italic ${isAnalogy ? 'text-emerald-100' : 'text-prominent/90'} leading-[1.7]`}>
+            <div className={`italic ${isAnalogy ? 'text-emerald-700' : 'text-prominent/90'} leading-[1.7]`}>
               {children}
             </div>
           </blockquote>
@@ -261,7 +261,7 @@ const createComponents = (variant: SmartMarkdownProps['variant'], compact: boole
     a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
       <a
         href={href}
-        className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors"
+        className="text-emerald-600 hover:text-emerald-500 underline underline-offset-2 transition-colors"
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -273,7 +273,7 @@ const createComponents = (variant: SmartMarkdownProps['variant'], compact: boole
     strong: ({ children }: { children?: React.ReactNode }) => (
       <strong className={`font-semibold ${
         isFocusMode
-          ? 'text-emerald-200 [text-shadow:0_0_20px_rgba(52,211,153,0.3)]'
+          ? 'text-emerald-600 [text-shadow:0_0_20px_rgba(52,211,153,0.3)]'
           : 'text-solid'
       }`}>
         {children}

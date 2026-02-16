@@ -128,7 +128,7 @@ export function Dashboard({ onViewStudent }: DashboardProps) {
             <div className="text-center py-8">
               <div className="w-12 h-12 backdrop-blur-md bg-green-500/30 border border-green-400/30 rounded-full flex items-center justify-center mx-auto mb-3 shadow-glass">
                 <svg
-                  className="w-6 h-6 text-green-100"
+                  className="w-6 h-6 text-green-700"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -153,14 +153,14 @@ export function Dashboard({ onViewStudent }: DashboardProps) {
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium text-solid">{alert.studentName}</p>
-                      <p className="text-sm text-red-200">{alert.reason}</p>
+                      <p className="text-sm text-red-600">{alert.reason}</p>
                       {alert.topic && (
                         <p className="text-xs text-subtle mt-1">Topic: {alert.topic}</p>
                       )}
                     </div>
                     <button
                       onClick={() => onViewStudent(alert.studentId)}
-                      className="glass-btn px-3 py-1 text-sm font-medium text-emerald-100 bg-emerald-500/30 border-emerald-400/30"
+                      className="glass-btn px-3 py-1 text-sm font-medium text-emerald-700 bg-emerald-500/30 border-emerald-400/30"
                     >
                       View
                     </button>
@@ -185,10 +185,10 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon, color, subtitle }: StatCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-500/30 border-blue-400/30 text-blue-100',
-    green: 'bg-green-500/30 border-green-400/30 text-green-100',
-    red: 'bg-red-500/30 border-red-400/30 text-red-100',
-    purple: 'bg-purple-500/30 border-purple-400/30 text-purple-100',
+    blue: 'bg-blue-500/30 border-blue-400/30 text-blue-700',
+    green: 'bg-green-500/30 border-green-400/30 text-green-700',
+    red: 'bg-red-500/30 border-red-400/30 text-red-700',
+    purple: 'bg-purple-500/30 border-purple-400/30 text-purple-700',
   };
 
   return (

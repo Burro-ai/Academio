@@ -77,7 +77,7 @@ export function MyLessons() {
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          <p className="text-red-200">{error}</p>
+          <p className="text-red-600">{error}</p>
           <button
             onClick={loadLessons}
             className="mt-4 px-4 py-2 backdrop-blur-md bg-white/20 border border-white/30 rounded-lg text-solid hover:bg-white/30 transition-all"
@@ -143,12 +143,12 @@ export function MyLessons() {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       {lesson.lesson.subject && (
-                        <span className="px-2 py-1 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-100 rounded-lg capitalize">
+                        <span className="px-2 py-1 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-700 rounded-lg capitalize">
                           {lesson.lesson.subject}
                         </span>
                       )}
                       {!lesson.viewedAt && (
-                        <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-100 rounded-lg">
+                        <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-700 rounded-lg">
                           {t('student.myLessons.newBadge')}
                         </span>
                       )}

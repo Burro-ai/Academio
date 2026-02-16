@@ -48,7 +48,7 @@ export function HomeworkSubmissionsTab() {
   if (error) {
     return (
       <GlassCard variant="card" className="p-4 backdrop-blur-md bg-red-500/20 border-red-400/30">
-        <p className="text-red-100">{error}</p>
+        <p className="text-red-700">{error}</p>
         <GlassButton variant="secondary" onClick={loadSubmissions} className="mt-2">
           {t('common.tryAgain')}
         </GlassButton>
@@ -104,7 +104,7 @@ export function HomeworkSubmissionsTab() {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-100 rounded-lg">
+                  <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-700 rounded-lg">
                     {submission.homeworkSubject || 'General'}
                   </span>
                   <span className="text-sm text-prominent">
@@ -115,7 +115,7 @@ export function HomeworkSubmissionsTab() {
                 <p className="text-sm text-prominent mb-2">{submission.homeworkTopic}</p>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 backdrop-blur-md bg-emerald-500/30 border border-emerald-400/30 rounded-full flex items-center justify-center">
-                    <span className="text-xs font-medium text-emerald-100">
+                    <span className="text-xs font-medium text-emerald-700">
                       {submission.studentName.charAt(0)}
                     </span>
                   </div>
@@ -127,7 +127,7 @@ export function HomeworkSubmissionsTab() {
                 {submission.aiSuggestedGrade !== undefined && (
                   <div className="text-right">
                     <span className="text-xs text-prominent">{t('teacher.submissions.aiSuggested')}</span>
-                    <div className="font-semibold text-blue-100">
+                    <div className="font-semibold text-blue-700">
                       {submission.aiSuggestedGrade}/100
                     </div>
                   </div>

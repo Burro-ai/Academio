@@ -117,7 +117,7 @@ export function LessonChatInterface() {
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          <p className="text-red-200 text-lg mb-6">{error}</p>
+          <p className="text-red-600 text-lg mb-6">{error}</p>
           <GlassButton variant="secondary" size="lg" onClick={handleBack}>
             {t('common.goBack')}
           </GlassButton>
@@ -160,7 +160,7 @@ export function LessonChatInterface() {
             <h1 className="text-xl font-semibold text-solid truncate">{lesson?.title}</h1>
             <div className="flex items-center gap-2 mt-1">
               {lesson?.subject && (
-                <span className="px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm bg-emerald-500/25 border border-emerald-400/40 text-emerald-100 rounded-lg capitalize">
+                <span className="px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm bg-emerald-500/25 border border-emerald-400/40 text-emerald-700 rounded-lg capitalize">
                   {lesson.subject}
                 </span>
               )}
@@ -221,7 +221,7 @@ export function LessonChatInterface() {
                       <span className="text-2xl">📚</span>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-emerald-300 uppercase tracking-wider">
+                      <span className="text-xs font-medium text-emerald-600 uppercase tracking-wider">
                         {t('student.lessonChat.lessonContent')}
                       </span>
                       <h2 className="text-lg font-semibold text-solid">{lesson?.title}</h2>
@@ -251,7 +251,7 @@ export function LessonChatInterface() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setIsChatExpanded(true)}
-                  className="lg:hidden px-4 py-2.5 backdrop-blur-md bg-emerald-500/25 border border-emerald-400/40 rounded-xl text-sm font-medium text-emerald-100 hover:bg-emerald-500/35 transition-all"
+                  className="lg:hidden px-4 py-2.5 backdrop-blur-md bg-emerald-500/25 border border-emerald-400/40 rounded-xl text-sm font-medium text-emerald-700 hover:bg-emerald-500/35 transition-all"
                 >
                   <span className="flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -394,7 +394,7 @@ export function LessonChatInterface() {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        <svg className="w-5 h-5 text-red-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </motion.button>
@@ -409,7 +409,7 @@ export function LessonChatInterface() {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        <svg className="w-5 h-5 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"

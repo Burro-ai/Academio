@@ -136,7 +136,7 @@ export function HomeworkFormContainer() {
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          <p className="text-red-200 text-lg mb-6">{loadError || t('errors.homeworkNotFound')}</p>
+          <p className="text-red-600 text-lg mb-6">{loadError || t('errors.homeworkNotFound')}</p>
           <GlassButton variant="secondary" size="lg" onClick={handleBack}>
             {t('common.goBack')}
           </GlassButton>
@@ -190,7 +190,7 @@ export function HomeworkFormContainer() {
               <h1 className="text-xl font-semibold text-solid truncate">{homework.homework.title}</h1>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 {homework.homework.subject && (
-                  <span className="px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm bg-blue-500/25 border border-blue-400/40 text-blue-100 rounded-lg capitalize">
+                  <span className="px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm bg-blue-500/25 border border-blue-400/40 text-blue-700 rounded-lg capitalize">
                     {homework.homework.subject}
                   </span>
                 )}
@@ -198,17 +198,17 @@ export function HomeworkFormContainer() {
                   <span
                     className={`px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm rounded-lg ${
                       dueStatus.color === 'red'
-                        ? 'bg-red-500/25 border border-red-400/40 text-red-100'
+                        ? 'bg-red-500/25 border border-red-400/40 text-red-700'
                         : dueStatus.color === 'yellow'
-                          ? 'bg-yellow-500/25 border border-yellow-400/40 text-yellow-100'
-                          : 'bg-emerald-500/25 border border-emerald-400/40 text-emerald-100'
+                          ? 'bg-yellow-500/25 border border-yellow-400/40 text-yellow-700'
+                          : 'bg-emerald-500/25 border border-emerald-400/40 text-emerald-700'
                     } ${dueStatus.urgent ? 'animate-pulse' : ''}`}
                   >
                     {dueStatus.label}
                   </span>
                 )}
                 {isSubmitted && (
-                  <span className="px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm bg-emerald-500/25 border border-emerald-400/40 text-emerald-100 rounded-lg flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm bg-emerald-500/25 border border-emerald-400/40 text-emerald-700 rounded-lg flex items-center gap-1">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
@@ -334,10 +334,10 @@ export function HomeworkFormContainer() {
                     <div
                       className={`w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-bold ${
                         existingSubmission.grade >= 70
-                          ? 'backdrop-blur-md bg-gradient-to-br from-emerald-500/30 to-green-500/30 border border-emerald-400/40 text-emerald-100'
+                          ? 'backdrop-blur-md bg-gradient-to-br from-emerald-500/30 to-green-500/30 border border-emerald-400/40 text-emerald-700'
                           : existingSubmission.grade >= 50
-                            ? 'backdrop-blur-md bg-gradient-to-br from-yellow-500/30 to-amber-500/30 border border-yellow-400/40 text-yellow-100'
-                            : 'backdrop-blur-md bg-gradient-to-br from-red-500/30 to-rose-500/30 border border-red-400/40 text-red-100'
+                            ? 'backdrop-blur-md bg-gradient-to-br from-yellow-500/30 to-amber-500/30 border border-yellow-400/40 text-yellow-700'
+                            : 'backdrop-blur-md bg-gradient-to-br from-red-500/30 to-rose-500/30 border border-red-400/40 text-red-700'
                       }`}
                     >
                       {existingSubmission.grade}
@@ -382,7 +382,7 @@ export function HomeworkFormContainer() {
                 <div className="flex items-center justify-center gap-3 text-prominent">
                   <div className="w-10 h-10 backdrop-blur-md bg-blue-500/20 border border-blue-400/30 rounded-xl flex items-center justify-center">
                     <svg
-                      className="w-5 h-5 animate-spin text-blue-300"
+                      className="w-5 h-5 animate-spin text-blue-600"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -443,7 +443,7 @@ export function HomeworkFormContainer() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="p-4 backdrop-blur-md bg-red-500/20 border border-red-400/40 text-red-100 rounded-xl flex items-center gap-3"
+                className="p-4 backdrop-blur-md bg-red-500/20 border border-red-400/40 text-red-700 rounded-xl flex items-center gap-3"
               >
                 <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

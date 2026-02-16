@@ -69,7 +69,7 @@ export function ClassroomManager() {
         {/* Error */}
         {error && (
           <div className="p-4 backdrop-blur-md bg-red-500/20 border border-red-400/30 rounded-xl">
-            <p className="text-red-100">{error}</p>
+            <p className="text-red-700">{error}</p>
           </div>
         )}
 
@@ -99,7 +99,7 @@ export function ClassroomManager() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-1 backdrop-blur-md bg-emerald-500/30 border border-emerald-400/30 rounded-full text-xs text-emerald-100">
+                      <span className="px-2 py-1 backdrop-blur-md bg-emerald-500/30 border border-emerald-400/30 rounded-full text-xs text-emerald-700">
                         {t('teacher.classrooms.studentsCount', { count: classStudents.length })}
                       </span>
                     </div>
@@ -224,7 +224,7 @@ function CreateClassroomModal({
 
           {error && (
             <div className="p-3 mb-4 backdrop-blur-md bg-red-500/20 border border-red-400/30 rounded-lg">
-              <p className="text-sm text-red-100">{error}</p>
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
 
@@ -344,7 +344,7 @@ function AssignStudentsModal({
                       className="flex items-center justify-between p-3 backdrop-blur-md bg-emerald-500/10 border border-emerald-400/20 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full backdrop-blur-md bg-emerald-500/30 border border-emerald-400/30 flex items-center justify-center text-sm font-medium text-emerald-100">
+                        <div className="w-8 h-8 rounded-full backdrop-blur-md bg-emerald-500/30 border border-emerald-400/30 flex items-center justify-center text-sm font-medium text-emerald-700">
                           {student.user?.name?.charAt(0) || 'S'}
                         </div>
                         <div>
@@ -355,7 +355,7 @@ function AssignStudentsModal({
                       <button
                         onClick={() => handleAssign(student.userId, false)}
                         disabled={isUpdating === student.userId}
-                        className="px-3 py-1 text-sm backdrop-blur-md bg-red-500/20 border border-red-400/30 rounded-lg text-red-100 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                        className="px-3 py-1 text-sm backdrop-blur-md bg-red-500/20 border border-red-400/30 rounded-lg text-red-700 hover:bg-red-500/30 transition-colors disabled:opacity-50"
                       >
                         {isUpdating === student.userId ? '...' : t('teacher.classrooms.assignModal.remove')}
                       </button>
@@ -389,7 +389,7 @@ function AssignStudentsModal({
                       <button
                         onClick={() => handleAssign(student.userId, true)}
                         disabled={isUpdating === student.userId}
-                        className="px-3 py-1 text-sm backdrop-blur-md bg-emerald-500/20 border border-emerald-400/30 rounded-lg text-emerald-100 hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                        className="px-3 py-1 text-sm backdrop-blur-md bg-emerald-500/20 border border-emerald-400/30 rounded-lg text-emerald-700 hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
                       >
                         {isUpdating === student.userId ? '...' : t('teacher.classrooms.assignModal.add')}
                       </button>

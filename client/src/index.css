@@ -52,29 +52,28 @@
   }
 
   /* ========================================
-     OPACITY TEXT CLASSES (100/70/40/20 Rule)
+     TEXT CLASSES - Medium Dark Gray Palette
+     Optimized for Liquid Glass readability
      ======================================== */
 
-  /* 100% - Critical text, logos, primary CTAs */
+  /* Primary text - Medium dark gray (NOT black, NOT light) */
   .text-solid {
-    @apply text-surface-900;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    color: #374151; /* gray-700 - medium dark */
   }
 
-  /* 70% - Supporting text, nav tabs */
+  /* Secondary text - Slightly lighter */
   .text-prominent {
-    @apply text-surface-700/90;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    color: #4b5563; /* gray-600 - medium */
   }
 
-  /* 40% - Decorative dividers, placeholders */
+  /* Tertiary text - For less important content */
   .text-subtle {
-    @apply text-surface-500/70;
+    color: #6b7280; /* gray-500 - medium light */
   }
 
-  /* 20% - Atmospheric overlays */
+  /* Muted text - Placeholders, hints */
   .text-muted {
-    @apply text-surface-400/50;
+    color: #9ca3af; /* gray-400 - lighter but still readable */
   }
 
   /* ========================================
@@ -311,7 +310,7 @@
 
 /* Key vocabulary glow effect */
 .key-term {
-  @apply font-semibold text-emerald-200;
+  @apply font-semibold text-emerald-600;
   text-shadow: 0 0 20px rgba(52, 211, 153, 0.3);
 }
 

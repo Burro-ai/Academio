@@ -19,13 +19,13 @@ const variantStyles: Record<ButtonVariant, string> = {
   default:
     'backdrop-blur-md bg-white/20 border border-white/25 text-surface-800 hover:bg-white/30 hover:border-white/35',
   primary:
-    'backdrop-blur-md bg-primary-500/40 border border-primary-400/30 text-white hover:bg-primary-500/50 hover:border-primary-400/40',
+    'backdrop-blur-md bg-primary-500/40 border border-primary-400/30 text-solid hover:bg-primary-500/50 hover:border-primary-400/40',
   secondary:
     'backdrop-blur-md bg-surface-500/20 border border-surface-400/25 text-surface-800 hover:bg-surface-500/30',
   ghost:
     'backdrop-blur-sm bg-transparent border border-transparent text-surface-700 hover:bg-white/20 hover:border-white/20',
   danger:
-    'backdrop-blur-md bg-red-500/40 border border-red-400/30 text-white hover:bg-red-500/50 hover:border-red-400/40',
+    'backdrop-blur-md bg-red-500/40 border border-red-400/30 text-solid hover:bg-red-500/50 hover:border-red-400/40',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

@@ -116,8 +116,8 @@ export function StudentSettings() {
             animate={{ opacity: 1, height: 'auto' }}
             className={`p-4 rounded-xl border ${
               message.type === 'success'
-                ? 'backdrop-blur-md bg-emerald-500/20 border-emerald-400/30 text-emerald-100'
-                : 'backdrop-blur-md bg-red-500/20 border-red-400/30 text-red-100'
+                ? 'backdrop-blur-md bg-emerald-500/20 border-emerald-400/30 text-emerald-700'
+                : 'backdrop-blur-md bg-red-500/20 border-red-400/30 text-red-700'
             }`}
           >
             {message.text}
@@ -186,7 +186,7 @@ export function StudentSettings() {
                 onClick={() => toggleSport(sportKey)}
                 className={`px-3 py-1.5 rounded-full text-sm transition-all ${
                   favoriteSports.includes(sportKey)
-                    ? 'backdrop-blur-md bg-emerald-500/30 border border-emerald-400/40 text-emerald-100'
+                    ? 'backdrop-blur-md bg-emerald-500/30 border border-emerald-400/40 text-emerald-700'
                     : 'backdrop-blur-md bg-white/10 border border-white/20 text-prominent hover:bg-white/20'
                 }`}
               >
@@ -212,7 +212,7 @@ export function StudentSettings() {
                 onClick={() => toggleSkill(skillKey)}
                 className={`px-3 py-1.5 rounded-full text-sm transition-all ${
                   skillsToImprove.includes(skillKey)
-                    ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/40 text-blue-100'
+                    ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/40 text-blue-700'
                     : 'backdrop-blur-md bg-white/10 border border-white/20 text-prominent hover:bg-white/20'
                 }`}
               >

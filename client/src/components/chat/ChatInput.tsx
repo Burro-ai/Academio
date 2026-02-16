@@ -77,7 +77,7 @@ export function ChatInput({
 
       {/* Upload error */}
       {uploadError && (
-        <div className="mb-3 px-3 py-2 backdrop-blur-md bg-red-500/20 border border-red-400/30 text-red-100 rounded-lg text-sm">
+        <div className="mb-3 px-3 py-2 backdrop-blur-md bg-red-500/20 border border-red-400/30 text-red-700 rounded-lg text-sm">
           {uploadError}
         </div>
       )}

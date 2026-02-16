@@ -101,8 +101,8 @@ export function FindTeacher() {
             animate={{ opacity: 1, height: 'auto' }}
             className={`p-4 rounded-xl border ${
               message.type === 'success'
-                ? 'backdrop-blur-md bg-emerald-500/20 border-emerald-400/30 text-emerald-100'
-                : 'backdrop-blur-md bg-red-500/20 border-red-400/30 text-red-100'
+                ? 'backdrop-blur-md bg-emerald-500/20 border-emerald-400/30 text-emerald-700'
+                : 'backdrop-blur-md bg-red-500/20 border-red-400/30 text-red-700'
             }`}
           >
             {message.text}
@@ -120,7 +120,7 @@ export function FindTeacher() {
                 <div key={teacher.id} className="flex items-center justify-between p-3 rounded-xl backdrop-blur-md bg-blue-500/20 border border-blue-400/30">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 backdrop-blur-md bg-blue-500/40 border border-blue-400/50 rounded-full flex items-center justify-center">
-                      <span className="text-blue-100 font-semibold">
+                      <span className="text-blue-700 font-semibold">
                         {teacher.name.charAt(0)}
                       </span>
                     </div>
@@ -132,7 +132,7 @@ export function FindTeacher() {
                   <button
                     onClick={() => handleToggleTeacher(teacher.id)}
                     disabled={isSaving}
-                    className="p-2 rounded-lg backdrop-blur-md bg-red-500/20 border border-red-400/30 text-red-200 hover:bg-red-500/30 transition-all disabled:opacity-50"
+                    className="p-2 rounded-lg backdrop-blur-md bg-red-500/20 border border-red-400/30 text-red-600 hover:bg-red-500/30 transition-all disabled:opacity-50"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -184,7 +184,7 @@ export function FindTeacher() {
                           }`}
                         >
                           {isSelected && (
-                            <svg className="w-4 h-4 text-blue-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                             </svg>
                           )}
@@ -198,7 +198,7 @@ export function FindTeacher() {
                         >
                           <span
                             className={`font-semibold ${
-                              isSelected ? 'text-blue-100' : 'text-prominent'
+                              isSelected ? 'text-blue-700' : 'text-prominent'
                             }`}
                           >
                             {teacher.name.charAt(0)}
@@ -210,7 +210,7 @@ export function FindTeacher() {
                         </div>
                       </div>
                       {isSelected && (
-                        <span className="px-3 py-1 text-sm font-medium backdrop-blur-sm bg-blue-500/30 border border-blue-400/40 rounded-full text-blue-100">
+                        <span className="px-3 py-1 text-sm font-medium backdrop-blur-sm bg-blue-500/30 border border-blue-400/40 rounded-full text-blue-700">
                           {t('student.findTeacher.selected')}
                         </span>
                       )}
@@ -226,7 +226,7 @@ export function FindTeacher() {
         <GlassCard variant="surface" className="p-4">
           <div className="flex items-start gap-3">
             <svg
-              className="w-5 h-5 text-blue-300 mt-0.5 flex-shrink-0"
+              className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

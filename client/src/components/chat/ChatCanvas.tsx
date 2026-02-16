@@ -188,7 +188,7 @@ export function ChatCanvas() {
               {isStreaming && <StreamingIndicator content={currentResponse} />}
 
               {error && (
-                <div className="p-4 backdrop-blur-md bg-red-500/20 border border-red-400/30 text-red-100 rounded-lg text-sm">
+                <div className="p-4 backdrop-blur-md bg-red-500/20 border border-red-400/30 text-red-700 rounded-lg text-sm">
                   Error: {error}
                 </div>
               )}

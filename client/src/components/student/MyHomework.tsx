@@ -75,7 +75,7 @@ export function MyHomework() {
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          <p className="text-red-200">{error}</p>
+          <p className="text-red-600">{error}</p>
           <button
             onClick={loadHomework}
             className="mt-4 px-4 py-2 backdrop-blur-md bg-white/20 border border-white/30 rounded-lg text-solid hover:bg-white/30 transition-all"
@@ -153,7 +153,7 @@ export function MyHomework() {
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-2 flex-wrap">
                               {hw.homework.subject && (
-                                <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-100 rounded-lg capitalize">
+                                <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-700 rounded-lg capitalize">
                                   {hw.homework.subject}
                                 </span>
                               )}
@@ -161,12 +161,12 @@ export function MyHomework() {
                                 <span
                                   className={`px-2 py-1 text-xs backdrop-blur-sm rounded-lg ${
                                     dueStatus.color === 'red'
-                                      ? 'bg-red-500/20 border border-red-400/30 text-red-100'
+                                      ? 'bg-red-500/20 border border-red-400/30 text-red-700'
                                       : dueStatus.color === 'yellow'
-                                        ? 'bg-yellow-500/20 border border-yellow-400/30 text-yellow-100'
+                                        ? 'bg-yellow-500/20 border border-yellow-400/30 text-yellow-700'
                                         : dueStatus.color === 'blue'
-                                          ? 'bg-blue-500/20 border border-blue-400/30 text-blue-100'
-                                          : 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-100'
+                                          ? 'bg-blue-500/20 border border-blue-400/30 text-blue-700'
+                                          : 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-700'
                                   }`}
                                 >
                                   {dueStatus.label}
@@ -226,11 +226,11 @@ export function MyHomework() {
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-2">
                             {hw.homework.subject && (
-                              <span className="px-2 py-1 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-100 rounded-lg capitalize">
+                              <span className="px-2 py-1 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-700 rounded-lg capitalize">
                                 {hw.homework.subject}
                               </span>
                             )}
-                            <span className="px-2 py-1 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-100 rounded-lg">
+                            <span className="px-2 py-1 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-700 rounded-lg">
                               {t('student.myHomework.status.submitted')}
                             </span>
                           </div>

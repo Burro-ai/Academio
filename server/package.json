@@ -6,11 +6,20 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test:rag": "tsx src/utils/test-rag-injection.ts --no-cleanup",
+    "test:rag:clean": "tsx src/utils/test-rag-injection.ts",
+    "test:rag:phase1": "tsx src/utils/test-rag-injection.ts --phase 1 --no-cleanup",
+    "test:rag:phase2": "tsx src/utils/test-rag-injection.ts --phase 2",
+    "test:rag:phase3": "tsx src/utils/test-rag-injection.ts --phase 3",
+    "memory:reset": "tsx src/utils/resetMemory.ts --all",
+    "memory:verify": "tsx src/utils/resetMemory.ts --verify",
+    "create:test-students": "tsx src/utils/create-test-students.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^11.6.0",
+    "chromadb": "^1.10.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",

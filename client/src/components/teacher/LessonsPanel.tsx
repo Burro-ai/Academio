@@ -104,7 +104,7 @@ export function LessonsPanel() {
         {/* Error */}
         {error && (
           <GlassCard variant="card" className="p-4 mb-6 backdrop-blur-md bg-red-500/20 border-red-400/30">
-            <p className="text-red-100">{error}</p>
+            <p className="text-red-700">{error}</p>
           </GlassCard>
         )}
 
@@ -150,7 +150,7 @@ export function LessonsPanel() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         {lesson.subject && (
-                          <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-100 rounded-lg capitalize">
+                          <span className="px-2 py-1 text-xs backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-700 rounded-lg capitalize">
                             {lesson.subject}
                           </span>
                         )}

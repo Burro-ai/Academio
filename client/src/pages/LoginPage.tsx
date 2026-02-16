@@ -73,7 +73,7 @@ export function LoginPage() {
           <div className="text-center mb-8">
             <div className="w-16 h-16 mx-auto mb-4 backdrop-blur-md bg-emerald-500/30 border border-emerald-400/30 rounded-2xl flex items-center justify-center shadow-glass">
               <svg
-                className="w-8 h-8 text-emerald-100"
+                className="w-8 h-8 text-emerald-700"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -99,7 +99,7 @@ export function LoginPage() {
               animate={{ opacity: 1, height: 'auto' }}
               className="mb-4 p-3 backdrop-blur-md bg-red-500/20 border border-red-400/30 rounded-xl"
             >
-              <p className="text-red-100 text-sm text-center">{displayError}</p>
+              <p className="text-red-700 text-sm text-center">{displayError}</p>
             </motion.div>
           )}
 
@@ -130,7 +130,7 @@ export function LoginPage() {
                       onClick={() => setRole('STUDENT')}
                       className={`p-3 rounded-xl border transition-all ${
                         role === 'STUDENT'
-                          ? 'backdrop-blur-md bg-emerald-500/30 border-emerald-400/40 text-emerald-100'
+                          ? 'backdrop-blur-md bg-emerald-500/30 border-emerald-400/40 text-emerald-700'
                           : 'backdrop-blur-md bg-white/10 border-white/20 text-prominent hover:bg-white/20'
                       }`}
                     >
@@ -154,7 +154,7 @@ export function LoginPage() {
                       onClick={() => setRole('TEACHER')}
                       className={`p-3 rounded-xl border transition-all ${
                         role === 'TEACHER'
-                          ? 'backdrop-blur-md bg-blue-500/30 border-blue-400/40 text-blue-100'
+                          ? 'backdrop-blur-md bg-blue-500/30 border-blue-400/40 text-blue-700'
                           : 'backdrop-blur-md bg-white/10 border-white/20 text-prominent hover:bg-white/20'
                       }`}
                     >
@@ -263,7 +263,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={switchMode}
-                className="text-emerald-300 hover:text-emerald-200 font-medium"
+                className="text-emerald-600 hover:text-emerald-500 font-medium"
               >
                 {mode === 'login' ? t('auth.signUp') : t('auth.signIn')}
               </button>

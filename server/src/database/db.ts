@@ -4,6 +4,7 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import { config } from '../config';
 import { v4 as uuidv4 } from 'uuid';
+import { memoryService } from '../services/memory.service';
 
 let db: Database.Database;
 
@@ -65,6 +66,54 @@ export const initializeDatabase = async (): Promise<void> => {
 
   // Seed with dummy data for testing
   await seedDatabase();
+
+  // Initialize ChromaDB memory service and verify synchronization
+  await initializeMemoryService();
+};
+
+/**
+ * Initialize ChromaDB memory service and verify SQLite-ChromaDB synchronization
+ */
+const initializeMemoryService = async (): Promise<void> => {
+  try {
+    // Initialize the memory service (connect to ChromaDB)
+    await memoryService.initialize();
+
+    if (!memoryService.isAvailable()) {
+      console.log('[Memory] ChromaDB not available - long-term memory disabled');
+      return;
+    }
+
+    // Get all existing student user IDs from SQLite
+    const studentProfiles = db.prepare(`
+      SELECT user_id FROM student_profiles
+    `).all() as { user_id: string }[];
+
+    const existingStudentIds = studentProfiles.map(p => p.user_id);
+
+    // Verify synchronization between SQLite and ChromaDB
+    const syncResult = await memoryService.verifySynchronization(existingStudentIds);
+
+    if (!syncResult.inSync) {
+      // Clean up orphaned collections (in ChromaDB but not in SQLite)
+      if (syncResult.orphanedCollections.length > 0) {
+        console.log(`[Memory] Cleaning ${syncResult.orphanedCollections.length} orphaned collections...`);
+        await memoryService.cleanOrphanedCollections(syncResult.orphanedCollections);
+      }
+
+      // Initialize missing collections (in SQLite but not in ChromaDB)
+      if (syncResult.missingCollections.length > 0) {
+        console.log(`[Memory] Initializing ${syncResult.missingCollections.length} missing collections...`);
+        for (const studentId of syncResult.missingCollections) {
+          await memoryService.initializeStudentMemory(studentId);
+        }
+      }
+    }
+
+    console.log('[Memory] Memory service initialized and synchronized');
+  } catch (error) {
+    console.warn('[Memory] Failed to initialize memory service:', error);
+  }
 };
 
 export const closeDatabase = (): void => {

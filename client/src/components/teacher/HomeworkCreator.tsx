@@ -122,7 +122,7 @@ export function HomeworkCreator({ onBack, onCreated }: HomeworkCreatorProps) {
             animate={{ opacity: 1, height: 'auto' }}
             className="p-4 backdrop-blur-md bg-red-500/20 border border-red-400/30 rounded-xl"
           >
-            <p className="text-red-100">{error}</p>
+            <p className="text-red-700">{error}</p>
           </motion.div>
         )}
 
@@ -166,7 +166,7 @@ export function HomeworkCreator({ onBack, onCreated }: HomeworkCreatorProps) {
                       onClick={() => setSubject(subject === subjectKey ? '' : subjectKey)}
                       className={`px-3 py-1.5 rounded-full text-sm transition-all ${
                         subject === subjectKey
-                          ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/40 text-blue-100'
+                          ? 'backdrop-blur-md bg-blue-500/30 border border-blue-400/40 text-blue-700'
                           : 'backdrop-blur-md bg-white/10 border border-white/20 text-prominent hover:bg-white/20'
                       }`}
                     >

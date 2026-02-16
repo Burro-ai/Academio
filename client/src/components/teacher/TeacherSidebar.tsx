@@ -62,7 +62,7 @@ export function TeacherSidebar({ activeTab, onTabChange }: TeacherSidebarProps) 
       <div className="p-4 border-b border-white/15">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 backdrop-blur-md bg-emerald-500/30 border border-emerald-400/30 rounded-full flex items-center justify-center shadow-glass">
-            <span className="text-emerald-100 font-semibold">
+            <span className="text-emerald-700 font-semibold">
               {teacher?.name?.charAt(0) || 'T'}
             </span>
           </div>
@@ -85,7 +85,7 @@ export function TeacherSidebar({ activeTab, onTabChange }: TeacherSidebarProps) 
             onClick={() => onTabChange(item.id)}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
               activeTab === item.id
-                ? 'backdrop-blur-md bg-emerald-500/30 border border-emerald-400/30 text-emerald-100 shadow-glass'
+                ? 'backdrop-blur-md bg-emerald-500/30 border border-emerald-400/30 text-emerald-700 shadow-glass'
                 : 'text-prominent hover:backdrop-blur-md hover:bg-white/20 hover:border hover:border-white/20'
             }`}
           >

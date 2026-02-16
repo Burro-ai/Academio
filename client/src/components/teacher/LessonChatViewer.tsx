@@ -63,7 +63,7 @@ export function LessonChatViewer({ sessionId, onClose }: LessonChatViewerProps) 
                   <>
                     <div className="flex items-center gap-2 mb-1">
                       {lesson.subject && (
-                        <span className="px-2 py-0.5 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-100 rounded-lg capitalize">
+                        <span className="px-2 py-0.5 text-xs backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-700 rounded-lg capitalize">
                           {lesson.subject}
                         </span>
                       )}
@@ -100,7 +100,7 @@ export function LessonChatViewer({ sessionId, onClose }: LessonChatViewerProps) 
             ) : error ? (
               <div className="flex items-center justify-center h-full">
                 <GlassCard variant="surface" className="p-4 backdrop-blur-md bg-red-500/20 border-red-400/30">
-                  <p className="text-red-100">{error}</p>
+                  <p className="text-red-700">{error}</p>
                 </GlassCard>
               </div>
             ) : messages.length === 0 ? (

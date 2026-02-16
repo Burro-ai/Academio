@@ -7,6 +7,7 @@ import {
   StudentProfileRow,
   PersonalizationContext,
 } from '../../types';
+import { memoryService } from '../../services/memory.service';
 
 interface StudentProfileWithSchool extends StudentProfile {
   schoolId?: string;
@@ -111,6 +112,7 @@ export const studentProfilesQueries = {
 
   /**
    * Create a new student profile (with optional school_id)
+   * Also initializes ChromaDB memory collection for RAG
    */
   create(
     userId: string,
@@ -136,6 +138,11 @@ export const studentProfilesQueries = {
       data?.classroomId || null,
       data?.schoolId || null
     );
+
+    // Initialize ChromaDB memory collection for this student (async, non-blocking)
+    memoryService.initializeStudentMemory(userId).catch(err => {
+      console.warn(`[StudentProfiles] Failed to initialize memory for ${userId}:`, err);
+    });
 
     return this.getById(id)!;
   },
@@ -344,12 +351,21 @@ export const studentProfilesQueries = {
 
   /**
    * Delete profile
+   * Also deletes ChromaDB memory collection for synchronization
    */
   delete(userId: string): boolean {
     const db = getDb();
     const result = db
       .prepare('DELETE FROM student_profiles WHERE user_id = ?')
       .run(userId);
+
+    // Delete ChromaDB memory collection for this student (async, non-blocking)
+    if (result.changes > 0) {
+      memoryService.deleteStudentMemory(userId).catch(err => {
+        console.warn(`[StudentProfiles] Failed to delete memory for ${userId}:`, err);
+      });
+    }
+
     return result.changes > 0;
   },
 

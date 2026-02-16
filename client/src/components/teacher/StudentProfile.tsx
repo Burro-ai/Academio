@@ -83,7 +83,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                 className="w-20 h-20 rounded-full object-cover"
               />
             ) : (
-              <span className="text-emerald-100 text-2xl font-semibold">{initials}</span>
+              <span className="text-emerald-700 text-2xl font-semibold">{initials}</span>
             )}
           </div>
           <div className="flex-1">
@@ -97,7 +97,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             </div>
             {studentActivity?.needsIntervention && (
               <div className="mt-4 p-3 backdrop-blur-md bg-red-500/20 border border-red-400/30 rounded-xl">
-                <div className="flex items-center gap-2 text-red-100">
+                <div className="flex items-center gap-2 text-red-700">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
@@ -183,9 +183,9 @@ function LearningContextTab({
   const struggleScore = activity?.averageStruggleScore || student.currentStruggleScore || 0;
   const struggleLevel = struggleScore > 0.7 ? 'high' : struggleScore > 0.4 ? 'medium' : 'low';
   const struggleColors = {
-    high: 'text-red-300 bg-red-500/20 border-red-400/30',
-    medium: 'text-yellow-300 bg-yellow-500/20 border-yellow-400/30',
-    low: 'text-green-300 bg-green-500/20 border-green-400/30',
+    high: 'text-red-600 bg-red-500/20 border-red-400/30',
+    medium: 'text-yellow-600 bg-yellow-500/20 border-yellow-400/30',
+    low: 'text-green-600 bg-green-500/20 border-green-400/30',
   };
   const struggleLabels = {
     high: t('teacher.studentProfile.learningContext.highStruggle'),
@@ -264,7 +264,7 @@ function LearningContextTab({
                 {student.favoriteSports.map((sport: string, i: number) => (
                   <span
                     key={i}
-                    className="px-2 py-0.5 text-sm backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 rounded-lg text-emerald-100"
+                    className="px-2 py-0.5 text-sm backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 rounded-lg text-emerald-700"
                   >
                     {sport}
                   </span>
@@ -279,7 +279,7 @@ function LearningContextTab({
                 {student.skillsToImprove.map((skill: string, i: number) => (
                   <span
                     key={i}
-                    className="px-2 py-0.5 text-sm backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 rounded-lg text-blue-100"
+                    className="px-2 py-0.5 text-sm backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 rounded-lg text-blue-700"
                   >
                     {skill}
                   </span>
@@ -393,10 +393,10 @@ function AcademicPerformanceTab({
           <p className="text-sm text-prominent">{t('teacher.studentProfile.academicPerformance.averageGrade')}</p>
           <p className={`text-2xl font-bold ${
             (stats?.averageGrade || 0) >= 90
-              ? 'text-green-300'
+              ? 'text-green-600'
               : (stats?.averageGrade || 0) >= 70
-                ? 'text-yellow-300'
-                : 'text-red-300'
+                ? 'text-yellow-600'
+                : 'text-red-600'
           }`}>
             {statsLoading
               ? '...'
@@ -407,7 +407,7 @@ function AcademicPerformanceTab({
         </div>
         <div className="glass-stat-card p-5">
           <p className="text-sm text-prominent">{t('teacher.studentProfile.activityPulse.pendingHomework', { count: stats?.homeworkPending || 0 })}</p>
-          <p className="text-2xl font-bold text-amber-300">
+          <p className="text-2xl font-bold text-amber-600">
             {statsLoading ? '...' : stats?.homeworkPending || 0}
           </p>
         </div>
@@ -438,17 +438,17 @@ function AcademicPerformanceTab({
                     <div className="flex items-center gap-2">
                       {hw.grade !== null && (
                         <span className={`text-sm font-semibold ${
-                          hw.grade >= 90 ? 'text-green-300' : hw.grade >= 70 ? 'text-yellow-300' : 'text-red-300'
+                          hw.grade >= 90 ? 'text-green-600' : hw.grade >= 70 ? 'text-yellow-600' : 'text-red-600'
                         }`}>
                           {hw.grade}%
                         </span>
                       )}
                       <span className={`text-xs px-2 py-1 rounded-lg backdrop-blur-sm border ${
                         hw.status === 'graded'
-                          ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-100'
+                          ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-700'
                           : hw.status === 'submitted'
-                            ? 'bg-blue-500/20 border-blue-400/30 text-blue-100'
-                            : 'bg-amber-500/20 border-amber-400/30 text-amber-100'
+                            ? 'bg-blue-500/20 border-blue-400/30 text-blue-700'
+                            : 'bg-amber-500/20 border-amber-400/30 text-amber-700'
                       }`}>
                         {t(`teacher.studentProfile.academicPerformance.${hw.status}`)}
                       </span>
@@ -485,12 +485,12 @@ function AcademicPerformanceTab({
 function GradeSubjectRow({ data, t }: { data: GradesBySubject; t: (key: string, options?: any) => string }) {
   const trendIcon = {
     improving: (
-      <svg className="w-4 h-4 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
       </svg>
     ),
     declining: (
-      <svg className="w-4 h-4 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
       </svg>
     ),
@@ -512,10 +512,10 @@ function GradeSubjectRow({ data, t }: { data: GradesBySubject; t: (key: string, 
       <div className="flex items-center gap-3">
         <span className={`text-lg font-semibold ${
           data.average >= 90
-            ? 'text-green-300'
+            ? 'text-green-600'
             : data.average >= 70
-              ? 'text-yellow-300'
-              : 'text-red-300'
+              ? 'text-yellow-600'
+              : 'text-red-600'
         }`}>
           {data.average.toFixed(1)}%
         </span>
