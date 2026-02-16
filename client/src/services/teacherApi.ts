@@ -25,50 +25,43 @@ import {
   LessonChatMessage,
   LessonChatSessionWithDetails,
 } from '@/types';
-import { authApi } from './authApi';
+import { authenticatedFetch, getAuthHeaders } from './authInterceptor';
 
 const API_BASE = '/api';
 
 class TeacherApiService {
-  private password: string | null = null;
+  // Legacy password field - kept for backwards compatibility with old login flow
+  // Now uses JWT auth via authenticatedFetch, but kept for potential fallback
+  private _legacyPassword: string | null = null;
 
+  /** @deprecated Use JWT auth instead. Legacy password auth. */
   setPassword(password: string) {
-    this.password = password;
+    this._legacyPassword = password;
   }
 
+  /** @deprecated Use JWT auth instead. Clear legacy password. */
   clearPassword() {
-    this.password = null;
+    this._legacyPassword = null;
   }
 
-  private getAuthHeaders(): Record<string, string> {
-    // First try JWT token from authApi
-    const jwtToken = authApi.getToken();
-    if (jwtToken) {
-      return {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${jwtToken}`,
-      };
-    }
-
-    // Fallback to legacy password auth
-    if (!this.password) {
-      throw new Error('Not authenticated');
-    }
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.password}`,
-    };
+  /** Check if legacy password is set (for backwards compatibility) */
+  hasLegacyPassword(): boolean {
+    return this._legacyPassword !== null;
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      headers: this.getAuthHeaders(),
+    // Use authenticated fetch - interceptor handles token injection
+    const response = await authenticatedFetch(`${API_BASE}${endpoint}`, {
       ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.message || `HTTP ${response.status}`);
+      throw new Error(error.message || error.error || `HTTP ${response.status}`);
     }
 
     // Handle 204 No Content
@@ -90,7 +83,7 @@ class TeacherApiService {
       });
 
       if (response.ok) {
-        this.password = password;
+        this._legacyPassword = password;
         return true;
       }
       return false;
@@ -250,7 +243,7 @@ class TeacherApiService {
     await this.request(`/teacher/chat/sessions/${id}`, { method: 'DELETE' });
   }
 
-  // Get stream URL for SSE
+  // Get stream URL for SSE (used with authenticatedFetch)
   getStreamUrl(sessionId: string, message: string, materialType?: MaterialType): string {
     const params = new URLSearchParams({
       sessionId,
@@ -260,6 +253,11 @@ class TeacherApiService {
       params.append('materialType', materialType);
     }
     return `${API_BASE}/teacher/chat/stream?${params}`;
+  }
+
+  // Get auth headers for SSE streams (for components that manage their own streaming)
+  getStreamHeaders(): Record<string, string> {
+    return getAuthHeaders();
   }
 
   // ============ Homework Submissions (Grading) ============

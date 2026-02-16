@@ -362,16 +362,26 @@ npm run memory:reset     # Reset all memories
 
 > **CRITICAL:** This section documents how authentication works across all workflows. Many bugs have been caused by missing JWT tokens in API requests. Always verify auth is properly wired.
 
-### Overview
+> **Updated 2026-02-16:** Refactored to "Persistence-First" architecture with atomic auth interceptor and permission registry.
 
-Academio uses JWT-based authentication with role-based access control (RBAC).
+### Architecture: "Persistence-First"
+
+The auth system follows a **Persistence-First** pattern:
+1. Token is read from localStorage **synchronously** on app load (before React renders)
+2. All API calls go through a global interceptor that injects auth headers
+3. 401 responses trigger immediate auth state wipe
+4. Server uses a centralized Permission Registry for route-to-role mapping
+
+### Key Components
 
 | Component | Purpose |
 |-----------|---------|
+| `client/src/services/authInterceptor.ts` | **NEW** - Global fetch interceptor for token injection |
+| `server/src/middleware/permissionRegistry.ts` | **NEW** - Central RBAC configuration |
 | `server/src/middleware/auth.middleware.ts` | JWT verification and role checking |
 | `server/src/controllers/auth.controller.ts` | Login, register, token generation |
 | `client/src/services/authApi.ts` | Token storage and authenticated requests |
-| `client/src/context/AuthContext.tsx` | Global auth state management |
+| `client/src/context/AuthContext.tsx` | Global auth state management with blocking hydration |
 
 ### JWT Token Structure
 
@@ -389,6 +399,99 @@ interface JwtPayload {
 - **Token Expiry:** 7 days
 - **Secret:** Configured via `JWT_SECRET` env variable
 - **Storage:** Client stores token in `localStorage` with key `academio_token`
+
+### Atomic Auth Interceptor (Frontend)
+
+All API calls go through `authenticatedFetch()` from `authInterceptor.ts`:
+
+```typescript
+// Import authenticated fetch
+import { authenticatedFetch } from '@/services/authInterceptor';
+
+// All API calls use this - token is automatically injected
+const response = await authenticatedFetch('/api/lessons');
+
+// For SSE streams, same interceptor handles auth
+const response = await authenticatedFetch('/api/chat/stream?...');
+```
+
+**Key Features:**
+- Synchronous token retrieval from localStorage (no race conditions)
+- Automatic Bearer token injection for all `/api/*` calls
+- 401 response handling with forced logout event
+- SSE stream authentication support
+
+**Logout Event Subscription:**
+```typescript
+import { onAuthEvent } from '@/services/authInterceptor';
+
+// Subscribe to logout events (e.g., from expired token)
+useEffect(() => {
+  return onAuthEvent((event) => {
+    if (event.type === 'logout') {
+      // Handle logout (redirect, clear state, etc.)
+    }
+  });
+}, []);
+```
+
+### Blocking Hydration (Frontend)
+
+AuthContext uses **synchronous pre-flight check** before rendering:
+
+```typescript
+// Runs BEFORE React tree renders
+const initialAuthState = preflightAuthCheck();
+
+// State initialized from localStorage immediately
+const [user, setUser] = useState(() => initialAuthState.user);
+
+// If token needs server verification, show spinner until complete
+if (isInitializing) {
+  return <LoadingSpinner />;
+}
+```
+
+This prevents the "flash of unauthenticated content" and ensures route guards work immediately.
+
+### Permission Registry (Backend)
+
+All routes are mapped to required roles in `permissionRegistry.ts`:
+
+```typescript
+const PERMISSION_REGISTRY = [
+  // Public routes
+  { method: 'GET', path: '/health', permissions: ['PUBLIC'] },
+  { method: 'POST', path: '/auth/login', permissions: ['PUBLIC'] },
+
+  // Authenticated (any logged-in user)
+  { method: 'GET', path: '/auth/me', permissions: ['AUTHENTICATED'] },
+
+  // Role-specific
+  { method: 'GET', path: '/student/profile', permissions: ['STUDENT'] },
+  { method: 'GET', path: '/lessons', permissions: ['TEACHER'] },
+];
+```
+
+**Benefits:**
+- Single source of truth for route permissions
+- Automatic 403 for unregistered routes (secure by default)
+- Easy audit trail for security reviews
+- Case-insensitive role comparison built-in
+
+### Error Codes
+
+Auth errors include machine-readable codes for client-side handling:
+
+| Code | HTTP Status | Meaning |
+|------|-------------|---------|
+| `NO_AUTH_HEADER` | 401 | Authorization header missing |
+| `NO_TOKEN` | 401 | Token empty or not provided |
+| `TOKEN_EXPIRED` | 401 | Token past expiration date |
+| `TOKEN_INVALID` | 401 | Token malformed or bad signature |
+| `NOT_AUTHENTICATED` | 401 | User context missing |
+| `INSUFFICIENT_PERMISSIONS` | 403 | Role doesn't match required |
+| `SCHOOL_SCOPE_MISMATCH` | 403 | School ID doesn't match token |
 
 ### Authentication Flow
 
@@ -462,44 +565,40 @@ router.use('/classroom', authMiddleware, teacherOnly);
 
 ### Frontend API Services - Token Inclusion
 
-**CRITICAL:** All authenticated API calls MUST include the JWT token in the Authorization header.
+**IMPORTANT:** All API services now use `authenticatedFetch()` from the interceptor. Token injection is automatic.
 
 #### Pattern for REST API calls (api.ts, lessonApi.ts, teacherApi.ts):
 ```typescript
+import { authenticatedFetch } from '@/services/authInterceptor';
+
 private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = authApi.getToken();  // Get from localStorage
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;  // MUST include this
-  }
-
-  const response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+  // Token is automatically injected by authenticatedFetch
+  const response = await authenticatedFetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
   // ... handle response
 }
 ```
 
 #### Pattern for SSE Streaming (useChat.ts):
 ```typescript
+import { authenticatedFetch } from '@/services/authInterceptor';
+
 const sendMessage = async (message: string) => {
-  const headers: Record<string, string> = {};
-  const token = authApi.getToken();
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;  // Required for session ownership
-  }
-
-  const response = await fetch(`/api/chat/stream?${params}`, {
+  // Token is automatically injected for SSE streams too
+  const response = await authenticatedFetch(`/api/chat/stream?${params}`, {
     method: 'GET',
-    headers,  // Include auth headers
     signal: abortController.signal,
   });
   // ... handle SSE stream
 };
 ```
+
+**Note:** The old pattern of manually calling `authApi.getToken()` is still supported but deprecated. Use `authenticatedFetch()` for automatic token handling and 401 logout.
 
 ### Common Auth Issues & Fixes
 
@@ -532,13 +631,35 @@ curl http://localhost:3001/api/homework \
 
 | File | What to Check |
 |------|---------------|
-| `server/src/middleware/auth.middleware.ts` | JWT verification logic |
-| `server/src/controllers/auth.controller.ts` | Token generation, login logic |
-| `client/src/services/authApi.ts` | Token storage/retrieval |
-| `client/src/context/AuthContext.tsx` | React auth state |
-| `client/src/services/api.ts` | REST API token inclusion |
-| `client/src/services/lessonApi.ts` | Lesson/Homework API token inclusion |
-| `client/src/hooks/useChat.ts` | SSE streaming token inclusion |
+| `client/src/services/authInterceptor.ts` | **NEW** - Global fetch interceptor, 401 handling |
+| `server/src/middleware/permissionRegistry.ts` | **NEW** - Route-to-role mapping |
+| `server/src/middleware/auth.middleware.ts` | JWT verification, role normalization |
+| `server/src/controllers/auth.controller.ts` | Token generation (includes schoolId) |
+| `client/src/services/authApi.ts` | Token storage/retrieval, logout callbacks |
+| `client/src/context/AuthContext.tsx` | Blocking hydration, logout event subscription |
+| `client/src/services/api.ts` | Uses authenticatedFetch |
+| `client/src/services/lessonApi.ts` | Uses authenticatedFetch for streams |
+| `client/src/hooks/useChat.ts` | Uses authenticatedFetch for SSE |
+
+### Auth Integrity Testing
+
+Run the auth verification script to ensure RBAC is working correctly:
+
+```bash
+# Start the server first
+npm run dev
+
+# In another terminal, run auth tests
+cd server && npm run test:auth
+```
+
+The test verifies:
+- Public routes accessible without auth
+- Protected routes return 401 without auth
+- Role-specific routes return 403 with wrong role
+- Expired tokens rejected with proper error codes
+- Case-insensitive role comparison
+- Auth decision latency under 50ms
 
 ---
 

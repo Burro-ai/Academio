@@ -1,31 +1,26 @@
 import { Session, CreateSessionRequest, Topic } from '@/types';
-import { authApi } from './authApi';
+import { authenticatedFetch } from './authInterceptor';
 
 const API_BASE = '/api';
 
 class ApiService {
   /**
-   * Get auth headers if user is logged in
+   * Make authenticated API request using the global interceptor
+   * The interceptor handles:
+   * - Token injection
+   * - 401 handling with auto-logout
+   * - Content-Type headers
    */
-  private getAuthHeaders(): Record<string, string> {
-    const token = authApi.getToken();
-    if (token) {
-      return { 'Authorization': `Bearer ${token}` };
-    }
-    return {};
-  }
-
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await authenticatedFetch(`${API_BASE}${endpoint}`, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...this.getAuthHeaders(),
         ...options.headers,
       },
-      ...options,
     });
 
     if (!response.ok) {
@@ -63,7 +58,7 @@ class ApiService {
     await this.request(`/sessions/${id}`, { method: 'DELETE' });
   }
 
-  // File upload
+  // File upload - uses FormData, interceptor handles auth
   async uploadFile(file: File): Promise<{
     id: string;
     filename: string;
@@ -73,9 +68,11 @@ class ApiService {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE}/upload`, {
+    // Don't set Content-Type for FormData (browser sets boundary)
+    const response = await authenticatedFetch(`${API_BASE}/upload`, {
       method: 'POST',
       body: formData,
+      headers: {}, // Let browser set Content-Type for FormData
     });
 
     if (!response.ok) {

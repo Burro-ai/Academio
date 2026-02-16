@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   User,
@@ -8,6 +8,12 @@ import {
   RegisterRequest,
 } from '@/types';
 import { authApi } from '@/services/authApi';
+import {
+  preflightAuthCheck,
+  onAuthEvent,
+  normalizeRole,
+  initializeAuthInterceptor,
+} from '@/services/authInterceptor';
 
 interface AuthContextType {
   user: User | null;
@@ -31,15 +37,34 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+// Initialize the interceptor once at module load (before React renders)
+initializeAuthInterceptor();
+
+// Pre-flight check runs BEFORE React component tree
+const initialAuthState = preflightAuthCheck();
+
 export function AuthProvider({ children }: AuthProviderProps) {
-  // Initialize with stored data for instant hydration (no flash)
-  const [user, setUser] = useState<User | null>(() => authApi.getStoredUser());
+  // Initialize with pre-flight data for INSTANT hydration (no flash)
+  const [user, setUser] = useState<User | null>(() => {
+    if (initialAuthState.user) {
+      return {
+        ...initialAuthState.user,
+        role: normalizeRole(initialAuthState.user.role) || 'STUDENT',
+        createdAt: '',
+        updatedAt: '',
+      } as User;
+    }
+    return null;
+  });
   const [profile, setProfile] = useState<StudentProfile | null>(() => authApi.getStoredProfile());
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(initialAuthState.needsVerification);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true);
 
   const isAuthenticated = !!user;
 
@@ -48,60 +73,63 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return role === 'TEACHER' ? '/dashboard/teacher' : '/dashboard/student';
   };
 
-  // Check and validate authentication on mount
+  // Subscribe to global logout events from the interceptor
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = authApi.getToken();
-
-      // If no token exists at all, user is not logged in
-      if (!token) {
-        console.log('[Auth] No token found, user not logged in');
+    const unsubscribe = onAuthEvent((event) => {
+      if (event.type === 'logout' && isMountedRef.current) {
+        console.log('[AuthContext] Received logout event:', event.reason);
         setUser(null);
         setProfile(null);
+        setIsInitializing(false);
+
+        // Only navigate if not already on a public route
+        const publicRoutes = ['/login', '/register', '/admin', '/'];
+        if (!publicRoutes.some(route => location.pathname.startsWith(route))) {
+          navigate('/login', { state: { from: location.pathname, reason: event.reason } });
+        }
+      }
+    });
+
+    return () => {
+      isMountedRef.current = false;
+      unsubscribe();
+    };
+  }, [navigate, location.pathname]);
+
+  // Verify authentication with server on mount
+  useEffect(() => {
+    const verifyAuth = async () => {
+      // If no token or pre-flight said no verification needed, we're done
+      if (!initialAuthState.needsVerification || !initialAuthState.token) {
         setIsInitializing(false);
         return;
       }
 
-      // We have a token - first try to use stored data for instant hydration
-      const storedUser = authApi.getStoredUser();
-      const storedProfile = authApi.getStoredProfile();
-
-      if (storedUser) {
-        // Immediately set stored user for instant UI (no flash)
-        setUser(storedUser);
-        setProfile(storedProfile);
-        console.log('[Auth] Hydrated from localStorage:', storedUser.email, 'role:', storedUser.role);
-      }
-
-      // Check if token appears expired (client-side check)
-      if (authApi.isTokenExpired()) {
-        console.log('[Auth] Token appears expired, clearing auth data');
-        setUser(null);
-        setProfile(null);
-        authApi.clearAll();
-        setIsInitializing(false);
-        return;
-      }
-
-      // Token looks valid - validate with server and get fresh data
       try {
+        // Verify with server and get fresh data
         const { user: currentUser, profile: currentProfile } = await authApi.getCurrentUser();
-        setUser(currentUser);
-        setProfile(currentProfile);
-        console.log('[Auth] Session validated with server for:', currentUser.email, 'role:', currentUser.role);
+
+        if (isMountedRef.current) {
+          setUser(currentUser);
+          setProfile(currentProfile);
+          console.log('[AuthContext] Session verified with server for:', currentUser.email, 'role:', currentUser.role);
+        }
       } catch (err) {
-        // Server rejected the token - clear everything
-        console.error('[Auth] Server rejected token:', err);
-        setUser(null);
-        setProfile(null);
-        authApi.clearAll();
+        // Server rejected the token - interceptor will handle logout
+        console.error('[AuthContext] Server rejected token:', err);
+        if (isMountedRef.current) {
+          setUser(null);
+          setProfile(null);
+        }
       } finally {
-        setIsInitializing(false);
+        if (isMountedRef.current) {
+          setIsInitializing(false);
+        }
       }
     };
 
-    checkAuth();
-  }, []);
+    verifyAuth();
+  }, []); // Run once on mount
 
   // Redirect to login if not authenticated (except for public routes)
   useEffect(() => {
@@ -125,8 +153,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(response.user);
 
       // Fetch profile if student (this also stores it in localStorage via getCurrentUser)
-      // Use case-insensitive comparison for role
-      if (response.user.role?.toUpperCase() === 'STUDENT') {
+      const normalizedRole = normalizeRole(response.user.role);
+      if (normalizedRole === 'STUDENT') {
         const { profile: userProfile } = await authApi.getCurrentUser();
         setProfile(userProfile);
       } else {
@@ -136,8 +164,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Navigate to appropriate dashboard
       const from = (location.state as { from?: string })?.from;
-      // Normalize role for redirect path
-      const normalizedRole = response.user.role?.toUpperCase() === 'TEACHER' ? 'TEACHER' : 'STUDENT';
       const redirectTo = from || response.redirectTo || getRedirectPath(normalizedRole as UserRole);
       navigate(redirectTo);
     } catch (err) {
@@ -156,9 +182,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await authApi.register(data);
       setUser(response.user);
 
-      // Fetch profile if student (this also stores it in localStorage via getCurrentUser)
-      // Use case-insensitive comparison for role
-      if (response.user.role?.toUpperCase() === 'STUDENT') {
+      // Fetch profile if student
+      const normalizedRole = normalizeRole(response.user.role);
+      if (normalizedRole === 'STUDENT') {
         const { profile: userProfile } = await authApi.getCurrentUser();
         setProfile(userProfile);
       } else {
@@ -167,8 +193,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       // Navigate to appropriate dashboard
-      // Normalize role for redirect path
-      const normalizedRole = response.user.role?.toUpperCase() === 'TEACHER' ? 'TEACHER' : 'STUDENT';
       const redirectTo = response.redirectTo || getRedirectPath(normalizedRole as UserRole);
       navigate(redirectTo);
     } catch (err) {
@@ -207,10 +231,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(currentUser);
       setProfile(currentProfile);
     } catch (err) {
-      // If refresh fails, logout
-      await logout();
+      // If refresh fails, logout (interceptor handles 401)
+      console.error('[AuthContext] Failed to refresh user:', err);
     }
-  }, [logout]);
+  }, []);
 
   // Wait for auth to be ready - useful for components that need to ensure auth is loaded
   const waitForAuth = useCallback(async (): Promise<boolean> => {
@@ -219,21 +243,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return isAuthenticated;
     }
 
-    // Wait for initialization to complete
+    // Wait for initialization to complete (max 5 seconds)
     return new Promise((resolve) => {
+      const startTime = Date.now();
       const checkInterval = setInterval(() => {
-        // Check if still initializing by looking at authApi state
-        if (!isInitializing) {
+        if (!isInitializing || Date.now() - startTime > 5000) {
           clearInterval(checkInterval);
           resolve(!!user);
         }
-      }, 50);
-
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        clearInterval(checkInterval);
-        resolve(!!user);
-      }, 5000);
+      }, 10); // Check every 10ms for fast response
     });
   }, [isInitializing, isAuthenticated, user]);
 
@@ -256,7 +274,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     waitForAuth,
   };
 
-  // Show loading spinner while initializing
+  // BLOCKING HYDRATION: Show loading spinner while initializing
+  // This prevents the app from rendering in an inconsistent state
   if (isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -266,7 +285,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             <div className="absolute inset-0 rounded-full backdrop-blur-xl bg-white/20 border border-white/30 animate-pulse" />
             <div className="absolute inset-2 rounded-full border-2 border-white/40 border-t-white animate-spin" />
           </div>
-          <p className="text-white/70 text-sm">Cargando...</p>
+          <p className="text-white/70 text-sm">Verificando sesion...</p>
         </div>
       </div>
     );

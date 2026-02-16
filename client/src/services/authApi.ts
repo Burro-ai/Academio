@@ -6,6 +6,14 @@ import {
   RegisterResponse,
   StudentProfile,
 } from '@/types';
+import {
+  getTokenSync,
+  getStoredUserSync,
+  clearAuthData,
+  normalizeRole,
+  authenticatedFetch,
+  onAuthEvent,
+} from './authInterceptor';
 
 const API_BASE = '/api/auth';
 
@@ -14,11 +22,42 @@ const USER_KEY = 'academio_user';
 const PROFILE_KEY = 'academio_profile';
 
 class AuthApiService {
+  private logoutCallbacks: Set<() => void> = new Set();
+
+  constructor() {
+    // Subscribe to auth events from the interceptor
+    onAuthEvent((event) => {
+      if (event.type === 'logout') {
+        console.log('[AuthApi] Received logout event:', event.reason);
+        this.notifyLogoutCallbacks();
+      }
+    });
+  }
+
   /**
-   * Get stored token
+   * Register a callback to be called when logout occurs
+   * Returns unsubscribe function
+   */
+  onLogout(callback: () => void): () => void {
+    this.logoutCallbacks.add(callback);
+    return () => this.logoutCallbacks.delete(callback);
+  }
+
+  private notifyLogoutCallbacks(): void {
+    this.logoutCallbacks.forEach(cb => {
+      try {
+        cb();
+      } catch (error) {
+        console.error('[AuthApi] Error in logout callback:', error);
+      }
+    });
+  }
+
+  /**
+   * Get stored token (delegates to interceptor)
    */
   getToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
+    return getTokenSync();
   }
 
   /**
@@ -36,16 +75,17 @@ class AuthApiService {
   }
 
   /**
-   * Get stored user
+   * Get stored user (delegates to interceptor)
    */
   getStoredUser(): User | null {
-    const userStr = localStorage.getItem(USER_KEY);
-    if (!userStr) return null;
-    try {
-      return JSON.parse(userStr);
-    } catch {
-      return null;
-    }
+    const user = getStoredUserSync();
+    if (!user) return null;
+
+    // Ensure role is normalized
+    return {
+      ...user,
+      role: normalizeRole(user.role) || 'STUDENT',
+    } as User;
   }
 
   /**
@@ -94,12 +134,10 @@ class AuthApiService {
   }
 
   /**
-   * Clear all stored auth data
+   * Clear all stored auth data (delegates to interceptor)
    */
   clearAll(): void {
-    this.removeToken();
-    this.removeStoredUser();
-    this.removeStoredProfile();
+    clearAuthData();
   }
 
   /**
@@ -116,7 +154,6 @@ class AuthApiService {
     const payload = this.getTokenPayload();
 
     // If we can't parse the payload, don't assume expired - let server validate
-    // This prevents logout due to parsing issues
     if (!payload) {
       console.warn('[Auth] Could not parse token payload, assuming valid - server will validate');
       return false;
@@ -129,9 +166,9 @@ class AuthApiService {
     }
 
     // Check if expired (with 1 minute buffer to account for clock drift)
-    const expiryTime = payload.exp * 1000; // Convert to milliseconds
+    const expiryTime = payload.exp * 1000;
     const now = Date.now();
-    const bufferMs = 60 * 1000; // 1 minute buffer
+    const bufferMs = 60 * 1000;
 
     const isExpired = now >= (expiryTime - bufferMs);
 
@@ -143,24 +180,18 @@ class AuthApiService {
   }
 
   /**
-   * Make authenticated request
+   * Make authenticated request using the global interceptor
    */
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = this.getToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await authenticatedFetch(`${API_BASE}${endpoint}`, {
       ...options,
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
     });
 
     if (!response.ok) {
@@ -179,7 +210,7 @@ class AuthApiService {
     // Clear any existing auth data
     this.clearAll();
 
-    // Make register request without auth header
+    // Make register request (interceptor skips auth for this endpoint)
     const response = await fetch(`${API_BASE}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -226,7 +257,7 @@ class AuthApiService {
   /**
    * Debug: Get decoded token payload (without verification)
    */
-  getTokenPayload(): { id?: string; email?: string; role?: string; exp?: number; iat?: number } | null {
+  getTokenPayload(): { id?: string; email?: string; role?: string; schoolId?: string; exp?: number; iat?: number } | null {
     const token = this.getToken();
     if (!token) return null;
 
@@ -255,7 +286,7 @@ class AuthApiService {
     // Clear any existing auth data to prevent stale data issues
     this.clearAll();
 
-    // Make login request without auth header
+    // Make login request (interceptor skips auth for this endpoint)
     const response = await fetch(`${API_BASE}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -323,7 +354,7 @@ class AuthApiService {
   }
 
   /**
-   * Verify token is valid
+   * Verify token is valid with server
    */
   async verifyToken(): Promise<{ valid: boolean; user: User }> {
     return this.request('/verify', { method: 'POST' });
@@ -340,7 +371,6 @@ class AuthApiService {
     }
 
     // Check if token is expired
-    // isTokenExpired now returns false on parsing errors (let server validate)
     if (this.isTokenExpired()) {
       console.log('[Auth] Token is expired, clearing auth data');
       this.clearAll();
@@ -351,7 +381,6 @@ class AuthApiService {
     const storedUser = this.getStoredUser();
     if (!storedUser) {
       console.warn('[Auth] Token exists but no stored user, will validate with server');
-      // Don't clear token - let the AuthContext try to fetch user from server
     }
 
     return true;

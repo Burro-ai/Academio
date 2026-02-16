@@ -14,12 +14,19 @@ import { AppError } from '../middleware/errorHandler.middleware';
 
 /**
  * Generate JWT token for user
+ * Includes schoolId for multi-school validation and scoping
  */
-const generateToken = (user: { id: string; email: string; role: 'STUDENT' | 'TEACHER' }): string => {
+const generateToken = (user: {
+  id: string;
+  email: string;
+  role: 'STUDENT' | 'TEACHER';
+  schoolId?: string;
+}): string => {
   const payload: JwtPayload = {
     id: user.id,
     email: user.email,
     role: user.role,
+    schoolId: user.schoolId, // Include for RAG and multi-school scoping
   };
 
   return jwt.sign(payload, config.jwtSecret, {
@@ -86,6 +93,7 @@ export const authController = {
         role: user.role,
         name: user.name,
         avatarUrl: user.avatarUrl,
+        schoolId: user.schoolId,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
@@ -128,6 +136,7 @@ export const authController = {
         role: user.role,
         name: user.name,
         avatarUrl: user.avatarUrl,
+        schoolId: user.schoolId,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
@@ -173,6 +182,7 @@ export const authController = {
         role: user.role,
         name: user.name,
         avatarUrl: user.avatarUrl,
+        schoolId: user.schoolId,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
@@ -207,6 +217,7 @@ export const authController = {
         role: user.role,
         name: user.name,
         avatarUrl: user.avatarUrl,
+        schoolId: user.schoolId,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
@@ -271,6 +282,7 @@ export const authController = {
         email: user.email,
         role: user.role,
         name: user.name,
+        schoolId: user.schoolId,
       },
     });
   },

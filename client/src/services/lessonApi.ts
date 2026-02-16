@@ -1,4 +1,3 @@
-import { authApi } from './authApi';
 import {
   LessonWithTeacher,
   HomeworkWithTeacher,
@@ -7,6 +6,12 @@ import {
   UpdateLessonRequest,
   UpdateHomeworkRequest,
 } from '@/types';
+import {
+  authenticatedFetch,
+  getTokenSync,
+  normalizeRole,
+  forceLogout,
+} from './authInterceptor';
 
 const API_BASE = '/api';
 
@@ -14,30 +19,24 @@ const API_BASE = '/api';
  * Decode base64url (JWT uses URL-safe base64, not standard base64)
  */
 function base64UrlDecode(str: string): string {
-  // Replace URL-safe characters with standard base64 characters
   let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-
-  // Add padding if needed
   const padding = base64.length % 4;
   if (padding) {
     base64 += '='.repeat(4 - padding);
   }
-
   return atob(base64);
 }
 
 /**
  * Decode JWT token to get payload (without verification)
  */
-function decodeToken(token: string): { id?: string; email?: string; role?: string } | null {
+function decodeToken(token: string): { id?: string; email?: string; role?: string; schoolId?: string } | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     const decoded = base64UrlDecode(parts[1]);
-    const payload = JSON.parse(decoded);
-    return payload;
-  } catch (e) {
-    console.error('[LessonAPI] Failed to decode token:', e);
+    return JSON.parse(decoded);
+  } catch {
     return null;
   }
 }
@@ -47,29 +46,28 @@ class LessonApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = authApi.getToken();
+    const token = getTokenSync();
 
     if (!token) {
       throw new Error('Not authenticated. Please log in again.');
     }
 
-    // Debug: Log what's in the token
+    // Validate role before making request
     const decoded = decodeToken(token);
-    console.log('[LessonAPI] Request to', endpoint, '- Token role:', decoded?.role, '- Email:', decoded?.email);
+    const role = normalizeRole(decoded?.role);
 
-    if (decoded?.role !== 'TEACHER') {
-      console.error('[LessonAPI] WARNING: Token does not have TEACHER role!', decoded);
-      throw new Error(`Access denied. Current role is "${decoded?.role}" but TEACHER is required. Please log out and log in again as a teacher.`);
+    if (role !== 'TEACHER') {
+      console.error('[LessonAPI] Role check failed:', decoded?.role);
+      throw new Error(`Access denied. Current role is "${decoded?.role}" but TEACHER is required.`);
     }
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    };
-
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    // Use authenticated fetch - interceptor handles token injection and 401s
+    const response = await authenticatedFetch(`${API_BASE}${endpoint}`, {
       ...options,
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
     });
 
     if (!response.ok) {
@@ -80,8 +78,7 @@ class LessonApiService {
         throw new Error('Session expired. Please log in again.');
       }
       if (response.status === 403) {
-        console.error('[LessonAPI] 403 Forbidden - Token payload:', decoded);
-        throw new Error('Access denied. You need teacher permissions for this action. Please log out and log in again as a teacher.');
+        throw new Error('Access denied. You need teacher permissions for this action.');
       }
 
       throw new Error(error.error || error.message || `HTTP ${response.status}`);
@@ -154,22 +151,17 @@ class LessonApiService {
    * Validate auth token for streaming - throws if invalid
    */
   private validateStreamAuth(): string {
-    const token = authApi.getToken();
+    const token = getTokenSync();
     if (!token) {
       throw new Error('Not authenticated. Please log in again.');
     }
 
-    // Check if token is expired
-    if (authApi.isTokenExpired()) {
-      authApi.clearAll();
-      throw new Error('Session expired. Please log in again.');
-    }
-
-    // Validate role
     const decoded = decodeToken(token);
-    if (!decoded?.role || decoded.role.toUpperCase() !== 'TEACHER') {
+    const role = normalizeRole(decoded?.role);
+
+    if (role !== 'TEACHER') {
       console.error('[LessonAPI] Stream auth failed - Token role:', decoded?.role);
-      throw new Error(`Access denied. You need teacher permissions. Current role: ${decoded?.role || 'none'}. Please log out and log in again as a teacher.`);
+      throw new Error(`Access denied. You need teacher permissions. Current role: ${decoded?.role || 'none'}.`);
     }
 
     return token;
@@ -184,21 +176,21 @@ class LessonApiService {
     subject?: string
   ): AsyncGenerator<{ text: string; done: boolean }> {
     // Validate auth before starting stream
-    const token = this.validateStreamAuth();
+    this.validateStreamAuth();
 
     const params = new URLSearchParams({ topic });
     if (subject) params.append('subject', subject);
 
     console.log('[LessonAPI] Starting lesson content stream...');
 
-    const response = await fetch(`${API_BASE}/lessons/generate-content/stream?${params}`, {
+    // Use authenticated fetch for SSE
+    const response = await authenticatedFetch(`${API_BASE}/lessons/generate-content/stream?${params}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Accept': 'text/event-stream',
       },
     });
 
     if (!response.ok) {
-      // Get detailed error message
       let errorMsg = `Failed to start stream: ${response.status}`;
       try {
         const errorBody = await response.text();
@@ -214,7 +206,7 @@ class LessonApiService {
         throw new Error('Access denied. Please log out and log in again as a teacher.');
       }
       if (response.status === 401) {
-        authApi.clearAll();
+        forceLogout('token_expired');
         throw new Error('Session expired. Please log in again.');
       }
 
@@ -341,21 +333,21 @@ class LessonApiService {
     subject?: string
   ): AsyncGenerator<{ text: string; done: boolean }> {
     // Validate auth before starting stream
-    const token = this.validateStreamAuth();
+    this.validateStreamAuth();
 
     const params = new URLSearchParams({ topic });
     if (subject) params.append('subject', subject);
 
     console.log('[LessonAPI] Starting homework content stream...');
 
-    const response = await fetch(`${API_BASE}/homework/generate-content/stream?${params}`, {
+    // Use authenticated fetch for SSE
+    const response = await authenticatedFetch(`${API_BASE}/homework/generate-content/stream?${params}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Accept': 'text/event-stream',
       },
     });
 
     if (!response.ok) {
-      // Get detailed error message
       let errorMsg = `Failed to start stream: ${response.status}`;
       try {
         const errorBody = await response.text();
@@ -371,7 +363,7 @@ class LessonApiService {
         throw new Error('Access denied. Please log out and log in again as a teacher.');
       }
       if (response.status === 401) {
-        authApi.clearAll();
+        forceLogout('token_expired');
         throw new Error('Session expired. Please log in again.');
       }
 

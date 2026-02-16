@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { Message, StreamEvent } from '@/types';
-import { authApi } from '@/services/authApi';
+import { authenticatedFetch } from '@/services/authInterceptor';
 
 interface UseChatOptions {
   sessionId: string;
@@ -57,20 +57,12 @@ export function useChat({ sessionId, onMessageComplete }: UseChatOptions): UseCh
         message: fullMessage,
       });
 
-      // Build headers with JWT auth token if available
-      const headers: Record<string, string> = {};
-      const token = authApi.getToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
       try {
-        // Use fetch with streaming for better control
+        // Use authenticated fetch for SSE with auth header injection
         abortControllerRef.current = new AbortController();
 
-        const response = await fetch(`/api/chat/stream?${params}`, {
+        const response = await authenticatedFetch(`/api/chat/stream?${params}`, {
           method: 'GET',
-          headers,
           signal: abortControllerRef.current.signal,
         });
 
