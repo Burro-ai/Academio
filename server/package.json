@@ -15,7 +15,8 @@
     "memory:reset": "tsx src/utils/resetMemory.ts --all",
     "memory:verify": "tsx src/utils/resetMemory.ts --verify",
     "create:test-students": "tsx src/utils/create-test-students.ts",
-    "test:auth": "tsx src/utils/verify-auth-integrity.ts"
+    "test:auth": "tsx src/utils/verify-auth-integrity.ts",
+    "test:security": "tsx src/utils/security-stress-test.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

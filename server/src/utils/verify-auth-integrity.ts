@@ -23,7 +23,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const BASE_URL = process.env.API_URL || 'http://localhost:3001/api';
-const JWT_SECRET = process.env.JWT_SECRET || 'academio-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'academio-jwt-secret-change-in-production';
 
 // Test configuration
 const LATENCY_THRESHOLD_MS = 50;
