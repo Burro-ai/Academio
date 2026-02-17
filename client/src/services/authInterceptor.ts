@@ -350,8 +350,8 @@ export function createAuthenticatedEventSource(
  * authentication state is determined synchronously.
  *
  * Returns:
- * - { isAuthenticated: true, user, needsVerification: true } if token exists
- * - { isAuthenticated: false } if no token or token is expired
+ * - { isAuthenticated: true, user, needsVerification: true } if token AND user exist
+ * - { isAuthenticated: false } if no token, no user, or token is expired
  */
 export function preflightAuthCheck(): {
   isAuthenticated: boolean;
@@ -364,18 +364,28 @@ export function preflightAuthCheck(): {
 
   // No token = not authenticated
   if (!token) {
+    console.log('[AuthInterceptor] Preflight: No token found');
+    return { isAuthenticated: false, user: null, token: null, needsVerification: false };
+  }
+
+  // Token exists but no user data - clear and don't verify (incomplete state)
+  if (!user) {
+    console.log('[AuthInterceptor] Preflight: Token exists but no user data, clearing');
+    clearAuthData();
     return { isAuthenticated: false, user: null, token: null, needsVerification: false };
   }
 
   // Token exists but appears expired
   if (isTokenExpiredSync()) {
+    console.log('[AuthInterceptor] Preflight: Token expired, clearing');
     clearAuthData();
     return { isAuthenticated: false, user: null, token: null, needsVerification: false };
   }
 
-  // Token exists and appears valid - need server verification
+  // Token and user both exist and token appears valid - verify in background
+  console.log('[AuthInterceptor] Preflight: Valid auth state, will verify with server');
   return {
-    isAuthenticated: !!user,
+    isAuthenticated: true,
     user,
     token,
     needsVerification: true, // Server should still verify

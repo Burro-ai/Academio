@@ -58,7 +58,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   });
   const [profile, setProfile] = useState<StudentProfile | null>(() => authApi.getStoredProfile());
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(initialAuthState.needsVerification);
+  // NON-BLOCKING: Don't block rendering, verify in background
+  const [isVerifying, setIsVerifying] = useState(initialAuthState.needsVerification);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -80,7 +81,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('[AuthContext] Received logout event:', event.reason);
         setUser(null);
         setProfile(null);
-        setIsInitializing(false);
+        setIsVerifying(false);
 
         // Only navigate if not already on a public route
         const publicRoutes = ['/login', '/register', '/admin', '/'];
@@ -96,18 +97,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [navigate, location.pathname]);
 
-  // Verify authentication with server on mount
+  // Verify authentication with server on mount (NON-BLOCKING)
   useEffect(() => {
     const verifyAuth = async () => {
       // If no token or pre-flight said no verification needed, we're done
       if (!initialAuthState.needsVerification || !initialAuthState.token) {
-        setIsInitializing(false);
+        console.log('[AuthContext] No verification needed, skipping');
+        setIsVerifying(false);
         return;
       }
 
+      console.log('[AuthContext] Starting background session verification...');
+
+      // Create a timeout promise (3 seconds max wait)
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Verification timeout')), 3000);
+      });
+
       try {
-        // Verify with server and get fresh data
-        const { user: currentUser, profile: currentProfile } = await authApi.getCurrentUser();
+        // Race between verification and timeout
+        const { user: currentUser, profile: currentProfile } = await Promise.race([
+          authApi.getCurrentUser(),
+          timeoutPromise,
+        ]);
 
         if (isMountedRef.current) {
           setUser(currentUser);
@@ -115,15 +127,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.log('[AuthContext] Session verified with server for:', currentUser.email, 'role:', currentUser.role);
         }
       } catch (err) {
-        // Server rejected the token - interceptor will handle logout
-        console.error('[AuthContext] Server rejected token:', err);
+        // Server rejected the token, timeout, or network error
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error('[AuthContext] Verification failed:', errorMsg);
+
         if (isMountedRef.current) {
-          setUser(null);
-          setProfile(null);
+          // On timeout, keep using stored data
+          if (errorMsg === 'Verification timeout') {
+            console.log('[AuthContext] Timeout - continuing with stored auth data');
+          } else {
+            // Server explicitly rejected - clear auth and redirect
+            console.log('[AuthContext] Server rejected token, clearing auth');
+            setUser(null);
+            setProfile(null);
+            authApi.clearAll();
+          }
         }
       } finally {
         if (isMountedRef.current) {
-          setIsInitializing(false);
+          setIsVerifying(false);
         }
       }
     };
@@ -133,8 +155,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Redirect to login if not authenticated (except for public routes)
   useEffect(() => {
-    // Wait for initialization to complete before redirecting
-    if (isInitializing) return;
+    // Don't redirect while still verifying - user might be authenticated
+    if (isVerifying) return;
 
     const publicRoutes = ['/login', '/register', '/admin'];
     const isPublicRoute = publicRoutes.some(route => location.pathname.startsWith(route));
@@ -142,7 +164,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!isAuthenticated && !isPublicRoute && location.pathname !== '/') {
       navigate('/login', { state: { from: location.pathname } });
     }
-  }, [isAuthenticated, isInitializing, location.pathname, navigate]);
+  }, [isAuthenticated, isVerifying, location.pathname, navigate]);
 
   const login = useCallback(async (data: LoginRequest) => {
     setIsLoading(true);
@@ -238,32 +260,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Wait for auth to be ready - useful for components that need to ensure auth is loaded
   const waitForAuth = useCallback(async (): Promise<boolean> => {
-    // If already initialized, return current state
-    if (!isInitializing) {
+    // If not verifying, return current state immediately
+    if (!isVerifying) {
       return isAuthenticated;
     }
 
-    // Wait for initialization to complete (max 5 seconds)
+    // Wait for verification to complete (max 3 seconds)
     return new Promise((resolve) => {
       const startTime = Date.now();
       const checkInterval = setInterval(() => {
-        if (!isInitializing || Date.now() - startTime > 5000) {
+        if (!isVerifying || Date.now() - startTime > 3000) {
           clearInterval(checkInterval);
           resolve(!!user);
         }
-      }, 10); // Check every 10ms for fast response
+      }, 50); // Check every 50ms
     });
-  }, [isInitializing, isAuthenticated, user]);
+  }, [isVerifying, isAuthenticated, user]);
 
-  // isReady = not initializing and we have a definitive auth state
-  const isReady = !isInitializing;
+  // isReady = not initializing (always true now since we don't block)
+  // isVerifying indicates background verification is in progress
+  const isReady = true;
 
   const value: AuthContextType = {
     user,
     profile,
     isAuthenticated,
     isLoading,
-    isInitializing,
+    isInitializing: isVerifying, // Map to isVerifying for backwards compatibility
     isReady,
     error,
     login,
@@ -274,23 +297,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     waitForAuth,
   };
 
-  // BLOCKING HYDRATION: Show loading spinner while initializing
-  // This prevents the app from rendering in an inconsistent state
-  if (isInitializing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          {/* Liquid Glass style spinner */}
-          <div className="relative w-16 h-16 mx-auto mb-4">
-            <div className="absolute inset-0 rounded-full backdrop-blur-xl bg-white/20 border border-white/30 animate-pulse" />
-            <div className="absolute inset-2 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-          </div>
-          <p className="text-white/70 text-sm">Verificando sesion...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // NON-BLOCKING: Render children immediately, verification happens in background
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
