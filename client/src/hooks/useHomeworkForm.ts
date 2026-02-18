@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { HomeworkQuestion, HomeworkAnswer, HomeworkSubmission } from '@/types';
+import { HomeworkQuestion, HomeworkAnswer, HomeworkSubmission, HomeworkQuestionJson } from '@/types';
 import { authApi } from '@/services/authApi';
 
 interface UseHomeworkFormOptions {
   personalizedHomeworkId: string;
   content: string;
+  questionsJson?: HomeworkQuestionJson[];  // Structured questions from backend
 }
 
 interface UseHomeworkFormReturn {
@@ -22,80 +23,51 @@ interface UseHomeworkFormReturn {
 }
 
 /**
- * Parse questions from homework content
- * Looks for numbered items like "1.", "2.", etc. or "Question 1:", "Question 2:", etc.
+ * Convert JSON questions to form questions
+ * Maps the backend HomeworkQuestionJson format to the frontend HomeworkQuestion format
+ */
+function convertJsonToFormQuestions(questionsJson: HomeworkQuestionJson[]): HomeworkQuestion[] {
+  return questionsJson.map((q, index) => ({
+    id: `q${q.id}`,
+    text: q.text,
+    type: q.text.length > 100 ? 'textarea' : 'text',
+    order: index + 1,
+  }));
+}
+
+/**
+ * Legacy fallback: Parse questions from homework content using regex
+ * Only used when questionsJson is not available (for backwards compatibility)
  */
 function parseQuestionsFromContent(content: string): HomeworkQuestion[] {
   const questions: HomeworkQuestion[] = [];
 
-  // Try different patterns
-  const patterns = [
-    // Pattern 1: "1. Question text" or "1) Question text"
-    /(?:^|\n)\s*(\d+)[.)]\s*(.+?)(?=(?:\n\s*\d+[.)])|$)/gs,
-    // Pattern 2: "Question 1:" or "Pregunta 1:"
-    /(?:Question|Pregunta)\s*(\d+)[:\.]?\s*(.+?)(?=(?:Question|Pregunta)\s*\d+|$)/gis,
-    // Pattern 3: "**1.**" markdown format
-    /(?:^|\n)\s*\*{0,2}(\d+)\.\*{0,2}\s*(.+?)(?=(?:\n\s*\*{0,2}\d+\.\*{0,2})|$)/gs,
-  ];
+  // Pattern to match numbered questions: "1. Question text" or "1) Question text"
+  const pattern = /(?:^|\n)\s*(\d+)[.)]\s*(.+?)(?=(?:\n\s*\d+[.)])|$)/gs;
+  const matches = [...content.matchAll(pattern)];
 
-  for (const pattern of patterns) {
-    const matches = [...content.matchAll(pattern)];
-    if (matches.length > 0) {
-      matches.forEach((match, index) => {
-        const questionNumber = match[1];
-        let questionText = match[2].trim();
+  if (matches.length > 0) {
+    matches.forEach((match, index) => {
+      const questionNumber = match[1];
+      let questionText = match[2].trim()
+        .replace(/\n+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/\*{2,}/g, '')
+        .trim();
 
-        // Clean up the question text - remove trailing markdown or special chars
-        questionText = questionText
-          .replace(/\n+/g, ' ')
-          .replace(/\s+/g, ' ')
-          .replace(/\*{2,}/g, '')
-          .trim();
+      // Skip empty or too short questions
+      if (questionText.length < 5) return;
 
-        // Skip empty or too short questions
-        if (questionText.length < 5) return;
-
-        questions.push({
-          id: `q${questionNumber}`,
-          text: questionText,
-          type: questionText.length > 100 ? 'textarea' : 'text',
-          order: index + 1,
-        });
+      questions.push({
+        id: `q${questionNumber}`,
+        text: questionText,
+        type: questionText.length > 100 ? 'textarea' : 'text',
+        order: index + 1,
       });
-
-      if (questions.length > 0) break;
-    }
+    });
   }
 
-  // If no questions found using patterns, try line-by-line analysis
-  if (questions.length === 0) {
-    const lines = content.split('\n').filter((line) => line.trim());
-    let questionCount = 0;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      // Look for lines that look like questions (end with ? or contain common question words)
-      if (
-        trimmed.endsWith('?') ||
-        /^(what|how|why|when|where|which|who|explain|describe|calculate|solve|find)/i.test(
-          trimmed
-        ) ||
-        /^(que|como|por que|cuando|donde|cual|quien|explica|describe|calcula|resuelve|encuentra)/i.test(
-          trimmed
-        )
-      ) {
-        questionCount++;
-        questions.push({
-          id: `q${questionCount}`,
-          text: trimmed,
-          type: trimmed.length > 100 ? 'textarea' : 'text',
-          order: questionCount,
-        });
-      }
-    }
-  }
-
-  // If still no questions, create a single question for general response
+  // If no questions found, create a single question for general response
   if (questions.length === 0) {
     questions.push({
       id: 'q1',
@@ -111,6 +83,7 @@ function parseQuestionsFromContent(content: string): HomeworkQuestion[] {
 export function useHomeworkForm({
   personalizedHomeworkId,
   content,
+  questionsJson,
 }: UseHomeworkFormOptions): UseHomeworkFormReturn {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,8 +91,17 @@ export function useHomeworkForm({
   const [existingSubmission, setExistingSubmission] = useState<HomeworkSubmission | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Parse questions from content
-  const questions = useMemo(() => parseQuestionsFromContent(content), [content]);
+  // Use JSON questions if available, otherwise fall back to content parsing
+  const questions = useMemo(() => {
+    // Prioritize structured JSON questions from backend
+    if (questionsJson && questionsJson.length > 0) {
+      console.log(`[HomeworkForm] Using ${questionsJson.length} JSON questions`);
+      return convertJsonToFormQuestions(questionsJson);
+    }
+    // Fallback to regex parsing for backwards compatibility
+    console.log('[HomeworkForm] Falling back to content parsing');
+    return parseQuestionsFromContent(content);
+  }, [questionsJson, content]);
 
   const totalCount = questions.length;
   const answeredCount = Object.values(answers).filter((a) => a.trim().length > 0).length;

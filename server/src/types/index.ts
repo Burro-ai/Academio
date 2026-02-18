@@ -100,6 +100,7 @@ export interface HomeworkRow {
   topic: string;
   subject: string | null;
   master_content: string;
+  questions_json: string | null;  // JSON array of structured questions
   due_date: string | null;
   classroom_id: string | null;
   created_at: string;
@@ -111,6 +112,7 @@ export interface PersonalizedHomeworkRow {
   homework_id: string;
   student_id: string;
   personalized_content: string;
+  questions_json: string | null;  // JSON array (inherits from master)
   submitted_at: string | null;
   created_at: string;
 }

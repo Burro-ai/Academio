@@ -7,7 +7,24 @@ import {
   PersonalizedHomeworkWithDetails,
   HomeworkRow,
   PersonalizedHomeworkRow,
+  HomeworkQuestionJson,
 } from '../../types';
+
+/**
+ * Safely parse JSON questions array
+ */
+const parseQuestionsJson = (jsonStr: string | null): HomeworkQuestionJson[] | undefined => {
+  if (!jsonStr) return undefined;
+  try {
+    const parsed = JSON.parse(jsonStr);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 /**
  * Convert database row to HomeworkAssignment object
@@ -19,6 +36,7 @@ const rowToHomework = (row: HomeworkRow): HomeworkAssignment => ({
   topic: row.topic,
   subject: row.subject || undefined,
   masterContent: row.master_content,
+  questionsJson: parseQuestionsJson(row.questions_json),
   dueDate: row.due_date || undefined,
   classroomId: row.classroom_id || undefined,
   createdAt: row.created_at,
@@ -36,6 +54,7 @@ interface PersonalizedHomeworkWithDetailsRow extends PersonalizedHomeworkRow {
   homework_topic: string;
   homework_subject: string | null;
   homework_due_date: string | null;
+  homework_questions_json: string | null;
   teacher_name: string;
 }
 
@@ -49,6 +68,7 @@ export const homeworkQueries = {
     topic: string;
     subject?: string;
     masterContent: string;
+    questionsJson?: HomeworkQuestionJson[];
     dueDate?: string;
     classroomId?: string;
   }): HomeworkAssignment {
@@ -56,8 +76,8 @@ export const homeworkQueries = {
     const id = uuidv4();
 
     db.prepare(`
-      INSERT INTO homework_assignments (id, teacher_id, title, topic, subject, master_content, due_date, classroom_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      INSERT INTO homework_assignments (id, teacher_id, title, topic, subject, master_content, questions_json, due_date, classroom_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).run(
       id,
       data.teacherId,
@@ -65,6 +85,7 @@ export const homeworkQueries = {
       data.topic,
       data.subject || null,
       data.masterContent,
+      data.questionsJson ? JSON.stringify(data.questionsJson) : null,
       data.dueDate || null,
       data.classroomId || null
     );
@@ -245,14 +266,21 @@ export const homeworkQueries = {
     homeworkId: string;
     studentId: string;
     personalizedContent: string;
+    questionsJson?: HomeworkQuestionJson[];
   }): PersonalizedHomework {
     const db = getDb();
     const id = uuidv4();
 
     db.prepare(`
-      INSERT INTO personalized_homework (id, homework_id, student_id, personalized_content, created_at)
-      VALUES (?, ?, ?, ?, datetime('now'))
-    `).run(id, data.homeworkId, data.studentId, data.personalizedContent);
+      INSERT INTO personalized_homework (id, homework_id, student_id, personalized_content, questions_json, created_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `).run(
+      id,
+      data.homeworkId,
+      data.studentId,
+      data.personalizedContent,
+      data.questionsJson ? JSON.stringify(data.questionsJson) : null
+    );
 
     const row = db
       .prepare('SELECT * FROM personalized_homework WHERE id = ?')
@@ -263,6 +291,7 @@ export const homeworkQueries = {
       homeworkId: row.homework_id,
       studentId: row.student_id,
       personalizedContent: row.personalized_content,
+      questionsJson: parseQuestionsJson(row.questions_json),
       submittedAt: row.submitted_at || undefined,
       createdAt: row.created_at,
     };
@@ -287,6 +316,7 @@ export const homeworkQueries = {
       homeworkId: row.homework_id,
       studentId: row.student_id,
       personalizedContent: row.personalized_content,
+      questionsJson: parseQuestionsJson(row.questions_json),
       submittedAt: row.submitted_at || undefined,
       createdAt: row.created_at,
     };
@@ -306,6 +336,7 @@ export const homeworkQueries = {
           h.topic as homework_topic,
           h.subject as homework_subject,
           h.due_date as homework_due_date,
+          h.questions_json as homework_questions_json,
           u.name as teacher_name
         FROM personalized_homework ph
         JOIN homework_assignments h ON ph.homework_id = h.id
@@ -322,6 +353,8 @@ export const homeworkQueries = {
       homeworkId: row.homework_id,
       studentId: row.student_id,
       personalizedContent: row.personalized_content,
+      // Use personalized questions if available, otherwise fall back to master questions
+      questionsJson: parseQuestionsJson(row.questions_json) || parseQuestionsJson(row.homework_questions_json),
       submittedAt: row.submitted_at || undefined,
       createdAt: row.created_at,
       homework: {
@@ -330,6 +363,7 @@ export const homeworkQueries = {
         subject: row.homework_subject || undefined,
         dueDate: row.homework_due_date || undefined,
         teacherName: row.teacher_name,
+        questionsJson: parseQuestionsJson(row.homework_questions_json),
       },
     }));
   },

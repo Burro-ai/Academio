@@ -19,8 +19,33 @@ const ensureDirectories = () => {
   });
 };
 
+// CORS configuration - supports multiple origins for development flexibility
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // Check if origin is in allowed list
+    const allowedOrigins = [config.clientUrl, ...config.allowedOrigins];
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // In development, also allow any localhost port
+    if (config.nodeEnv === 'development' && origin.startsWith('http://localhost:')) {
+      return callback(null, true);
+    }
+
+    console.warn(`[CORS] Blocked request from origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+};
+
 // Middleware
-app.use(cors({ origin: config.clientUrl, credentials: true }));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

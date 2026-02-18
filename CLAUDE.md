@@ -256,14 +256,59 @@ The lesson chat AI uses a specialized system prompt that:
 
 See `server/src/services/lessonChat.service.ts` for implementation.
 
-### Homework Question Parsing
+### Homework Question System (JSON Mandate)
 
-Questions are extracted from homework content using regex patterns:
-- Numbered patterns: `1.`, `1)`, `Question 1:`
-- Bulleted patterns: `•`, `-`, `*`
-- Fallback: Split by double newlines
+> **Updated 2026-02-17:** Replaced regex parsing with structured JSON for reliable question extraction.
 
-See `client/src/hooks/useHomeworkForm.ts` for implementation.
+**The Problem:** Regex-based question parsing was fragile and inconsistent, often showing only 1 question instead of 5.
+
+**The Solution:** "JSON Mandate" - AI generates structured JSON with explicit questions array.
+
+#### Database Schema
+
+```sql
+-- Added to homework_assignments and personalized_homework tables:
+questions_json TEXT  -- JSON array of structured questions
+```
+
+#### TypeScript Types
+
+```typescript
+interface HomeworkQuestionJson {
+  id: number;
+  text: string;
+  type: 'open' | 'choice';
+  options?: string[];
+}
+
+interface HomeworkContentJson {
+  title: string;
+  instructions?: string;
+  questions: HomeworkQuestionJson[];
+}
+```
+
+#### Question Flow
+
+1. **AI Generation**: `homework.service.ts` prompts AI to output `<JSON_QUESTIONS>` block
+2. **Parsing**: `parseHomeworkJson()` extracts and validates JSON
+3. **Storage**: Questions stored in `questions_json` column
+4. **Frontend**: `useHomeworkForm.ts` prioritizes JSON over regex with fallback
+
+#### Key Files
+
+| File | Purpose |
+|------|---------|
+| `server/src/services/homework.service.ts` | JSON-focused prompts, `parseHomeworkJson()` |
+| `server/src/database/queries/homework.queries.ts` | `questions_json` column handling |
+| `client/src/hooks/useHomeworkForm.ts` | JSON-first question loading |
+| `shared/types/lesson.types.ts` | `HomeworkQuestionJson` interface |
+
+#### Testing
+
+```bash
+npm run test:homework-json  # Verify JSON generation for all subjects
+```
 
 ---
 
@@ -609,6 +654,14 @@ const sendMessage = async (message: string) => {
 | User data not persisting | Session not linked to user | Ensure routes use `authMiddleware` and pass `req.user.id` |
 | Chat history not showing | Sessions created without userId | Session controller must pass `userId` to `sessionsQueries.create()` |
 | Profile appears blank | Auth context not loaded | Wait for `AuthContext.isLoading` to be false |
+| **Infinite loading spinner** | Stale localStorage data | Clear localStorage via DevTools or use `/test-login.html` |
+| Dashboard stuck on "Verificando" | Auth verification timeout | Safety timeout (5s) auto-resolves; LoginPage clears stale data |
+
+### Auth Safety Mechanisms (Added 2026-02-18)
+
+1. **Safety Timeout**: `AuthContext` has a 5-second failsafe that forces `isVerifying=false`
+2. **LoginPage Cleanup**: Visiting `/login` clears any corrupted auth data
+3. **Test Page**: `http://localhost:5174/test-login.html` for debugging auth issues
 
 ### Verifying Auth is Working
 
@@ -1017,6 +1070,32 @@ See `.env.example` for required configuration:
 - `OLLAMA_MODEL` - Model to use (default: deepseek-r1:8b)
 - `ADMIN_PASSWORD` - Password for admin portal access
 - `PORT` - Server port (default: 3001)
+- `CLIENT_URL` - Frontend URL for CORS (default: http://localhost:5174)
+- `ALLOWED_ORIGINS` - Additional CORS origins (comma-separated)
+
+---
+
+## CORS Configuration
+
+> **Updated 2026-02-17:** Dynamic CORS origin checking for development flexibility.
+
+The server uses dynamic CORS configuration that:
+1. Always allows requests with no origin (curl, mobile apps)
+2. Checks against `CLIENT_URL` and `ALLOWED_ORIGINS` array
+3. **In development**: Auto-allows ANY `localhost:*` port
+
+```typescript
+// server/src/index.ts
+origin: (origin, callback) => {
+  if (!origin) return callback(null, true);
+  if (config.nodeEnv === 'development' && origin.startsWith('http://localhost:')) {
+    return callback(null, true); // Any localhost port in dev
+  }
+  // ... check allowedOrigins array
+}
+```
+
+This prevents CORS issues when Vite runs on different ports (5173, 5174, 5175, etc.)
 
 ---
 

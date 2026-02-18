@@ -40,6 +40,9 @@ export const initializeDatabase = async (): Promise<void> => {
   // Add teacher_ids column for multiple teachers support
   addTeacherIdsColumn();
 
+  // Add questions_json column for structured homework questions
+  addQuestionsJsonColumn();
+
   // Read and execute schema
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
@@ -523,4 +526,41 @@ export const migrateToMultiSchool = async (): Promise<void> => {
   console.log(`Updated ${homeworkUpdated.changes} homework assignments with school_id`);
 
   console.log('Multi-school migration complete!');
+};
+
+/**
+ * Add questions_json column to homework tables for structured questions
+ */
+export const addQuestionsJsonColumn = (): void => {
+  // Check if homework_assignments table exists first
+  const homeworkTableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='homework_assignments'"
+  ).get();
+
+  if (homeworkTableExists) {
+    // Check if questions_json column exists in homework_assignments table
+    const homeworkInfo = db.prepare("PRAGMA table_info(homework_assignments)").all() as { name: string }[];
+    const hasQuestionsJson = homeworkInfo.some(col => col.name === 'questions_json');
+
+    if (!hasQuestionsJson) {
+      console.log('Adding questions_json column to homework_assignments table...');
+      db.exec('ALTER TABLE homework_assignments ADD COLUMN questions_json TEXT');
+    }
+  }
+
+  // Check if personalized_homework table exists
+  const personalizedTableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='personalized_homework'"
+  ).get();
+
+  if (personalizedTableExists) {
+    // Check if questions_json column exists in personalized_homework table
+    const personalizedInfo = db.prepare("PRAGMA table_info(personalized_homework)").all() as { name: string }[];
+    const hasQuestionsJson = personalizedInfo.some(col => col.name === 'questions_json');
+
+    if (!hasQuestionsJson) {
+      console.log('Adding questions_json column to personalized_homework table...');
+      db.exec('ALTER TABLE personalized_homework ADD COLUMN questions_json TEXT');
+    }
+  }
 };

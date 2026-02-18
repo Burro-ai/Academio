@@ -132,12 +132,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error('[AuthContext] Verification failed:', errorMsg);
 
         if (isMountedRef.current) {
-          // On timeout, keep using stored data
-          if (errorMsg === 'Verification timeout') {
+          // On timeout, keep using stored data ONLY if we have valid user
+          if (errorMsg === 'Verification timeout' && user) {
             console.log('[AuthContext] Timeout - continuing with stored auth data');
           } else {
-            // Server explicitly rejected - clear auth and redirect
-            console.log('[AuthContext] Server rejected token, clearing auth');
+            // Server explicitly rejected OR we have no user - clear auth
+            console.log('[AuthContext] Clearing auth - rejection or missing user');
             setUser(null);
             setProfile(null);
             authApi.clearAll();
@@ -146,11 +146,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } finally {
         if (isMountedRef.current) {
           setIsVerifying(false);
+          console.log('[AuthContext] Verification complete, isVerifying set to false');
         }
       }
     };
 
+    // Safety timeout: ensure isVerifying is set to false even if something goes wrong
+    const safetyTimeout = setTimeout(() => {
+      if (isMountedRef.current && isVerifying) {
+        console.warn('[AuthContext] Safety timeout triggered - forcing isVerifying to false');
+        setIsVerifying(false);
+      }
+    }, 5000);
+
     verifyAuth();
+
+    return () => clearTimeout(safetyTimeout);
   }, []); // Run once on mount
 
   // Redirect to login if not authenticated (except for public routes)

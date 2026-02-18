@@ -67,6 +67,8 @@ export function HomeworkFormContainer() {
   } = useHomeworkForm({
     personalizedHomeworkId: homeworkId || '',
     content: homework?.personalizedContent || '',
+    // Use structured JSON questions if available (prioritized over regex parsing)
+    questionsJson: homework?.questionsJson || homework?.homework?.questionsJson,
   });
 
   const handleBack = () => {

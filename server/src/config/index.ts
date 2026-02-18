@@ -35,8 +35,10 @@ export const config = {
   // Teacher (legacy - use JWT auth now)
   teacherPassword: process.env.TEACHER_PASSWORD || 'teacher123',
 
-  // CORS
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  // CORS - supports multiple origins for development flexibility
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5174',
+  // Additional allowed origins (comma-separated in env)
+  allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://localhost:5175').split(',').map(o => o.trim()),
 
   // Paths
   paths: {

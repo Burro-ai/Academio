@@ -2,7 +2,7 @@ import { ollamaService, ModelType } from './ollama.service';
 import { aiGatekeeper, getPedagogicalPersona } from './aiGatekeeper.service';
 import { homeworkQueries } from '../database/queries/homework.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
-import { HomeworkAssignment, PersonalizationContext, StudentProfileWithUser } from '../types';
+import { HomeworkAssignment, PersonalizationContext, StudentProfileWithUser, HomeworkQuestionJson, HomeworkContentJson } from '../types';
 
 /**
  * Progress tracking for personalization
@@ -60,75 +60,74 @@ Mantén la brevedad (2-3 párrafos cortos máximo). No reescribas toda la tarea 
 ## Adición Personalizada:`;
 
 /**
- * Few-shot prompt for generating master homework content (uses reasoner model)
+ * JSON-focused prompt for generating structured homework content
+ * Returns both displayable content AND structured questions array
  */
-const MASTER_HOMEWORK_PROMPT = `Eres un educador experto creando tareas para estudiantes de primaria y secundaria.
+const MASTER_HOMEWORK_PROMPT = `Eres un educador experto creando tareas estructuradas para estudiantes de primaria y secundaria.
 
-## Ejemplo 1:
-**Tema:** Práctica de Multiplicación
-**Materia:** Matemáticas
-**Contenido:**
-# Hoja de Práctica de Multiplicación
+## INSTRUCCIONES CRÍTICAS
+1. TODA tu respuesta DEBE estar en ESPAÑOL MEXICANO
+2. DEBES responder ÚNICAMENTE con JSON válido - sin texto adicional antes ni después
+3. El JSON debe incluir tanto el contenido para mostrar como las preguntas estructuradas
 
-## Parte 1: Multiplicación Básica (5 puntos cada una)
-1. 7 × 8 = ___
-2. 6 × 9 = ___
-3. 12 × 5 = ___
-4. 8 × 8 = ___
-5. 9 × 7 = ___
+## FORMATO DE RESPUESTA OBLIGATORIO
+{
+  "title": "Título de la Tarea",
+  "instructions": "Instrucciones generales para el estudiante (opcional)",
+  "content": "# Contenido markdown completo de la tarea para mostrar al estudiante...",
+  "questions": [
+    {
+      "id": 1,
+      "text": "Texto completo de la pregunta 1",
+      "type": "open"
+    },
+    {
+      "id": 2,
+      "text": "Texto completo de la pregunta 2",
+      "type": "open"
+    }
+  ]
+}
 
-## Parte 2: Problemas con Palabras (10 puntos cada uno)
-1. Un panadero hace 6 charolas de galletas. Cada charola tiene 8 galletas. ¿Cuántas galletas hay en total?
+## TIPOS DE PREGUNTAS
+- "open": Respuesta abierta (texto libre, problemas matemáticos, ensayos)
+- "choice": Opción múltiple (incluir campo "options": ["A", "B", "C", "D"])
 
-2. Hay 7 días en una semana. ¿Cuántos días hay en 4 semanas?
+## EJEMPLO 1: Matemáticas
+{
+  "title": "Práctica de Multiplicación",
+  "instructions": "Resuelve cada problema mostrando tu trabajo.",
+  "content": "# Hoja de Práctica de Multiplicación\\n\\n## Parte 1: Multiplicación Básica\\n1. 7 × 8 = ___\\n2. 6 × 9 = ___\\n\\n## Parte 2: Problemas con Palabras\\n3. Un panadero hace 6 charolas de galletas. Cada charola tiene 8 galletas. ¿Cuántas galletas hay en total?\\n\\n4. Hay 7 días en una semana. ¿Cuántos días hay en 4 semanas?",
+  "questions": [
+    {"id": 1, "text": "7 × 8 = ___", "type": "open"},
+    {"id": 2, "text": "6 × 9 = ___", "type": "open"},
+    {"id": 3, "text": "Un panadero hace 6 charolas de galletas. Cada charola tiene 8 galletas. ¿Cuántas galletas hay en total?", "type": "open"},
+    {"id": 4, "text": "Hay 7 días en una semana. ¿Cuántos días hay en 4 semanas?", "type": "open"}
+  ]
+}
 
-3. Un salón tiene 5 filas de escritorios con 6 escritorios en cada fila. ¿Cuántos escritorios hay en total?
+## EJEMPLO 2: Ciencias
+{
+  "title": "El Ciclo del Agua",
+  "instructions": "Lee cada pregunta cuidadosamente y responde con oraciones completas.",
+  "content": "# Tarea: El Ciclo del Agua\\n\\nResponde las siguientes preguntas sobre el ciclo del agua:\\n\\n1. ¿Qué es la evaporación?\\n2. ¿Qué sucede durante la condensación?\\n3. ¿Por qué es importante el ciclo del agua para los seres vivos?",
+  "questions": [
+    {"id": 1, "text": "¿Qué es la evaporación?", "type": "open"},
+    {"id": 2, "text": "¿Qué sucede durante la condensación?", "type": "open"},
+    {"id": 3, "text": "¿Por qué es importante el ciclo del agua para los seres vivos?", "type": "open"}
+  ]
+}
 
-## Parte 3: Desafío (15 puntos)
-Un granjero planta 8 filas de maíz con 12 plantas en cada fila. Cada planta produce 3 mazorcas de maíz. ¿Cuántas mazorcas de maíz cosecha el granjero en total?
-
-**¡Muestra tu trabajo!**
-
-## Ejemplo 2:
-**Tema:** Escritura de Ensayos: Argumentos Persuasivos
-**Materia:** Español
-**Contenido:**
-# Tarea de Ensayo Persuasivo
-
-## Objetivo
-Escribe un ensayo persuasivo de 3 párrafos sobre uno de estos temas:
-- ¿Deberían los estudiantes tener tarea los fines de semana?
-- ¿Debería la escuela empezar más tarde en la mañana?
-- ¿Deberían los estudiantes poder usar teléfonos en clase?
-
-## Requisitos
-1. **Introducción (1 párrafo)**
-   - Gancho para captar la atención
-   - Tesis clara (tu posición)
-
-2. **Cuerpo (1 párrafo)**
-   - Al menos 2 razones de apoyo
-   - Evidencia o ejemplos para cada razón
-
-3. **Conclusión (1 párrafo)**
-   - Reafirma tu posición
-   - Llamada a la acción
-
-## Rúbrica
-- Tesis clara: 10 puntos
-- Evidencia de apoyo: 15 puntos
-- Organización: 10 puntos
-- Gramática/ortografía: 5 puntos
-- Total: 40 puntos
-
-**Fecha de entrega: ___________**
-
-## Tu Tarea:
-Crea una tarea completa sobre el tema dado. Incluye instrucciones claras, múltiples tipos de problemas y una rúbrica de calificación si es apropiado.
+## TU TAREA
+Crea una tarea completa sobre el tema dado. Incluye:
+- 3-8 preguntas variadas
+- Instrucciones claras
+- Contenido educativo apropiado para el nivel
 
 **Tema:** {{TOPIC}}
 **Materia:** {{SUBJECT}}
-**Contenido:`;
+
+RESPONDE ÚNICAMENTE CON JSON VÁLIDO:`;
 
 export const homeworkService = {
   /**
@@ -156,11 +155,69 @@ export const homeworkService = {
   },
 
   /**
+   * Parse JSON homework content from AI response
+   * Handles various edge cases like markdown code blocks
+   */
+  parseHomeworkJson(rawContent: string): HomeworkContentJson | null {
+    try {
+      // Remove markdown code blocks if present
+      let jsonStr = rawContent.trim();
+      if (jsonStr.startsWith('```json')) {
+        jsonStr = jsonStr.slice(7);
+      } else if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.slice(3);
+      }
+      if (jsonStr.endsWith('```')) {
+        jsonStr = jsonStr.slice(0, -3);
+      }
+      jsonStr = jsonStr.trim();
+
+      // Try to find JSON object in the response
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error('[Homework] No JSON object found in response');
+        return null;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]) as HomeworkContentJson;
+
+      // Validate required fields
+      if (!parsed.title || !parsed.questions || !Array.isArray(parsed.questions)) {
+        console.error('[Homework] Invalid JSON structure - missing title or questions');
+        return null;
+      }
+
+      // Validate questions array
+      if (parsed.questions.length === 0) {
+        console.error('[Homework] No questions in parsed JSON');
+        return null;
+      }
+
+      // Ensure all questions have required fields
+      const validatedQuestions: HomeworkQuestionJson[] = parsed.questions.map((q, index) => ({
+        id: q.id || index + 1,
+        text: q.text || `Pregunta ${index + 1}`,
+        type: q.type === 'choice' ? 'choice' : 'open',
+        options: q.options,
+      }));
+
+      return {
+        title: parsed.title,
+        instructions: parsed.instructions,
+        questions: validatedQuestions,
+      };
+    } catch (err) {
+      console.error('[Homework] Failed to parse JSON:', err);
+      return null;
+    }
+  },
+
+  /**
    * Generate master homework content using AI (non-streaming)
    * Uses 'reasoner' model for high-quality content generation
-   * Content is formatted through the AI Gatekeeper for proper LaTeX and structure
+   * Returns both displayable content AND structured questions array
    */
-  async generateMasterContent(topic: string, subject?: string): Promise<string> {
+  async generateMasterContent(topic: string, subject?: string): Promise<{ content: string; questions: HomeworkQuestionJson[] }> {
     const prompt = MASTER_HOMEWORK_PROMPT.replace('{{TOPIC}}', topic).replace(
       '{{SUBJECT}}',
       subject || 'General'
@@ -169,12 +226,80 @@ export const homeworkService = {
     // Use reasoner model for high-quality master content
     const rawContent = await ollamaService.generate(prompt, undefined, undefined, 'reasoner');
 
-    // Format through gatekeeper for proper LaTeX and structure
+    // Parse JSON response
+    const parsedJson = this.parseHomeworkJson(rawContent);
+
+    if (parsedJson) {
+      console.log(`[Homework] Generated ${parsedJson.questions.length} questions for "${parsedJson.title}"`);
+
+      // Format the content through gatekeeper for proper LaTeX
+      const contentToFormat = parsedJson.instructions
+        ? `# ${parsedJson.title}\n\n${parsedJson.instructions}\n\n${parsedJson.questions.map((q, i) => `${i + 1}. ${q.text}`).join('\n\n')}`
+        : `# ${parsedJson.title}\n\n${parsedJson.questions.map((q, i) => `${i + 1}. ${q.text}`).join('\n\n')}`;
+
+      const formatted = await aiGatekeeper.formatHomeworkContent(contentToFormat, subject);
+
+      return {
+        content: formatted.content,
+        questions: parsedJson.questions,
+      };
+    }
+
+    // Fallback: If JSON parsing failed, use legacy format and extract questions
+    console.warn('[Homework] JSON parsing failed, using legacy content format');
     const formatted = await aiGatekeeper.formatHomeworkContent(rawContent.trim(), subject);
 
-    console.log(`[Homework] Generated master content: ${formatted.metadata.wordCount} words, LaTeX: ${formatted.metadata.hasLatex}`);
+    // Generate fallback questions from content
+    const fallbackQuestions = this.extractQuestionsFromContent(formatted.content);
 
-    return formatted.content;
+    console.log(`[Homework] Generated master content (fallback): ${formatted.metadata.wordCount} words, ${fallbackQuestions.length} questions`);
+
+    return {
+      content: formatted.content,
+      questions: fallbackQuestions,
+    };
+  },
+
+  /**
+   * Extract questions from legacy markdown content (fallback method)
+   */
+  extractQuestionsFromContent(content: string): HomeworkQuestionJson[] {
+    const questions: HomeworkQuestionJson[] = [];
+
+    // Pattern to match numbered questions: "1. Question text" or "1) Question text"
+    const pattern = /(?:^|\n)\s*(\d+)[.)]\s*(.+?)(?=(?:\n\s*\d+[.)])|$)/gs;
+    const matches = [...content.matchAll(pattern)];
+
+    if (matches.length > 0) {
+      matches.forEach((match) => {
+        const questionNumber = parseInt(match[1], 10);
+        let questionText = match[2].trim()
+          .replace(/\n+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .replace(/\*{2,}/g, '')
+          .trim();
+
+        // Skip empty or too short questions
+        if (questionText.length < 5) return;
+
+        questions.push({
+          id: questionNumber,
+          text: questionText,
+          type: 'open',
+        });
+      });
+    }
+
+    // If no questions found, create a single response question
+    if (questions.length === 0) {
+      questions.push({
+        id: 1,
+        text: 'Responde a la tarea',
+        type: 'open',
+      });
+    }
+
+    return questions;
   },
 
   /**
@@ -233,6 +358,7 @@ export const homeworkService = {
       topic: string;
       subject?: string;
       masterContent?: string;
+      questionsJson?: HomeworkQuestionJson[];
       dueDate?: string;
       classroomId?: string;
       generateForStudents?: boolean;
@@ -240,20 +366,27 @@ export const homeworkService = {
   ): Promise<HomeworkAssignment> {
     // Generate master content if not provided
     let masterContent = data.masterContent;
+    let questionsJson = data.questionsJson;
+
     if (!masterContent) {
-      masterContent = await this.generateMasterContent(data.topic, data.subject);
+      const generated = await this.generateMasterContent(data.topic, data.subject);
+      masterContent = generated.content;
+      questionsJson = generated.questions;
     }
 
-    // Create the homework
+    // Create the homework with structured questions
     const homework = homeworkQueries.create({
       teacherId,
       title: data.title,
       topic: data.topic,
       subject: data.subject,
       masterContent,
+      questionsJson,
       dueDate: data.dueDate,
       classroomId: data.classroomId,
     });
+
+    console.log(`[Homework] Created homework with ${questionsJson?.length || 0} structured questions`);
 
     // Personalize for students if requested (run in background)
     if (data.generateForStudents) {
@@ -333,10 +466,12 @@ export const homeworkService = {
           context
         );
 
+        // Inherit questions from master homework
         homeworkQueries.createPersonalized({
           homeworkId,
           studentId: profile.userId,
           personalizedContent,
+          questionsJson: homework.questionsJson,
         });
 
         // Update progress
@@ -399,21 +534,24 @@ export const homeworkService = {
     // Get student profile
     const context = studentProfilesQueries.getPersonalizationContext(studentId);
     if (!context) {
-      // Create basic personalized content without profile
+      // Create basic personalized content without profile, inherit questions
       homeworkQueries.createPersonalized({
         homeworkId,
         studentId,
         personalizedContent: homework.masterContent,
+        questionsJson: homework.questionsJson,
       });
       return;
     }
 
     const personalizedContent = await this.personalizeContent(homework.masterContent, context);
 
+    // Inherit questions from master homework
     homeworkQueries.createPersonalized({
       homeworkId,
       studentId,
       personalizedContent,
+      questionsJson: homework.questionsJson,
     });
   },
 };

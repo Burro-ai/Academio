@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
+import { authApi } from '@/services/authApi';
 import { GlassCard, GlassButton, GlassInput } from '@/components/glass';
 import { UserRole } from '@/types';
 
@@ -11,6 +12,14 @@ type AuthMode = 'login' | 'register';
 export function LoginPage() {
   const { t } = useTranslation();
   const { login, register, isLoading, error, clearError } = useAuth();
+
+  // Clear any corrupted auth data when landing on login page
+  // This prevents infinite loading issues from stale tokens
+  useEffect(() => {
+    // If user explicitly navigated to /login, clear old data to ensure fresh login
+    console.log('[LoginPage] Mounted - clearing any stale auth data');
+    authApi.clearAll();
+  }, []);
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

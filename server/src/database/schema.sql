@@ -295,6 +295,7 @@ CREATE TABLE IF NOT EXISTS homework_assignments (
     topic TEXT NOT NULL,
     subject TEXT,
     master_content TEXT NOT NULL,
+    questions_json TEXT,           -- JSON array of structured questions
     due_date TEXT,
     classroom_id TEXT,             -- Target classroom (null = all students)
     school_id TEXT,                -- School scope (nullable for migration)
@@ -311,6 +312,7 @@ CREATE TABLE IF NOT EXISTS personalized_homework (
     homework_id TEXT NOT NULL,
     student_id TEXT NOT NULL,
     personalized_content TEXT NOT NULL,
+    questions_json TEXT,           -- JSON array (inherits from master, can be customized)
     submitted_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (homework_id) REFERENCES homework_assignments(id) ON DELETE CASCADE,

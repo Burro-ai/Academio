@@ -54,6 +54,25 @@ export interface UpdateLessonRequest {
 
 // Homework Types
 
+/**
+ * Structured homework question - used for JSON storage and form rendering
+ */
+export interface HomeworkQuestionJson {
+  id: number;
+  text: string;
+  type: 'open' | 'choice';
+  options?: string[];  // For choice type questions
+}
+
+/**
+ * Structured homework content returned by AI
+ */
+export interface HomeworkContentJson {
+  title: string;
+  instructions?: string;
+  questions: HomeworkQuestionJson[];
+}
+
 export interface HomeworkAssignment {
   id: string;
   teacherId: string;
@@ -61,6 +80,7 @@ export interface HomeworkAssignment {
   topic: string;
   subject?: string;
   masterContent: string;
+  questionsJson?: HomeworkQuestionJson[];  // Structured questions array
   dueDate?: string;
   classroomId?: string;  // Target classroom (null = all students)
   createdAt: string;
@@ -78,6 +98,7 @@ export interface PersonalizedHomework {
   homeworkId: string;
   studentId: string;
   personalizedContent: string;
+  questionsJson?: HomeworkQuestionJson[];  // Inherited from master or personalized
   submittedAt?: string;
   createdAt: string;
 }
@@ -89,6 +110,7 @@ export interface PersonalizedHomeworkWithDetails extends PersonalizedHomework {
     subject?: string;
     dueDate?: string;
     teacherName: string;
+    questionsJson?: HomeworkQuestionJson[];  // Master questions (fallback)
   };
 }
 
