@@ -35,3 +35,7 @@ npm-debug.log*
 
 # Misc
 nul
+
+# Temporary/test files
+Academio/
+check-db.js
