@@ -43,6 +43,12 @@ export const initializeDatabase = async (): Promise<void> => {
   // Add questions_json column for structured homework questions
   addQuestionsJsonColumn();
 
+  // Add assigned_at column and homework chat tables
+  addHomeworkChatTables();
+
+  // Add source_lesson_id column for lesson context linking
+  addSourceLessonIdToHomework();
+
   // Read and execute schema
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
@@ -526,6 +532,89 @@ export const migrateToMultiSchool = async (): Promise<void> => {
   console.log(`Updated ${homeworkUpdated.changes} homework assignments with school_id`);
 
   console.log('Multi-school migration complete!');
+};
+
+/**
+ * Add assigned_at column to homework_assignments and create homework chat tables
+ */
+export const addHomeworkChatTables = (): void => {
+  // Check if homework_assignments table exists first
+  const homeworkTableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='homework_assignments'"
+  ).get();
+
+  if (homeworkTableExists) {
+    // Check if assigned_at column exists
+    const homeworkInfo = db.prepare("PRAGMA table_info(homework_assignments)").all() as { name: string }[];
+    const hasAssignedAt = homeworkInfo.some(col => col.name === 'assigned_at');
+
+    if (!hasAssignedAt) {
+      console.log('Adding assigned_at column to homework_assignments table...');
+      db.exec('ALTER TABLE homework_assignments ADD COLUMN assigned_at TEXT');
+    }
+  }
+
+  // Create homework_chat_sessions table if it doesn't exist
+  const chatSessionsTableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='homework_chat_sessions'"
+  ).get();
+
+  if (!chatSessionsTableExists) {
+    console.log('Creating homework_chat_sessions table...');
+    db.exec(`
+      CREATE TABLE homework_chat_sessions (
+        id TEXT PRIMARY KEY,
+        personalized_homework_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(personalized_homework_id, student_id)
+      )
+    `);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_homework_chat_sessions_student ON homework_chat_sessions(student_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_homework_chat_sessions_homework ON homework_chat_sessions(personalized_homework_id)');
+  }
+
+  // Create homework_chat_messages table if it doesn't exist
+  const chatMessagesTableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='homework_chat_messages'"
+  ).get();
+
+  if (!chatMessagesTableExists) {
+    console.log('Creating homework_chat_messages table...');
+    db.exec(`
+      CREATE TABLE homework_chat_messages (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+        content TEXT NOT NULL,
+        question_context TEXT,
+        timestamp TEXT NOT NULL,
+        FOREIGN KEY (session_id) REFERENCES homework_chat_sessions(id) ON DELETE CASCADE
+      )
+    `);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_homework_chat_messages_session ON homework_chat_messages(session_id)');
+  }
+};
+
+/**
+ * Add source_lesson_id column to homework_assignments for lesson context linking
+ */
+export const addSourceLessonIdToHomework = (): void => {
+  const homeworkTableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='homework_assignments'"
+  ).get();
+
+  if (homeworkTableExists) {
+    const homeworkInfo = db.prepare("PRAGMA table_info(homework_assignments)").all() as { name: string }[];
+    const hasColumn = homeworkInfo.some(col => col.name === 'source_lesson_id');
+
+    if (!hasColumn) {
+      console.log('Adding source_lesson_id column to homework_assignments...');
+      db.exec('ALTER TABLE homework_assignments ADD COLUMN source_lesson_id TEXT REFERENCES lessons(id) ON DELETE SET NULL');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_homework_source_lesson ON homework_assignments(source_lesson_id)');
+    }
+  }
 };
 
 /**

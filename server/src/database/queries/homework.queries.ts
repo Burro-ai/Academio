@@ -39,6 +39,8 @@ const rowToHomework = (row: HomeworkRow): HomeworkAssignment => ({
   questionsJson: parseQuestionsJson(row.questions_json),
   dueDate: row.due_date || undefined,
   classroomId: row.classroom_id || undefined,
+  assignedAt: (row as HomeworkRow & { assigned_at?: string }).assigned_at || undefined,
+  sourceLessonId: row.source_lesson_id || undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -71,13 +73,14 @@ export const homeworkQueries = {
     questionsJson?: HomeworkQuestionJson[];
     dueDate?: string;
     classroomId?: string;
+    sourceLessonId?: string;
   }): HomeworkAssignment {
     const db = getDb();
     const id = uuidv4();
 
     db.prepare(`
-      INSERT INTO homework_assignments (id, teacher_id, title, topic, subject, master_content, questions_json, due_date, classroom_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      INSERT INTO homework_assignments (id, teacher_id, title, topic, subject, master_content, questions_json, due_date, classroom_id, source_lesson_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).run(
       id,
       data.teacherId,
@@ -87,7 +90,8 @@ export const homeworkQueries = {
       data.masterContent,
       data.questionsJson ? JSON.stringify(data.questionsJson) : null,
       data.dueDate || null,
-      data.classroomId || null
+      data.classroomId || null,
+      data.sourceLessonId || null
     );
 
     return this.getById(id)!;
@@ -388,5 +392,140 @@ export const homeworkQueries = {
       .prepare('DELETE FROM personalized_homework WHERE homework_id = ?')
       .run(homeworkId);
     return result.changes;
+  },
+
+  // =============================================
+  // Question Management Methods (for editable questions)
+  // =============================================
+
+  /**
+   * Update questions JSON for a homework assignment
+   * Only allowed if homework is not yet assigned
+   */
+  updateQuestions(id: string, questionsJson: HomeworkQuestionJson[]): HomeworkAssignment | null {
+    const db = getDb();
+
+    // Check if homework exists and is not assigned
+    const existing = this.getById(id);
+    if (!existing) return null;
+
+    // Check if already assigned (locked)
+    const row = db
+      .prepare('SELECT assigned_at FROM homework_assignments WHERE id = ?')
+      .get(id) as { assigned_at: string | null } | undefined;
+
+    if (row?.assigned_at) {
+      throw new Error('Cannot update questions: homework is already assigned to students');
+    }
+
+    db.prepare(`
+      UPDATE homework_assignments
+      SET questions_json = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).run(JSON.stringify(questionsJson), id);
+
+    return this.getById(id);
+  },
+
+  /**
+   * Mark homework as assigned (locks questions from editing)
+   */
+  markAssigned(id: string): HomeworkAssignment | null {
+    const db = getDb();
+
+    const existing = this.getById(id);
+    if (!existing) return null;
+
+    db.prepare(`
+      UPDATE homework_assignments
+      SET assigned_at = datetime('now'), updated_at = datetime('now')
+      WHERE id = ?
+    `).run(id);
+
+    return this.getById(id);
+  },
+
+  /**
+   * Check if homework is assigned (questions are locked)
+   */
+  isAssigned(id: string): boolean {
+    const db = getDb();
+    const row = db
+      .prepare('SELECT assigned_at FROM homework_assignments WHERE id = ?')
+      .get(id) as { assigned_at: string | null } | undefined;
+
+    return !!row?.assigned_at;
+  },
+
+  /**
+   * Update master content for a homework assignment
+   * Only allowed if homework is not yet assigned
+   */
+  updateMasterContent(id: string, masterContent: string): HomeworkAssignment | null {
+    const db = getDb();
+
+    // Check if homework exists and is not assigned
+    const existing = this.getById(id);
+    if (!existing) return null;
+
+    // Check if already assigned (locked)
+    const row = db
+      .prepare('SELECT assigned_at FROM homework_assignments WHERE id = ?')
+      .get(id) as { assigned_at: string | null } | undefined;
+
+    if (row?.assigned_at) {
+      throw new Error('Cannot update content: homework is already assigned to students');
+    }
+
+    db.prepare(`
+      UPDATE homework_assignments
+      SET master_content = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).run(masterContent, id);
+
+    return this.getById(id);
+  },
+
+  /**
+   * Get personalized homework by ID with full homework details
+   */
+  getPersonalizedById(id: string): PersonalizedHomeworkWithDetails | null {
+    const db = getDb();
+    const row = db
+      .prepare(`
+        SELECT
+          ph.*,
+          h.title as homework_title,
+          h.topic as homework_topic,
+          h.subject as homework_subject,
+          h.due_date as homework_due_date,
+          h.questions_json as homework_questions_json,
+          u.name as teacher_name
+        FROM personalized_homework ph
+        JOIN homework_assignments h ON ph.homework_id = h.id
+        JOIN users u ON h.teacher_id = u.id
+        WHERE ph.id = ?
+      `)
+      .get(id) as PersonalizedHomeworkWithDetailsRow | undefined;
+
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      homeworkId: row.homework_id,
+      studentId: row.student_id,
+      personalizedContent: row.personalized_content,
+      questionsJson: parseQuestionsJson(row.questions_json) || parseQuestionsJson(row.homework_questions_json),
+      submittedAt: row.submitted_at || undefined,
+      createdAt: row.created_at,
+      homework: {
+        title: row.homework_title,
+        topic: row.homework_topic,
+        subject: row.homework_subject || undefined,
+        dueDate: row.homework_due_date || undefined,
+        teacherName: row.teacher_name,
+        questionsJson: parseQuestionsJson(row.homework_questions_json),
+      },
+    };
   },
 };

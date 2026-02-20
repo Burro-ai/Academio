@@ -103,6 +103,8 @@ export interface HomeworkRow {
   questions_json: string | null;  // JSON array of structured questions
   due_date: string | null;
   classroom_id: string | null;
+  assigned_at: string | null;     // When questions were locked
+  source_lesson_id: string | null; // Linked lesson for context-grounded generation
   created_at: string;
   updated_at: string;
 }

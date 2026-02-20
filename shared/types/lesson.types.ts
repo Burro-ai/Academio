@@ -83,6 +83,8 @@ export interface HomeworkAssignment {
   questionsJson?: HomeworkQuestionJson[];  // Structured questions array
   dueDate?: string;
   classroomId?: string;  // Target classroom (null = all students)
+  assignedAt?: string;   // When questions were locked (assigned to students)
+  sourceLessonId?: string; // Linked lesson for context-grounded generation
   createdAt: string;
   updatedAt: string;
 }
@@ -91,6 +93,7 @@ export interface HomeworkWithTeacher extends HomeworkAssignment {
   teacherName: string;
   personalizedCount?: number;
   classroomName?: string;  // Name of target classroom
+  assignedAt?: string;     // When questions were locked (inherited from base)
 }
 
 export interface PersonalizedHomework {
@@ -122,6 +125,8 @@ export interface CreateHomeworkRequest {
   dueDate?: string;
   classroomId?: string;   // Target classroom (null = all students)
   generateForStudents?: boolean; // Auto-personalize for students in classroom
+  questionsJson?: HomeworkQuestionJson[];  // Structured questions (optional on create)
+  sourceLessonId?: string; // Linked lesson for context-grounded generation
 }
 
 export interface UpdateHomeworkRequest {
@@ -182,6 +187,47 @@ export interface LessonChatResponse {
     title: string;
     topic: string;
     subject?: string;
+    content: string;
+  };
+}
+
+// ============================================
+// HOMEWORK CHAT TYPES (Socratic Sidekick)
+// ============================================
+
+export interface HomeworkChatSession {
+  id: string;
+  personalizedHomeworkId: string;
+  studentId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HomeworkChatMessage {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  questionContext?: string;  // Which question was asked about
+  timestamp: string;
+}
+
+export interface HomeworkChatSessionWithDetails extends HomeworkChatSession {
+  homeworkTitle: string;
+  homeworkTopic: string;
+  homeworkSubject?: string;
+  messageCount: number;
+}
+
+export interface HomeworkChatResponse {
+  session: HomeworkChatSession;
+  messages: HomeworkChatMessage[];
+  homework: {
+    id: string;
+    title: string;
+    topic: string;
+    subject?: string;
+    questions: HomeworkQuestionJson[];
     content: string;
   };
 }

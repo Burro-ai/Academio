@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { homeworkService, PersonalizationProgress } from '../services/homework.service';
 import { homeworkQueries } from '../database/queries/homework.queries';
-import { JwtAuthenticatedRequest, CreateHomeworkRequest, UpdateHomeworkRequest } from '../types';
+import { JwtAuthenticatedRequest, CreateHomeworkRequest, UpdateHomeworkRequest, HomeworkQuestionJson } from '../types';
 import { AppError } from '../middleware/errorHandler.middleware';
 
 export const homeworkController = {
@@ -42,7 +42,7 @@ export const homeworkController = {
       throw new AppError('Not authenticated', 401);
     }
 
-    const { title, topic, subject, masterContent, dueDate, classroomId, generateForStudents } =
+    const { title, topic, subject, masterContent, dueDate, classroomId, generateForStudents, sourceLessonId } =
       req.body as CreateHomeworkRequest;
 
     if (!title || !topic) {
@@ -57,6 +57,7 @@ export const homeworkController = {
       dueDate,
       classroomId,
       generateForStudents,
+      sourceLessonId,
     });
 
     res.status(201).json(homework);
@@ -144,13 +145,13 @@ export const homeworkController = {
       throw new AppError('Not authenticated', 401);
     }
 
-    const { topic, subject } = req.body;
+    const { topic, subject, lessonId } = req.body;
 
     if (!topic) {
       throw new AppError('Topic is required', 400);
     }
 
-    const content = await homeworkService.generateMasterContent(topic, subject);
+    const content = await homeworkService.generateMasterContent(topic, subject, lessonId);
     res.json({ content });
   },
 
@@ -163,7 +164,7 @@ export const homeworkController = {
       throw new AppError('Not authenticated', 401);
     }
 
-    const { topic, subject } = req.query;
+    const { topic, subject, lessonId } = req.query;
 
     if (!topic || typeof topic !== 'string') {
       throw new AppError('Topic is required', 400);
@@ -178,7 +179,8 @@ export const homeworkController = {
     try {
       for await (const chunk of homeworkService.generateMasterContentStream(
         topic,
-        typeof subject === 'string' ? subject : undefined
+        typeof subject === 'string' ? subject : undefined,
+        typeof lessonId === 'string' ? lessonId : undefined
       )) {
         res.write(`data: ${JSON.stringify({ text: chunk.text, done: chunk.done })}\n\n`);
 
@@ -226,5 +228,115 @@ export const homeworkController = {
     }
 
     res.json(progress);
+  },
+
+  /**
+   * PUT /api/homework/:id/questions
+   * Update homework questions (only if not yet assigned)
+   */
+  async updateQuestions(req: JwtAuthenticatedRequest, res: Response) {
+    if (!req.user) {
+      throw new AppError('Not authenticated', 401);
+    }
+
+    const { id } = req.params;
+    const { questions } = req.body as { questions: HomeworkQuestionJson[] };
+
+    if (!questions || !Array.isArray(questions)) {
+      throw new AppError('Questions array is required', 400);
+    }
+
+    // Verify ownership
+    const existing = homeworkQueries.getById(id);
+    if (!existing) {
+      throw new AppError('Homework not found', 404);
+    }
+    if (existing.teacherId !== req.user.id) {
+      throw new AppError('Not authorized to update this homework', 403);
+    }
+
+    // Check if already assigned
+    if (homeworkQueries.isAssigned(id)) {
+      throw new AppError('Cannot update questions: homework is already assigned to students', 400);
+    }
+
+    try {
+      const homework = homeworkQueries.updateQuestions(id, questions);
+      res.json(homework);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('already assigned')) {
+        throw new AppError(error.message, 400);
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * POST /api/homework/:id/assign
+   * Assign homework to students (locks questions)
+   */
+  async assignHomework(req: JwtAuthenticatedRequest, res: Response) {
+    if (!req.user) {
+      throw new AppError('Not authenticated', 401);
+    }
+
+    const { id } = req.params;
+
+    // Verify ownership
+    const existing = homeworkQueries.getById(id);
+    if (!existing) {
+      throw new AppError('Homework not found', 404);
+    }
+    if (existing.teacherId !== req.user.id) {
+      throw new AppError('Not authorized to assign this homework', 403);
+    }
+
+    // Check if already assigned
+    if (homeworkQueries.isAssigned(id)) {
+      throw new AppError('Homework is already assigned', 400);
+    }
+
+    // Verify homework has questions
+    if (!existing.questionsJson || existing.questionsJson.length === 0) {
+      throw new AppError('Cannot assign homework without questions', 400);
+    }
+
+    // Mark as assigned (locks questions)
+    const homework = homeworkQueries.markAssigned(id);
+
+    // Personalize for students (run in background)
+    homeworkService.personalizeForStudentsInClassroom(id, existing.classroomId).catch((err) => {
+      console.error('[Homework] Background personalization failed:', err);
+    });
+
+    res.json({
+      homework,
+      message: 'Homework assigned. Personalization is running in the background.',
+    });
+  },
+
+  /**
+   * GET /api/homework/:id/status
+   * Get homework status including whether it's assigned
+   */
+  async getStatus(req: JwtAuthenticatedRequest, res: Response) {
+    if (!req.user) {
+      throw new AppError('Not authenticated', 401);
+    }
+
+    const { id } = req.params;
+
+    const homework = homeworkQueries.getWithTeacher(id);
+    if (!homework) {
+      throw new AppError('Homework not found', 404);
+    }
+
+    res.json({
+      id: homework.id,
+      isAssigned: !!homework.assignedAt,
+      assignedAt: homework.assignedAt,
+      personalizedCount: homework.personalizedCount,
+      questionsCount: homework.questionsJson?.length || 0,
+    });
   },
 };

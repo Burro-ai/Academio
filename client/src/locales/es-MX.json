@@ -262,7 +262,9 @@
       "questionOf": "Pregunta {{current}} de {{total}}",
       "enterNumber": "Ingresa un número",
       "characters": "caracteres",
-      "answerHint": "Escribe tu respuesta con tus propias palabras"
+      "answerHint": "Escribe tu respuesta con tus propias palabras",
+      "incompleteTitle": "Responde todas las preguntas",
+      "incompleteMessage": "Faltan {{remaining}} preguntas por responder"
     }
   },
 
@@ -368,7 +370,12 @@
         "contentPlaceholder": "Escribe el contenido de tu tarea aquí, o haz clic en 'Generar con IA' para crear contenido automáticamente...",
         "masterContentHint": "Este es el contenido maestro que se personalizará para cada estudiante basándose en su perfil.",
         "autoPersonalize": "Personalizar automáticamente para todos los estudiantes",
-        "autoPersonalizeHint": "La IA creará una versión personalizada para cada estudiante basándose en su perfil"
+        "autoPersonalizeHint": "La IA creará una versión personalizada para cada estudiante basándose en su perfil",
+        "linkLesson": "Vinculación de Lección",
+        "linkLessonHint": "Opcional: Las preguntas se generarán basadas en el contenido de esta lección.",
+        "noLesson": "N/A — Conocimiento general",
+        "lessonPreviewTitle": "Vista previa de lección",
+        "lessonPreviewEmpty": "Sin lección vinculada"
       },
       "creating": "Creando..."
     },
@@ -449,6 +456,55 @@
     },
     "login": {
       "goToStudentPortal": "¿Eres estudiante? Ve al Portal de Estudiantes"
+    }
+  },
+
+  "homework": {
+    "sidekick": {
+      "title": "Asistente de Tarea",
+      "subtitle": "Te guío sin darte las respuestas",
+      "placeholder": "Escribe tu pregunta...",
+      "askAbout": "Pedir ayuda",
+      "quickAsk": "Pregunta rápida",
+      "askingAbout": "Preguntando sobre",
+      "welcome": "Estoy aquí para ayudarte",
+      "welcomeMessage": "Te guiaré paso a paso sin darte las respuestas directamente. Así aprenderás de verdad.",
+      "quickAskPrefix": "Necesito ayuda con esta pregunta",
+      "suggestion1": "¿Cómo empiezo esta pregunta?",
+      "suggestion2": "Explícame el concepto detrás de esto"
+    },
+    "editor": {
+      "questionsTitle": "Preguntas",
+      "questionsLocked": "Bloqueadas",
+      "addQuestion": "Agregar Pregunta",
+      "addFirstQuestion": "Agregar primera pregunta",
+      "deleteQuestion": "Eliminar Pregunta",
+      "questionText": "Texto de la pregunta",
+      "questionPlaceholder": "Escribe la pregunta aquí...",
+      "questionType": "Tipo de Pregunta",
+      "typeText": "Texto Libre",
+      "typeMultipleChoice": "Opción Múltiple",
+      "untitledQuestion": "Pregunta sin título",
+      "options": "Opciones",
+      "option": "Opción",
+      "addOption": "Agregar Opción",
+      "saveDraft": "Guardar Borrador",
+      "assignToStudents": "Asignar a Estudiantes",
+      "noQuestions": "Aún no hay preguntas",
+      "assigned": "Tarea asignada",
+      "assignedDescription": "Asignada a {{count}} estudiantes. Las preguntas ya no pueden ser modificadas.",
+      "assigning": "Asignando...",
+      "confirmAssignTitle": "¿Asignar tarea?",
+      "confirmAssignMessage": "Una vez asignada, las preguntas quedarán bloqueadas y no podrán ser modificadas. Los estudiantes podrán comenzar a trabajar en esta tarea.",
+      "confirmAssign": "Sí, asignar",
+      "state": {
+        "idle": "Completa los campos para generar preguntas",
+        "generating": "Generando preguntas...",
+        "editing": "Edita las preguntas antes de asignar",
+        "saving": "Guardando...",
+        "assigned": "Tarea asignada exitosamente"
+      },
+      "generateFirst": "Genera preguntas con IA primero"
     }
   },
 

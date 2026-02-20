@@ -5,6 +5,7 @@ import {
   CreateHomeworkRequest,
   UpdateLessonRequest,
   UpdateHomeworkRequest,
+  HomeworkQuestionJson,
 } from '@/types';
 import {
   authenticatedFetch,
@@ -330,13 +331,15 @@ class LessonApiService {
    */
   async *streamHomeworkContent(
     topic: string,
-    subject?: string
+    subject?: string,
+    lessonId?: string
   ): AsyncGenerator<{ text: string; done: boolean }> {
     // Validate auth before starting stream
     this.validateStreamAuth();
 
     const params = new URLSearchParams({ topic });
     if (subject) params.append('subject', subject);
+    if (lessonId) params.append('lessonId', lessonId);
 
     console.log('[LessonAPI] Starting homework content stream...');
 
@@ -419,6 +422,37 @@ class LessonApiService {
     error?: string;
   }> {
     return this.request(`/homework/${id}/progress`);
+  }
+
+  /**
+   * Update homework questions (before assignment)
+   */
+  async updateHomeworkQuestions(id: string, questionsJson: HomeworkQuestionJson[]): Promise<HomeworkWithTeacher> {
+    return this.request(`/homework/${id}/questions`, {
+      method: 'PUT',
+      body: JSON.stringify({ questionsJson }),
+    });
+  }
+
+  /**
+   * Assign homework to students (locks questions)
+   */
+  async assignHomework(id: string): Promise<{ assignedCount: number; assignedAt: string }> {
+    return this.request(`/homework/${id}/assign`, {
+      method: 'POST',
+    });
+  }
+
+  /**
+   * Get homework status (including assignment status)
+   */
+  async getHomeworkStatus(id: string): Promise<{
+    id: string;
+    isAssigned: boolean;
+    assignedAt?: string;
+    personalizedCount: number;
+  }> {
+    return this.request(`/homework/${id}/status`);
   }
 }
 

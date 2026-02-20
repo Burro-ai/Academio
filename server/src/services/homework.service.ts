@@ -1,6 +1,7 @@
 import { ollamaService, ModelType } from './ollama.service';
 import { aiGatekeeper, getPedagogicalPersona } from './aiGatekeeper.service';
 import { homeworkQueries } from '../database/queries/homework.queries';
+import { lessonsQueries } from '../database/queries/lessons.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
 import { HomeworkAssignment, PersonalizationContext, StudentProfileWithUser, HomeworkQuestionJson, HomeworkContentJson } from '../types';
 
@@ -58,6 +59,21 @@ Mantén la brevedad (2-3 párrafos cortos máximo). No reescribas toda la tarea 
 {LEARNING_STYLE}
 
 ## Adición Personalizada:`;
+
+/**
+ * Lesson context segment injected into the homework generation prompt
+ * when a source lesson is selected by the teacher.
+ */
+const LESSON_CONTEXT_SEGMENT = `## CONTEXTO DE LA LECCIÓN (BASE DE CONOCIMIENTO)
+El siguiente es el contenido de la lección que se impartió. Debes basar las preguntas de la tarea ESTRICTAMENTE en este contenido. Asegúrate de que el nivel de dificultad y la terminología coincidan exactamente con lo que se enseñó.
+
+{LESSON_CONTENT}
+
+## INSTRUCCIÓN ADICIONAL
+Genera preguntas que evalúen específicamente el contenido de la lección anterior. No incluyas conceptos que no aparezcan en la lección.
+
+---
+`;
 
 /**
  * JSON-focused prompt for generating structured homework content
@@ -143,12 +159,24 @@ export const homeworkService = {
    */
   async *generateMasterContentStream(
     topic: string,
-    subject?: string
+    subject?: string,
+    lessonId?: string
   ): AsyncGenerator<{ text: string; done: boolean }> {
-    const prompt = MASTER_HOMEWORK_PROMPT.replace('{{TOPIC}}', topic).replace(
+    let prompt = MASTER_HOMEWORK_PROMPT.replace('{{TOPIC}}', topic).replace(
       '{{SUBJECT}}',
       subject || 'General'
     );
+
+    // Inject lesson context if a source lesson is provided
+    if (lessonId) {
+      const lesson = lessonsQueries.getById(lessonId);
+      if (lesson) {
+        const contextSegment = LESSON_CONTEXT_SEGMENT.replace('{LESSON_CONTENT}', lesson.masterContent);
+        // Prepend lesson context before the ## TU TAREA block
+        prompt = prompt.replace('## TU TAREA', contextSegment + '## TU TAREA');
+        console.log(`[Homework] Using lesson context from "${lesson.title}" for generation`);
+      }
+    }
 
     // Use reasoner model for high-quality master content
     yield* ollamaService.generateStream(prompt, undefined, undefined, 'reasoner');
@@ -217,11 +245,21 @@ export const homeworkService = {
    * Uses 'reasoner' model for high-quality content generation
    * Returns both displayable content AND structured questions array
    */
-  async generateMasterContent(topic: string, subject?: string): Promise<{ content: string; questions: HomeworkQuestionJson[] }> {
-    const prompt = MASTER_HOMEWORK_PROMPT.replace('{{TOPIC}}', topic).replace(
+  async generateMasterContent(topic: string, subject?: string, lessonId?: string): Promise<{ content: string; questions: HomeworkQuestionJson[] }> {
+    let prompt = MASTER_HOMEWORK_PROMPT.replace('{{TOPIC}}', topic).replace(
       '{{SUBJECT}}',
       subject || 'General'
     );
+
+    // Inject lesson context if a source lesson is provided
+    if (lessonId) {
+      const lesson = lessonsQueries.getById(lessonId);
+      if (lesson) {
+        const contextSegment = LESSON_CONTEXT_SEGMENT.replace('{LESSON_CONTENT}', lesson.masterContent);
+        prompt = prompt.replace('## TU TAREA', contextSegment + '## TU TAREA');
+        console.log(`[Homework] Using lesson context from "${lesson.title}" for generation`);
+      }
+    }
 
     // Use reasoner model for high-quality master content
     const rawContent = await ollamaService.generate(prompt, undefined, undefined, 'reasoner');
@@ -362,6 +400,7 @@ export const homeworkService = {
       dueDate?: string;
       classroomId?: string;
       generateForStudents?: boolean;
+      sourceLessonId?: string;
     }
   ): Promise<HomeworkAssignment> {
     // Generate master content if not provided
@@ -369,7 +408,7 @@ export const homeworkService = {
     let questionsJson = data.questionsJson;
 
     if (!masterContent) {
-      const generated = await this.generateMasterContent(data.topic, data.subject);
+      const generated = await this.generateMasterContent(data.topic, data.subject, data.sourceLessonId);
       masterContent = generated.content;
       questionsJson = generated.questions;
     }
@@ -384,6 +423,7 @@ export const homeworkService = {
       questionsJson,
       dueDate: data.dueDate,
       classroomId: data.classroomId,
+      sourceLessonId: data.sourceLessonId,
     });
 
     console.log(`[Homework] Created homework with ${questionsJson?.length || 0} structured questions`);
