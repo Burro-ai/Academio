@@ -155,12 +155,23 @@ export const studentController = {
     const { id } = req.params;
     const { name, email, avatarUrl, gradeLevel, classroomId } = req.body as UpdateStudentRequest;
 
+    // classroomId lives in student_profiles (the active data source).
+    // null means explicitly remove from classroom; undefined means don't touch it.
+    if (classroomId !== undefined) {
+      const profile = studentProfilesQueries.update(id, { classroomId: classroomId ?? null });
+      if (!profile) {
+        throw new AppError('Student not found', 404);
+      }
+      res.json(profile);
+      return;
+    }
+
+    // For non-classroom updates, fall through to legacy student service
     const student = studentService.updateStudent(id, {
       name,
       email,
       avatarUrl,
       gradeLevel,
-      classroomId,
     });
 
     if (!student) {

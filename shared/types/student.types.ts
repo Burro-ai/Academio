@@ -90,7 +90,7 @@ export interface UpdateStudentRequest {
   email?: string;
   avatarUrl?: string;
   gradeLevel?: string;
-  classroomId?: string;
+  classroomId?: string | null;  // null = remove from classroom
 }
 
 export interface AddGradeRequest {

@@ -167,6 +167,8 @@
         "placeholder": "Ejemplo: Aprendo mejor con explicaciones visuales e instrucciones paso a paso...",
         "charCount": "{{count}}/500 caracteres"
       },
+      "mySalon": "Mi Salón",
+      "classroomUnknown": "Salón asignado",
       "saveChanges": "Guardar cambios",
       "saving": "Guardando...",
       "savedSuccess": "¡Perfil guardado exitosamente!",

@@ -41,7 +41,7 @@ export interface UpdateStudentProfileRequest {
   skillsToImprove?: string[];
   learningSystemPrompt?: string;
   gradeLevel?: string;
-  classroomId?: string;
+  classroomId?: string | null;  // null = remove from classroom
 }
 
 export interface StudentProfileSummary {

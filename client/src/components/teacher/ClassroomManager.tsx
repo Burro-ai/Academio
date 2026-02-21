@@ -297,7 +297,8 @@ function AssignStudentsModal({
     setIsUpdating(studentId);
     try {
       await teacherApi.updateStudent(studentId, {
-        classroomId: assign ? classroom.id : undefined,
+        // null explicitly removes from classroom (undefined would be omitted in JSON)
+        classroomId: assign ? classroom.id : null,
       });
       onUpdated();
     } catch (err) {
