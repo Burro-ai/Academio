@@ -49,6 +49,12 @@ export const initializeDatabase = async (): Promise<void> => {
   // Add source_lesson_id column for lesson context linking
   addSourceLessonIdToHomework();
 
+  // Add rubric_scores column for detailed grading breakdown
+  addRubricScoresToSubmissions();
+
+  // Add struggle_dimensions, comprehension_score, exit_ticket_passed columns
+  addStruggleDimensionsToAnalytics();
+
   // Read and execute schema
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
@@ -613,6 +619,53 @@ export const addSourceLessonIdToHomework = (): void => {
       console.log('Adding source_lesson_id column to homework_assignments...');
       db.exec('ALTER TABLE homework_assignments ADD COLUMN source_lesson_id TEXT REFERENCES lessons(id) ON DELETE SET NULL');
       db.exec('CREATE INDEX IF NOT EXISTS idx_homework_source_lesson ON homework_assignments(source_lesson_id)');
+    }
+  }
+};
+
+/**
+ * Add rubric_scores column to homework_submissions for detailed grading breakdown
+ * Stores JSON: { accuracy: number, reasoning: number, effort: number }
+ */
+export const addRubricScoresToSubmissions = (): void => {
+  const tableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='homework_submissions'"
+  ).get();
+
+  if (tableExists) {
+    const info = db.prepare("PRAGMA table_info(homework_submissions)").all() as { name: string }[];
+    if (!info.some(col => col.name === 'rubric_scores')) {
+      console.log('Adding rubric_scores column to homework_submissions...');
+      db.exec('ALTER TABLE homework_submissions ADD COLUMN rubric_scores TEXT');
+    }
+  }
+};
+
+/**
+ * Add struggle_dimensions, comprehension_score, exit_ticket_passed to learning_analytics
+ * struggle_dimensions: JSON { socraticDepth, errorPersistence, frustrationSentiment, composite }
+ * comprehension_score: 0-1 float from exit ticket evaluation
+ * exit_ticket_passed: 0 or 1
+ */
+export const addStruggleDimensionsToAnalytics = (): void => {
+  const tableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='learning_analytics'"
+  ).get();
+
+  if (tableExists) {
+    const info = db.prepare("PRAGMA table_info(learning_analytics)").all() as { name: string }[];
+
+    if (!info.some(col => col.name === 'struggle_dimensions')) {
+      console.log('Adding struggle_dimensions column to learning_analytics...');
+      db.exec('ALTER TABLE learning_analytics ADD COLUMN struggle_dimensions TEXT');
+    }
+    if (!info.some(col => col.name === 'comprehension_score')) {
+      console.log('Adding comprehension_score column to learning_analytics...');
+      db.exec('ALTER TABLE learning_analytics ADD COLUMN comprehension_score REAL');
+    }
+    if (!info.some(col => col.name === 'exit_ticket_passed')) {
+      console.log('Adding exit_ticket_passed column to learning_analytics...');
+      db.exec('ALTER TABLE learning_analytics ADD COLUMN exit_ticket_passed INTEGER DEFAULT 0');
     }
   }
 };

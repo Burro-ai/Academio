@@ -314,6 +314,38 @@ export const lessonsQueries = {
   },
 
   /**
+   * Get personalized lesson by its own ID
+   */
+  getPersonalizedById(id: string): PersonalizedLesson | null {
+    const db = getDb();
+    const row = db
+      .prepare('SELECT * FROM personalized_lessons WHERE id = ?')
+      .get(id) as PersonalizedLessonRow | undefined;
+
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      lessonId: row.lesson_id,
+      studentId: row.student_id,
+      personalizedContent: row.personalized_content,
+      viewedAt: row.viewed_at || undefined,
+      createdAt: row.created_at,
+    };
+  },
+
+  /**
+   * Update the personalized content of a personalized lesson
+   */
+  updatePersonalizedContent(id: string, personalizedContent: string): boolean {
+    const db = getDb();
+    const result = db
+      .prepare("UPDATE personalized_lessons SET personalized_content = ? WHERE id = ?")
+      .run(personalizedContent, id);
+    return result.changes > 0;
+  },
+
+  /**
    * Mark personalized lesson as viewed
    */
   markAsViewed(id: string): boolean {

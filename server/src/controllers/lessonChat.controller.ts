@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { lessonChatService } from '../services/lessonChat.service';
+import { lessonService } from '../services/lesson.service';
 import { lessonChatQueries } from '../database/queries/lessonChat.queries';
 import { lessonsQueries } from '../database/queries/lessons.queries';
 import { JwtAuthenticatedRequest } from '../types';
@@ -82,6 +83,9 @@ export const lessonChatController = {
     // Get messages
     const messages = lessonChatService.getSessionMessages(session.id);
 
+    // Also fetch master content from the parent lesson
+    const parentLesson = lessonsQueries.getById(lesson.lessonId);
+
     res.json({
       session,
       messages,
@@ -91,8 +95,33 @@ export const lessonChatController = {
         topic: lesson.lesson.topic,
         subject: lesson.lesson.subject,
         content: lesson.personalizedContent,
+        masterContent: parentLesson?.masterContent || lesson.personalizedContent,
       },
     });
+  },
+
+  /**
+   * POST /api/student/lesson-chat/:lessonId/personalize
+   * Generate AI-personalized content for a lesson on student request
+   */
+  async personalizeLesson(req: JwtAuthenticatedRequest, res: Response) {
+    const { lessonId } = req.params;
+    const studentId = req.user?.id;
+
+    if (!studentId) {
+      throw new AppError('Not authenticated', 401);
+    }
+
+    // Verify this lesson belongs to the student
+    const lessons = lessonsQueries.getPersonalizedByStudentId(studentId);
+    const lesson = lessons.find((l) => l.id === lessonId);
+    if (!lesson) {
+      throw new AppError('Lesson not found', 404);
+    }
+
+    const personalizedContent = await lessonService.personalizeOnDemand(lessonId, studentId);
+
+    res.json({ personalizedContent });
   },
 
   /**

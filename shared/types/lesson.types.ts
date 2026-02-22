@@ -187,7 +187,8 @@ export interface LessonChatResponse {
     title: string;
     topic: string;
     subject?: string;
-    content: string;
+    content: string;        // personalizedContent (may equal masterContent if not yet personalized)
+    masterContent?: string; // Teacher's original content (always available)
   };
 }
 
@@ -248,6 +249,16 @@ export interface HomeworkAnswer {
   value: string;
 }
 
+/**
+ * Rubric-based grading breakdown.
+ * Final grade = accuracy * 0.40 + reasoning * 0.40 + effort * 0.20
+ */
+export interface RubricScores {
+  accuracy: number;   // 0-100: correctness of final answers
+  reasoning: number;  // 0-100: logical steps / process shown
+  effort: number;     // 0-100: depth of engagement, all problems attempted
+}
+
 export interface HomeworkSubmission {
   id: string;
   personalizedHomeworkId: string;
@@ -258,8 +269,26 @@ export interface HomeworkSubmission {
   feedback?: string;
   aiSuggestedGrade?: number;
   aiSuggestedFeedback?: string;
+  rubricScores?: RubricScores;
   gradedBy?: string;
   gradedAt?: string;
+}
+
+// ============================================
+// EXIT TICKET TYPES (Comprehension Verification)
+// ============================================
+
+export interface ExitTicketQuestion {
+  id: number;
+  question: string;
+}
+
+export interface ExitTicketResult {
+  passed: boolean;
+  comprehensionScore: number;  // 0-1
+  feedback: string;
+  questionsCorrect: number;
+  questionsTotal: number;
 }
 
 export interface HomeworkSubmissionWithDetails extends HomeworkSubmission {

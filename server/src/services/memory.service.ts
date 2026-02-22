@@ -191,6 +191,8 @@ class MemoryService {
     metadata?: {
       lessonId?: string;
       lessonTitle?: string;
+      homeworkId?: string;
+      homeworkTitle?: string;
       subject?: string;
       concepts?: string[];
     }

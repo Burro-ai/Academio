@@ -23,6 +23,7 @@ interface HomeworkQuestionCardProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   isAnswered?: boolean;
+  onAskSidekick?: () => void;
 }
 
 export function HomeworkQuestionCard({
@@ -33,6 +34,7 @@ export function HomeworkQuestionCard({
   onChange,
   disabled = false,
   isAnswered = false,
+  onAskSidekick,
 }: HomeworkQuestionCardProps) {
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -166,8 +168,23 @@ export function HomeworkQuestionCard({
               </div>
             </div>
 
+            {/* Ask Sidekick Button */}
+            {onAskSidekick && !disabled && (
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                onClick={onAskSidekick}
+                className="mt-3 px-3 py-1.5 backdrop-blur-md bg-purple-500/20 border border-purple-400/30 rounded-lg text-xs font-medium text-purple-700 hover:bg-purple-500/30 transition-all flex items-center gap-1.5"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span>🤖</span>
+                {t('homework.sidekick.askAbout')}
+              </motion.button>
+            )}
+
             {/* Helper text for unanswered */}
-            {!value && !disabled && (
+            {!value && !disabled && !onAskSidekick && (
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

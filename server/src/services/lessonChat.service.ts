@@ -1,6 +1,7 @@
 import { ollamaService } from './ollama.service';
 import { aiGatekeeper, getPedagogicalPersona, PedagogicalPersona } from './aiGatekeeper.service';
 import { memoryService, RetrievedMemory } from './memory.service';
+import { analyticsService } from './analytics.service';
 import { lessonChatQueries, LessonChatMessage } from '../database/queries/lessonChat.queries';
 import { lessonsQueries } from '../database/queries/lessons.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
@@ -513,6 +514,16 @@ SOLO usa estos intereses si:
           console.error('[LessonChat] Failed to store memory:', err);
         });
       }
+
+      // ANALYTICS: Calculate and persist Multi-Dimensional Struggle Score
+      // Get updated message history after saving the new messages
+      const updatedHistory = lessonChatQueries.getRecentMessages(session.id, 50);
+      analyticsService.calculateAndPersist(
+        session.id,
+        updatedHistory,
+        studentProfile?.age ?? null,
+        studentProfile?.gradeLevel ?? null
+      );
 
       // Send completion event with metadata
       yield {

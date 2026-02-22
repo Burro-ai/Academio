@@ -32,6 +32,15 @@ router.delete('/:id', asyncHandler(homeworkController.deleteHomework));
 // Get personalization progress
 router.get('/:id/progress', asyncHandler(homeworkController.getProgress));
 
+// Get homework status (assigned state, etc.)
+router.get('/:id/status', asyncHandler(homeworkController.getStatus));
+
+// Update homework questions (only if not yet assigned)
+router.put('/:id/questions', asyncHandler(homeworkController.updateQuestions));
+
+// Assign homework to students (locks questions)
+router.post('/:id/assign', asyncHandler(homeworkController.assignHomework));
+
 // Personalize homework for all students
 router.post('/:id/personalize', asyncHandler(homeworkController.personalizeHomework));
 

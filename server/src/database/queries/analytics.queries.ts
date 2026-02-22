@@ -12,6 +12,9 @@ interface AnalyticsRow {
   questions_asked: number;
   time_spent_seconds: number;
   struggle_score: number;
+  struggle_dimensions: string | null;  // JSON: StruggleDimensions
+  comprehension_score: number | null;
+  exit_ticket_passed: number;
   resolved: number;
   created_at: string;
   updated_at: string;
@@ -306,6 +309,59 @@ export const analyticsQueries = {
        SET struggle_score = ?, updated_at = ?
        WHERE session_id = ?`
     ).run(score, now, sessionId);
+  },
+
+  /**
+   * Update multi-dimensional struggle analysis
+   */
+  updateStruggleDimensions(sessionId: string, dimensions: {
+    socraticDepth: number;
+    errorPersistence: number;
+    frustrationSentiment: number;
+    composite: number;
+  }): void {
+    const db = getDb();
+    const now = new Date().toISOString();
+    db.prepare(
+      `UPDATE learning_analytics
+       SET struggle_dimensions = ?, struggle_score = ?, updated_at = ?
+       WHERE session_id = ?`
+    ).run(JSON.stringify(dimensions), dimensions.composite, now, sessionId);
+  },
+
+  /**
+   * Record exit ticket result for a session
+   */
+  updateComprehensionScore(sessionId: string, score: number, passed: boolean): void {
+    const db = getDb();
+    const now = new Date().toISOString();
+    db.prepare(
+      `UPDATE learning_analytics
+       SET comprehension_score = ?, exit_ticket_passed = ?, updated_at = ?
+       WHERE session_id = ?`
+    ).run(score, passed ? 1 : 0, now, sessionId);
+  },
+
+  /**
+   * Get struggle dimensions for a session
+   */
+  getStruggleDimensions(sessionId: string): {
+    socraticDepth: number;
+    errorPersistence: number;
+    frustrationSentiment: number;
+    composite: number;
+  } | null {
+    const db = getDb();
+    const row = db.prepare(
+      `SELECT struggle_dimensions FROM learning_analytics WHERE session_id = ?`
+    ).get(sessionId) as { struggle_dimensions: string | null } | undefined;
+
+    if (!row?.struggle_dimensions) return null;
+    try {
+      return JSON.parse(row.struggle_dimensions);
+    } catch {
+      return null;
+    }
   },
 
   /**

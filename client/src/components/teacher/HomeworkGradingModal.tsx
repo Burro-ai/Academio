@@ -164,6 +164,53 @@ export function HomeworkGradingModal({
                         </button>
                       </div>
                     </div>
+
+                    {/* Rubric Breakdown (shown when available) */}
+                    {submission.rubricScores && (
+                      <div className="mb-3 space-y-2">
+                        <p className="text-xs font-medium text-prominent mb-1">{t('grading.rubricBreakdown')}</p>
+                        {/* Accuracy */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-prominent">{t('grading.rubric.accuracy')} <span className="text-subtle">(40%)</span></span>
+                            <span className="font-semibold text-solid">{submission.rubricScores.accuracy}/100</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-white/10">
+                            <div
+                              className="h-1.5 rounded-full bg-emerald-400/70"
+                              style={{ width: `${submission.rubricScores.accuracy}%` }}
+                            />
+                          </div>
+                        </div>
+                        {/* Reasoning */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-prominent">{t('grading.rubric.reasoning')} <span className="text-subtle">(40%)</span></span>
+                            <span className="font-semibold text-solid">{submission.rubricScores.reasoning}/100</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-white/10">
+                            <div
+                              className="h-1.5 rounded-full bg-blue-400/70"
+                              style={{ width: `${submission.rubricScores.reasoning}%` }}
+                            />
+                          </div>
+                        </div>
+                        {/* Effort */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-prominent">{t('grading.rubric.effort')} <span className="text-subtle">(20%)</span></span>
+                            <span className="font-semibold text-solid">{submission.rubricScores.effort}/100</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-white/10">
+                            <div
+                              className="h-1.5 rounded-full bg-purple-400/70"
+                              style={{ width: `${submission.rubricScores.effort}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {submission.aiSuggestedGrade !== undefined && (
                       <p className="text-sm mb-2">
                         <span className="text-prominent">{t('grading.gradeLabel')} </span>

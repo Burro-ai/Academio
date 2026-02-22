@@ -22,11 +22,13 @@ interface UseLessonChatReturn {
   lesson: LessonChatResponse['lesson'] | null;
   isLoading: boolean;
   isStreaming: boolean;
+  isPersonalizing: boolean;
   currentResponse: string;
   error: string | null;
   sendMessage: (message: string) => Promise<void>;
   cancelStream: () => void;
   reload: () => Promise<void>;
+  personalizeLesson: () => Promise<void>;
 }
 
 export function useLessonChat({
@@ -38,6 +40,7 @@ export function useLessonChat({
   const [lesson, setLesson] = useState<LessonChatResponse['lesson'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isPersonalizing, setIsPersonalizing] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -220,16 +223,54 @@ export function useLessonChat({
     [personalizedLessonId, isStreaming, cancelStream, session, onMessageComplete]
   );
 
+  /**
+   * Trigger on-demand AI personalization for this lesson
+   */
+  const personalizeLesson = useCallback(async () => {
+    if (!personalizedLessonId || isPersonalizing) return;
+
+    setIsPersonalizing(true);
+
+    try {
+      const token = authApi.getToken();
+      const response = await fetch(`/api/student/lesson-chat/${personalizedLessonId}/personalize`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data: { personalizedContent: string } = await response.json();
+
+      // Update the lesson content in state
+      setLesson((prev) =>
+        prev ? { ...prev, content: data.personalizedContent } : prev
+      );
+    } catch (err) {
+      console.error('Failed to personalize lesson:', err);
+      setError(err instanceof Error ? err.message : 'Failed to personalize');
+    } finally {
+      setIsPersonalizing(false);
+    }
+  }, [personalizedLessonId, isPersonalizing]);
+
   return {
     session,
     messages,
     lesson,
     isLoading,
     isStreaming,
+    isPersonalizing,
     currentResponse,
     error,
     sendMessage,
     cancelStream,
     reload: loadSession,
+    personalizeLesson,
   };
 }

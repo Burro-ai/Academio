@@ -1,7 +1,8 @@
 # JOURNAL.md - Academio Development Progress Log
 
 > **Purpose:** Track development progress, decisions made, and next steps for context continuity.
-> **Last Updated:** 2026-02-09
+> **Last Updated:** 2026-02-22
+> **Archive:** Entries older than 3 days → HISTORY.md
 
 ---
 
@@ -22,11 +23,9 @@
 - [x] Session-to-user linking (chat history persists per user)
 - [x] Student portal with AI chat (SSE streaming with auth)
 - [x] Teacher dashboard with student list
-- [x] Homework/Lesson creation with AI personalization
+- [x] Homework/Lesson creation with AI generation (state machine + live streaming)
 - [x] Streaming content generation (real-time token display)
-- [x] Concurrent personalization with Promise.all() (~10x faster)
 - [x] Dual-model strategy (reasoner for master, chat for personalization)
-- [x] Progress tracking for personalization tasks
 - [x] Liquid Glass UI design system
 - [x] SQLite database with seeded demo data (20 users)
 - [x] DeepSeek Cloud API (primary) / Ollama (fallback)
@@ -36,31 +35,32 @@
 - [x] **AI Grading Suggestions**: Teacher sees AI-suggested grades and feedback
 - [x] **Teacher Lesson Chat Oversight**: View student's lesson chat histories
 - [x] **es-MX Localization**: Full Mexican Spanish translations for all features
+- [x] **JSON Homework Mandate**: Reliable question extraction via structured JSON
+- [x] **On-Demand Lesson Personalization**: Students trigger AI personalization; teacher side no longer auto-runs mass personalization
+- [x] **LessonCreator State Machine**: `idle→generating→editing→assigned` flow with SmartMarkdown reader
 
 ### What's In Progress
 - [ ] Student profile detailed view (teacher side)
 - [ ] Teacher AI assistant for material generation
+- [ ] Exit Ticket frontend UI (LessonChatInterface.tsx integration)
 
 ### Recently Completed
+- [x] **Phase 1.5: Pedagogical Grounding Audit** — 23/23 assertions green, 1.20× multiplier fix, test script (2026-02-22)
+- [x] **Pedagogical Data Engineering** — Multi-Dimensional Struggle Matrix, Rubric Grading, Exit Ticket (2026-02-21)
+- [x] **Lecciones Module Refactor — On-Demand Personalization** (2026-02-21)
+- [x] **Documentation refactor** — CLAUDE.md pruned to <30k chars, DESIGN.md created, HISTORY.md created (2026-02-21)
 - [x] Interactive Lesson Chat & Homework Form Systems (2026-02-09)
 - [x] Teacher Grading with AI Suggestions (2026-02-09)
-- [x] Lesson Chat Teacher Oversight (2026-02-09)
-- [x] Customization Loop optimization (streaming, concurrency, Socratic prompts) (2026-02-08)
-- [x] DeepSeek Cloud API integration (2026-02-08)
-- [x] Auth/JWT fixes across all workflows (2026-02-08)
-- [x] Chat history persistence per user (2026-02-08)
-- [x] Homework assignment system with AI personalization
-- [x] Lesson creation and management with AI personalization
 
 ### Known Issues
 - Sharp library not available (using fallback image processing)
-- Legacy tables (students, teachers) still exist for backward compatibility during migration period
+- Legacy tables (students, teachers) still exist for backward compatibility
 
 ### Auth/JWT Checklist (Review Before Adding New Routes)
 - [ ] Does the route need authentication? Add `authMiddleware`
 - [ ] Is it teacher-only? Add `teacherOnly` middleware after `authMiddleware`
 - [ ] Is it student-only? Add `studentOnly` middleware after `authMiddleware`
-- [ ] Does the frontend API service include the JWT token? Check `authApi.getToken()` is used
+- [ ] Is it registered in `permissionRegistry.ts`? (Returns 403 if missing)
 - [ ] For SSE endpoints: Is the token included in fetch headers (not EventSource)?
 - [ ] Does the controller use `req.user.id` for user-specific queries?
 
@@ -77,455 +77,179 @@
 ### Medium Priority
 5. Implement struggle detection algorithm
 6. Add classroom management features
-7. Student-facing homework view
-8. Learning analytics dashboard
+7. Learning analytics dashboard
 
 ### Low Priority
-9. Export features (PDF reports)
-10. Email notifications
-11. Dark/light theme toggle
-12. Mobile responsive improvements
+8. Export features (PDF reports)
+9. Email notifications
+10. Mobile responsive improvements
 
 ---
 
 ## Progress Log
 
-### 2026-02-09
+> Entries older than 3 days (before 2026-02-18) are in HISTORY.md.
 
-#### Session 1: Interactive Lesson Chat & Homework Form Systems
+---
+
+### 2026-02-22
+
+#### Phase 1.5: Pedagogical Grounding Audit
 
 - **What was done:**
-  - Implemented complete interactive lesson chat system with Socratic AI tutoring
-  - Created structured homework form with question cards and answer submission
-  - Added AI-powered grading suggestions for teacher review
-  - Built teacher oversight features to view student lesson chat histories
-  - Full es-MX (Mexican Spanish) localization for all new features
+  - Fixed `the-academic-challenger` developmental multiplier: **1.10× → 1.20×** in `analytics.service.ts`
+  - Created `server/src/utils/test-pedagogical-grounding.ts` — 23-assertion audit script
+  - Added `test:pedagogical` npm script to `server/package.json`
+  - Updated `ARCHITECT.md` with full mathematical formulas (Struggle Matrix, Rubric, Exit Ticket)
+  - Added "Pedagogical Grading Directive" section to `CLAUDE.md`
 
-- **Major Features Implemented:**
+- **Test Results (all green):**
+  | Test | Result | Assertions |
+  |------|--------|-----------|
+  | Struggle Matrix (17yo, 3 surface qs) | ✓ PASS | 8/8 |
+  | Rubric Grading (correct answer + no reasoning → 56/100) | ✓ PASS | 8/8 |
+  | Exit Ticket flow (pass → viewed_at set, fail → null) | ✓ PASS | 7/7 |
+  | **Total** | **✓ 23/23** | |
 
-  | Feature | Description |
-  |---------|-------------|
-  | Lesson Chat Interface | Full-screen chat within lesson context, AI uses Socratic method |
-  | Homework Form | Question cards parsed from content, structured answer collection |
-  | AI Grading | Automatic grade/feedback suggestions when student submits |
-  | Teacher Grading | Modal with student answers, AI suggestions, manual override |
-  | Lesson Chat Oversight | Teachers can view students' lesson chat histories |
-
-- **New Database Tables:**
-  ```sql
-  lesson_chat_sessions   -- One per student per lesson
-  lesson_chat_messages   -- Chat messages with role, content, timestamp
-  homework_submissions   -- Structured answers + grading fields
+- **Mathematical proof (Test 1):**
+  ```
+  age=17, Preparatoria → the-academic-challenger → 1.20× multiplier
+  3 × "¿Qué es...?" → socraticDepth = 1.0, rawComposite = 0.25
+  composite = 0.25 × 1.20 = 0.300 ✓
   ```
 
-- **New API Endpoints:**
+- **Mathematical proof (Test 2):**
+  ```
+  accuracy=85 × 0.40 = 34  |  reasoning=20 × 0.40 = 8  |  effort=70 × 0.20 = 14
+  finalGrade = round(34 + 8 + 14) = 56 ✓
+  ```
 
-  | Endpoint | Method | Description |
-  |----------|--------|-------------|
-  | `/api/student/lesson-chat/stream` | GET | SSE streaming lesson chat |
-  | `/api/student/lesson-chat/:lessonId` | GET | Get session + messages |
-  | `/api/student/homework/:id/submit` | POST | Submit homework answers |
-  | `/api/teacher/homework/pending` | GET | Pending submissions |
-  | `/api/teacher/homework/submissions/:id/grade` | PUT | Grade submission |
-  | `/api/teacher/students/:id/lesson-chats` | GET | Student's lesson chats |
+- **Modified Files:**
+  | File | Change |
+  |------|--------|
+  | `server/src/services/analytics.service.ts` | Fixed multiplier 1.10→1.20 for academic-challenger |
+  | `server/src/utils/test-pedagogical-grounding.ts` | NEW — 23-assertion grounding audit |
+  | `server/package.json` | Added `test:pedagogical` script |
+  | `ARCHITECT.md` | Added Pedagogical Data Engineering section with formulas |
+  | `CLAUDE.md` | Added Pedagogical Grading Directive section |
+  | `JOURNAL.md` | This entry |
 
-- **New Frontend Components:**
+---
 
-  | Component | Purpose |
-  |-----------|---------|
-  | `LessonChatInterface.tsx` | Full-screen lesson chat with collapsible content |
-  | `HomeworkFormContainer.tsx` | Full-screen homework form with question cards |
-  | `HomeworkQuestionCard.tsx` | Individual question card component |
-  | `HomeworkSubmissionsTab.tsx` | Pending submissions list for teachers |
-  | `HomeworkGradingModal.tsx` | Grading modal with AI suggestions |
-  | `StudentLessonChats.tsx` | Student's lesson chat history list |
-  | `LessonChatViewer.tsx` | Read-only chat viewer for teachers |
+### 2026-02-21
 
-- **New Hooks:**
+#### Session 3: Pedagogical Data Engineering
 
-  | Hook | Purpose |
+- **What was done:**
+  - Created `analytics.service.ts` — Multi-Dimensional Struggle Matrix engine
+  - Refactored `homeworkGrading.service.ts` — Rubric-Based Grading (Accuracy/Reasoning/Effort)
+  - Created `exitTicket.service.ts` + `exitTicket.controller.ts` — Comprehension Verification before lesson completion
+  - Added DB migrations: `rubric_scores`, `struggle_dimensions`, `comprehension_score`, `exit_ticket_passed` columns
+  - Updated `HomeworkGradingModal.tsx` to show rubric bars in teacher portal
+  - Wired `analyticsService.calculateAndPersist()` into lesson chat message handler
+  - Updated ARCHITECT.md with Rubric Logic Map and Exit Ticket flow
+
+- **Architectural Decisions:**
+  - Struggle score normalized by developmental tranche (0.70x for ages 7-9 → 1.20x for 19+)
+  - Rubric weighted average: Accuracy 40% + Reasoning 40% + Effort 20%
+  - Exit ticket passes at ≥ 60% comprehension; graceful auto-pass degradation on AI failure
+  - `updateStruggleDimensions()` is an UPDATE (no FK violation risk even without matching row)
+
+- **Modified Files:**
+  | File | Change |
+  |------|--------|
+  | `server/src/database/db.ts` | Added `addRubricScoresToSubmissions()` + `addStruggleDimensionsToAnalytics()` |
+  | `server/src/database/queries/analytics.queries.ts` | Added `updateStruggleDimensions()`, `updateComprehensionScore()`, `getStruggleDimensions()` |
+  | `server/src/database/queries/homeworkSubmissions.queries.ts` | Added `rubric_scores` column + `RubricScores` interface |
+  | `shared/types/lesson.types.ts` | Added `RubricScores`, `ExitTicketQuestion`, `ExitTicketResult`; updated `HomeworkSubmission` |
+  | `server/src/services/homeworkGrading.service.ts` | Full rubric refactor; 3-dimension AI prompt |
+  | `server/src/services/lessonChat.service.ts` | Wired `analyticsService.calculateAndPersist()` post-response |
+  | `client/src/components/teacher/HomeworkGradingModal.tsx` | Rubric progress bars |
+  | `client/src/locales/es-MX.json` | Added `grading.rubric.*` + `student.lessonChat.exitTicket.*` |
+  | `server/src/middleware/permissionRegistry.ts` | Registered exit ticket routes |
+  | `server/src/routes/studentPortal.routes.ts` | Added exit ticket routes |
+
+- **New Files:**
+  | File | Purpose |
   |------|---------|
-  | `useLessonChat.ts` | SSE streaming for lesson chat (follows useChat.ts pattern) |
-  | `useHomeworkForm.ts` | Form state with question parsing |
-
-- **Socratic Tutoring Integration:**
-  - System prompt includes full lesson content as context
-  - AI never gives direct answers, guides through questioning
-  - Conversation history (last 10 messages) maintained for continuity
-  - Student profile used for personalization
-
-- **Homework Question Parsing:**
-  - Extracts questions from numbered patterns (1., 1), Question 1:)
-  - Falls back to bullet points (•, -, *)
-  - Final fallback: paragraphs split by double newlines
-
-- **Localization Additions:**
-  - Added `student.lessonChat.*` keys (welcome, askQuestion, expand/collapse)
-  - Added `student.homeworkForm.*` keys (question, progress, submit, grading states)
-  - Added `teacher.submissions.*` keys (title, grading, AI suggestion)
-  - Added `teacher.lessonChats.*` keys (title, view, messages)
-  - Added `grading.*` keys (submitting, errors, labels)
-  - Fixed all hardcoded English strings in new components
-
-- **Files Created:**
-  | File | Type |
-  |------|------|
-  | `server/src/database/queries/lessonChat.queries.ts` | Backend |
-  | `server/src/database/queries/homeworkSubmissions.queries.ts` | Backend |
-  | `server/src/services/lessonChat.service.ts` | Backend |
-  | `server/src/services/homeworkGrading.service.ts` | Backend |
-  | `server/src/controllers/lessonChat.controller.ts` | Backend |
-  | `server/src/controllers/homeworkSubmission.controller.ts` | Backend |
-  | `client/src/hooks/useLessonChat.ts` | Frontend |
-  | `client/src/hooks/useHomeworkForm.ts` | Frontend |
-  | `client/src/components/student/LessonChatInterface.tsx` | Frontend |
-  | `client/src/components/student/HomeworkFormContainer.tsx` | Frontend |
-  | `client/src/components/student/HomeworkQuestionCard.tsx` | Frontend |
-  | `client/src/components/teacher/HomeworkSubmissionsTab.tsx` | Frontend |
-  | `client/src/components/teacher/HomeworkGradingModal.tsx` | Frontend |
-  | `client/src/components/teacher/StudentLessonChats.tsx` | Frontend |
-  | `client/src/components/teacher/LessonChatViewer.tsx` | Frontend |
-
-- **Files Modified:**
-  | File | Change |
-  |------|--------|
-  | `server/src/database/schema.sql` | Added 3 new tables + indexes |
-  | `server/src/routes/studentPortal.routes.ts` | Added lesson chat + homework submit routes |
-  | `server/src/routes/teacher.routes.ts` | Added grading + oversight routes |
-  | `shared/types/lesson.types.ts` | Added lesson chat + homework types |
-  | `client/src/types/index.ts` | Re-exported new types |
-  | `client/src/components/student/MyLessons.tsx` | Navigate to full-screen chat |
-  | `client/src/components/student/MyHomework.tsx` | Navigate to full-screen form |
-  | `client/src/pages/StudentDashboard.tsx` | Added nested routes |
-  | `client/src/components/teacher/HomeworkPanel.tsx` | Added tabs for assignments/submissions |
-  | `client/src/services/teacherApi.ts` | Added grading + oversight methods |
-  | `client/src/locales/es-MX.json` | Added all new translation keys |
-  | `CLAUDE.md` | Documented new features and API endpoints |
-  | `ARCHITECT.md` | Added data flow diagrams and component updates |
-
-- **Documentation Updated:**
-  - CLAUDE.md: Added "Interactive Lesson Chat & Homework Forms" section
-  - ARCHITECT.md: Added new data flow diagrams, updated component hierarchy
-  - JOURNAL.md: This entry
+  | `server/src/services/analytics.service.ts` | Multi-Dimensional Struggle Matrix |
+  | `server/src/services/exitTicket.service.ts` | Exit Ticket AI generation + evaluation |
+  | `server/src/controllers/exitTicket.controller.ts` | Exit ticket HTTP handlers |
 
 ---
 
-### 2026-02-08
-
-#### Session 5: Customization Loop Optimization
+#### Session 1: Lecciones Module Refactor — On-Demand Personalization
 
 - **What was done:**
-  - Implemented Promise.all() for concurrent personalization (parallel API calls)
-  - Added streaming endpoints for real-time content generation
-  - Upgraded to Socratic personalization prompts with analogies and reflection questions
-  - Implemented dual-model strategy: `deepseek-reasoner` for master content, `deepseek-chat` for personalization
-  - Added progress tracking for long-running personalization tasks
+  - Refactored the Lecciones feature to remove teacher-side mass personalization and implement student-triggered on-demand AI personalization instead.
+  - Redesigned `LessonCreator.tsx` (Teacher Portal) with a state machine pattern.
+  - Updated `LessonChatInterface.tsx` (Student Portal) to show `masterContent` by default with a "Personalizar mi lección" button.
+  - Added server-side `distributeToStudents()` and `personalizeOnDemand()` methods.
+  - Added `POST /api/student/lesson-chat/:lessonId/personalize` endpoint.
 
-- **Performance Improvements:**
-  - **Before:** Sequential personalization (10 students = 10x API call time)
-  - **After:** Parallel personalization with Promise.all() (~10x faster)
-  - **Streaming:** Content appears token-by-token in UI instead of waiting for full response
+- **Architectural Decision: Remove Mass Personalization**
+  - **Before:** Teacher assigns → AI immediately generates N personalized versions (slow, costly).
+  - **After:** Teacher assigns → `distributeToStudents()` creates rows with `masterContent` (instant). Student clicks "Personalizar" → `personalizeOnDemand()` runs AI on demand.
+  - **Why:** Better UX, lower AI cost, respects student agency.
 
-- **New Endpoints:**
-  | Endpoint | Method | Description |
-  |----------|--------|-------------|
-  | `/api/lessons/generate-content/stream` | GET | SSE streaming for lesson content |
-  | `/api/lessons/:id/progress` | GET | Check personalization progress |
-  | `/api/homework/generate-content/stream` | GET | SSE streaming for homework content |
-  | `/api/homework/:id/progress` | GET | Check personalization progress |
+- **Phase 1 — Teacher Portal: LessonCreator.tsx Refactor**
 
-- **New Service Methods:**
-  | Service | Method | Description |
-  |---------|--------|-------------|
-  | `lessonService` | `generateMasterContentStream()` | Streaming content generation |
-  | `lessonService` | `getProgress()` | Get personalization status |
-  | `homeworkService` | `generateMasterContentStream()` | Streaming content generation |
-  | `homeworkService` | `getProgress()` | Get personalization status |
+  | Before | After |
+  |--------|-------|
+  | Simple form with `generateForStudents` checkbox | State machine: `idle → generating → editing → assigned` |
+  | "Crear lección" button | Two-step: "Generar con IA" → "Asignar a estudiantes" |
+  | No content preview | Live streaming preview → SmartMarkdown reader |
+  | Options card with auto-personalize | Removed entirely |
 
-- **New Client API Methods:**
-  | Method | Description |
-  |--------|-------------|
-  | `lessonApi.streamLessonContent()` | Async generator for streaming |
-  | `lessonApi.getLessonProgress()` | Check personalization progress |
-  | `lessonApi.streamHomeworkContent()` | Async generator for streaming |
-  | `lessonApi.getHomeworkProgress()` | Check homework personalization progress |
+- **Phase 2 — Student Portal: LessonChatInterface.tsx**
 
-- **Model Strategy:**
-  - Master content: Uses `deepseek-reasoner` (higher reasoning, better quality)
-  - Personalization: Uses `deepseek-chat` (faster, lower cost per call)
+  | Before | After |
+  |--------|-------|
+  | Shows `lesson.content` (personalizedContent) | Shows `masterContent` by default |
+  | No personalization trigger | "Personalizar mi lección" button with specular highlight |
 
-- **Socratic Prompts:**
-  - Lessons: Creates one analogy (using student interests) + one reflection question
-  - Homework: Creates one interest-based problem reframe + one Socratic "think deeper" question
+- **Phase 3 — Backend: New Service Methods**
 
-- **Files Modified:**
-  | File | Change |
-  |------|--------|
-  | `server/src/services/lesson.service.ts` | Added streaming, Promise.all, progress tracking, Socratic prompts, model selection |
-  | `server/src/services/homework.service.ts` | Added streaming, Promise.all, progress tracking, Socratic prompts, model selection |
-  | `server/src/services/ollama.service.ts` | Added `ModelType` export and model selection parameter |
-  | `server/src/controllers/lesson.controller.ts` | Added `streamGenerateContent`, `getProgress` endpoints |
-  | `server/src/controllers/homework.controller.ts` | Added `streamGenerateContent`, `getProgress` endpoints |
-  | `server/src/routes/lesson.routes.ts` | Added streaming and progress routes |
-  | `server/src/routes/homework.routes.ts` | Added streaming and progress routes |
-  | `client/src/services/lessonApi.ts` | Added streaming and progress methods |
-  | `client/src/components/teacher/LessonCreator.tsx` | Updated to use streaming |
-  | `client/src/components/teacher/HomeworkCreator.tsx` | Updated to use streaming |
+  - `distributeToStudents(lessonId, classroomId?, teacherId?)`: Creates `personalized_lessons` rows with `masterContent`. Skips existing.
+  - `personalizeOnDemand(personalizedLessonId, studentId)`: Validates ownership, runs AI, updates row.
+  - `getPersonalizedById(id)` + `updatePersonalizedContent(id, content)` added to `lessons.queries.ts`.
 
-- **Progress Tracking Schema:**
-  ```typescript
-  interface PersonalizationProgress {
-    lessonId: string;        // or homeworkId
-    total: number;           // Total students to personalize
-    completed: number;       // Students completed so far
-    current: string | null;  // Current student name being processed
-    status: 'pending' | 'in_progress' | 'completed' | 'error';
-    error?: string;          // Error message if failed
-  }
-  ```
-
-- **Background Processing:**
-  - Personalization runs in background (not awaited) after lesson/homework creation
-  - Progress stored in-memory Map (can be replaced with Redis for production)
-  - Progress automatically cleaned up after 5 minutes
-
----
-
-#### Session 4: DeepSeek Cloud API Integration
-
-- **What was done:**
-  - Switched from Ollama (local) to DeepSeek Cloud API for dramatically faster AI responses
-  - Created unified AI service that supports both DeepSeek cloud and Ollama (for offline use)
-  - Added environment variable configuration for provider selection
-
-- **Speed Improvement:**
-  - **Before (Ollama):** 30-60 seconds per lesson/homework generation
-  - **After (DeepSeek Cloud):** 2-5 seconds per generation
-
-- **Configuration:**
-  ```bash
-  AI_PROVIDER=deepseek                    # or 'ollama' for local
-  DEEPSEEK_API_KEY=sk-xxxxx               # Your DeepSeek API key
-  DEEPSEEK_API_URL=https://api.deepseek.com/v1
-  AI_MODEL_NAME=deepseek-chat             # or 'deepseek-reasoner' for R1
-  ```
-
-- **Files Modified:**
-  | File | Change |
-  |------|--------|
-  | `.env` | Added DeepSeek Cloud API configuration |
-  | `.env.example` | Updated with all AI provider options |
-  | `server/src/config/index.ts` | Added `aiProvider`, `deepseek` config sections |
-  | `server/src/services/ollama.service.ts` | Rewrote as unified AIService with DeepSeek + Ollama support |
-  | `CLAUDE.md` | Added AI Provider Configuration section |
-
-- **Fallback Behavior:**
-  - If DeepSeek API key is missing, automatically falls back to Ollama
-  - Health check endpoint shows current provider: `GET /api/chat/health`
-
----
-
-#### Session 3: Stale Token Bug Fix
-
-- **What was done:**
-  - Fixed critical bug where old student tokens could persist after teacher login
-  - Added token clearing before login/register to prevent stale token issues
-  - Added client-side token validation in lessonApi to catch role mismatches early
-  - Added debugging helpers (`getTokenPayload()`, console logs) for troubleshooting
-
-- **Root Cause:**
-  - When user logs in, the old token was being included in the login request header
-  - If login succeeded but token storage failed for any reason, old token would persist
-  - The login/register functions now explicitly clear the old token BEFORE making the request
-
-- **Files Modified:**
+- **Modified Files:**
 
   | File | Change |
   |------|--------|
-  | `client/src/services/authApi.ts` | Clear token before login/register, add `getTokenPayload()` helper |
-  | `client/src/services/lessonApi.ts` | Add client-side role validation, better error messages with debugging |
+  | `client/src/components/teacher/LessonCreator.tsx` | Full rewrite — state machine, streaming preview, SmartMarkdown reader |
+  | `client/src/components/student/LessonChatInterface.tsx` | masterContent default, Personalizar button, AnimatePresence badge |
+  | `client/src/hooks/useLessonChat.ts` | Added `isPersonalizing`, `personalizeLesson()` |
+  | `client/src/locales/es-MX.json` | Removed `autoPersonalize`, added `assignLesson`, `personalizeLesson`, etc. |
+  | `shared/types/lesson.types.ts` | Added `masterContent?` to `LessonChatResponse.lesson` |
+  | `server/src/services/lesson.service.ts` | Added `distributeToStudents()`, `personalizeOnDemand()` |
+  | `server/src/database/queries/lessons.queries.ts` | Added `getPersonalizedById()`, `updatePersonalizedContent()` |
+  | `server/src/controllers/lessonChat.controller.ts` | Added `masterContent` to response; added `personalizeLesson` handler |
+  | `server/src/routes/studentPortal.routes.ts` | Added `POST /lesson-chat/:lessonId/personalize` route |
 
-- **To Fix Current Issue:**
-  1. Open browser DevTools (F12)
-  2. Go to Application tab → Local Storage → localhost:5174
-  3. Delete the `academio_token` entry
-  4. Refresh the page
-  5. Log in again as Sarah (`sarah.johnson@academio.edu` / `password123`)
-  6. Try creating lesson/homework again
+#### Session 2: Documentation Refactor
 
----
-
-#### Session 2: Authentication & Session Persistence Fixes
-
-- **What was done:**
-  - Fixed "Access denied" error when teachers create homework/lessons
-  - Fixed Emma's profile appearing blank (empty arrays vs undefined)
-  - Implemented proper session-to-user linking for chat history persistence
-  - Added comprehensive auth/JWT documentation to CLAUDE.md and ARCHITECT.md
-
-- **Root Causes Identified:**
-  1. **Access Denied Bug:** `lessonApi.ts` wasn't including JWT token in requests
-  2. **Blank Profile Bug:** `rowToProfile()` returned `undefined` for empty arrays instead of `[]`
-  3. **Chat History Not Persisting:** Sessions weren't linked to authenticated users
-
-- **Files Modified:**
-
-  | File | Change |
-  |------|--------|
-  | `server/src/routes/session.routes.ts` | Added `authMiddleware` to all session routes |
-  | `server/src/controllers/session.controller.ts` | Updated to use `JwtAuthenticatedRequest`, pass `userId`/`schoolId` to queries, verify ownership |
-  | `server/src/routes/chat.routes.ts` | Added `optionalAuth` middleware for personalization |
-  | `server/src/controllers/chat.controller.ts` | Updated to use authenticated user for ownership verification and personalization |
-  | `server/src/services/ollama.service.ts` | Added `systemPrompt` parameter to `generate()` function |
-  | `client/src/services/api.ts` | Added `getAuthHeaders()` to include JWT in all requests |
-  | `client/src/hooks/useChat.ts` | Added JWT token to SSE fetch requests |
-  | `client/src/services/lessonApi.ts` | Fixed token inclusion and improved error handling |
-  | `server/src/database/queries/studentProfiles.queries.ts` | Changed `rowToProfile()` to return `[]` for empty arrays |
-
-- **Key Learnings:**
-  - JWT tokens MUST be included in Authorization header for ALL authenticated endpoints
-  - SSE streaming requests also need auth headers (using fetch, not EventSource)
-  - Session creation must pass `userId` from `req.user.id` to link chat history
-  - Array fields should return `[]` not `undefined` for consistent frontend handling
-
-- **Testing Verified:**
-  - TypeScript compilation passes for both client and server
-  - Database has correct user IDs linked to sessions
-  - All user credentials working (see login credentials below)
-
-- **Login Credentials (all passwords: `password123`):**
-  - Teachers: `sarah.johnson@academio.edu`, `david.kim@academio.edu`
-  - Students: `emma.rodriguez@student.academio.edu`, `alex.turner@student.academio.edu`, `zoe.martinez@student.academio.edu`, `ryan.cooper@student.academio.edu`, plus 14 more
-
----
-
-#### Session 1: Homework & Lesson Personalization System Complete
-- **What was done:**
-  - Verified full implementation of AI-powered content personalization pipeline
-  - Confirmed teacher-side workflow: LessonCreator, HomeworkCreator with "Generate with AI" and "Personalize for all students" options
-  - Confirmed student-side workflow: MyLessons, MyHomework tabs in StudentDashboard
-  - Verified backend services with few-shot AI prompts for personalization
-  - All API endpoints properly wired (lesson.routes, homework.routes, studentPortal.routes)
-
-- **Complete Personalization Flow:**
-  1. Teacher creates lesson/homework with "Automatically personalize for all students" checked
-  2. Backend generates master content using AI (few-shot prompting)
-  3. Backend iterates through all student profiles and generates personalized versions
-  4. Personalized content stored in `personalized_lessons` and `personalized_homework` tables
-  5. Students see personalized content in their portal (My Lessons, My Homework tabs)
-
-- **Key Features:**
-  - AI generates master content based on topic/subject
-  - Personalization considers: age, interests, skills to improve, learning style
-  - Teachers can manually trigger personalization for existing content via "Personalize" button
-  - Shows personalized count badge on lesson/homework cards
-  - Students see "New" badge on unviewed lessons
-  - Homework shows due date status (overdue, due today, etc.)
-  - Mark lessons as viewed, submit homework functionality
-
-- **Files verified:**
-  - `server/src/services/lesson.service.ts` - AI generation & personalization
-  - `server/src/services/homework.service.ts` - AI generation & personalization
-  - `server/src/controllers/lesson.controller.ts` - CRUD + personalize endpoints
-  - `server/src/controllers/homework.controller.ts` - CRUD + personalize endpoints
-  - `server/src/controllers/studentPortal.controller.ts` - Student access to personalized content
-  - `client/src/components/teacher/LessonCreator.tsx` - Teacher UI
-  - `client/src/components/teacher/HomeworkCreator.tsx` - Teacher UI
-  - `client/src/components/teacher/LessonsPanel.tsx` - List with personalize button
-  - `client/src/components/teacher/HomeworkPanel.tsx` - List with personalize button
-  - `client/src/components/student/MyLessons.tsx` - Student view
-  - `client/src/components/student/MyHomework.tsx` - Student view
-  - `client/src/pages/StudentDashboard.tsx` - Integration with tabs
-
----
-
-### 2026-02-07
-
-#### Session 2: Multi-School Architecture Migration
-- **What was done:**
-  - Added `schools` table for multi-tenancy support
-  - Added `school_memberships` table for user-school relationships with roles
-  - Added `school_id` column to: users, classrooms, student_profiles, sessions, lessons, homework_assignments
-  - Added `user_id` shadow columns to: sessions, student_grades, learning_analytics, teacher_chat_sessions
-  - Created migration function in `db.ts` to automatically migrate existing data
-  - Updated all query files to use `user_id` with fallback to legacy columns
-  - Created `schools.queries.ts` with full CRUD operations
-  - Created `shared/types/school.types.ts` with School, SchoolMembership, SchoolPermissions types
-  - Updated SCHEMA.md with complete multi-school documentation
-
-- **Key files modified/created:**
-  - `server/src/database/schema.sql` - New tables and columns
-  - `server/src/database/db.ts` - Migration logic in seedDatabase()
-  - `server/src/database/queries/schools.queries.ts` - NEW
-  - `server/src/database/queries/sessions.queries.ts` - Updated to use user_id
-  - `server/src/database/queries/grades.queries.ts` - Updated to use user_id
-  - `server/src/database/queries/analytics.queries.ts` - Updated to use user_id
-  - `server/src/database/queries/teacherSessions.queries.ts` - Updated to use user_id
-  - `server/src/database/queries/users.queries.ts` - Added school-scoped methods
-  - `server/src/database/queries/studentProfiles.queries.ts` - Added school filter
-  - `server/src/database/queries/classrooms.queries.ts` - Added school filter
-  - `shared/types/school.types.ts` - NEW
-  - `shared/types/auth.types.ts` - Added schoolId to User, JwtPayload
-  - `server/src/types/index.ts` - Added SchoolRow, SchoolMembershipRow
-
-- **Database changes:**
-  - Schema version: v2.0 (Multi-school architecture)
-  - All existing data auto-migrated to "Academio Demo School"
-  - All users now have school_id and school_memberships
-
-- **Migration strategy:**
-  - Shadow columns (both student_id and user_id) maintained for backward compatibility
-  - Query files use fallback pattern: `WHERE user_id = ? OR (user_id IS NULL AND student_id = ?)`
-  - Legacy tables (students, teachers) kept but deprecated
-
----
-
-#### Session 1: Documentation Setup
-- **What was done:**
-  - Created ARCHITECT.md with system architecture diagrams
-  - Created SCHEMA.md with complete database documentation
-  - Created JOURNAL.md (this file) for progress tracking
-  - Verified development servers are running correctly
-
-- **Key files created:**
-  - `ARCHITECT.md` - System architecture, data flow, API contracts
-  - `SCHEMA.md` - Database schema, table definitions, relationships
-  - `JOURNAL.md` - Progress log and context continuity
-
-- **Current server status:**
-  - Frontend: http://localhost:5174 (running)
-  - Backend: http://localhost:3001 (running)
-  - Ollama: http://localhost:11434 (required for AI)
-
-- **Demo credentials verified:**
-  - Teacher: sarah.johnson@academio.edu / password123
-  - Student: emma.rodriguez@student.academio.edu / password123
+- Pruned `CLAUDE.md` from 56k chars to under 30k — behavioral instructions only
+- Created `DESIGN.md` — Liquid Glass design system reference
+- Created `HISTORY.md` — archived entries from 2026-02-07/08/09
+- Moved Teacher Interface file trees + SQL schemas + API tables to `ARCHITECT.md`
+- Updated `ARCHITECT.md` with full Project File Structure and On-Demand Personalization flow diagram
 
 ---
 
 ## Decisions Made
 
-### Architecture Decisions
-
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-02-21 | On-demand personalization instead of mass generation | Better UX, lower cost, student agency |
+| 2026-02-21 | CLAUDE.md < 30k chars maintenance rule | Keep AI context efficient |
 | 2026-02-08 | JWT tokens in localStorage | Simple client-side storage, works across tabs |
-| 2026-02-08 | `optionalAuth` middleware for chat | Allows personalization when logged in, still works without |
-| 2026-02-08 | Session ownership via `user_id` column | Ensures chat history persists per user |
+| 2026-02-08 | `optionalAuth` middleware for chat | Allows personalization when logged in |
 | 2026-02-08 | Auth headers in SSE fetch (not EventSource) | EventSource doesn't support custom headers |
-| 2026-02-07 | Multi-school architecture with `schools` table | Enable SaaS multi-tenancy, school isolation |
-| 2026-02-07 | Use `school_memberships` junction table | Allow teachers to work across multiple schools |
+| 2026-02-07 | Multi-school architecture with `schools` table | Enable SaaS multi-tenancy |
 | 2026-02-07 | Shadow columns (user_id + student_id) | Smooth migration without breaking existing data |
-| 2026-02-07 | Use unified `users` table with role field | Simpler auth, single source of truth |
-| 2026-02-07 | Keep legacy tables for now | Avoid breaking changes during active development |
 | 2026-02-07 | SSE for AI streaming | Simpler than WebSockets for unidirectional data |
-
-### Design Decisions
-
-| Date | Decision | Rationale |
-|------|----------|-----------|
-| 2026-02-07 | Liquid Glass UI system | Modern Apple-inspired look, differentiated UX |
-| 2026-02-07 | Motion library for animations | Smooth transitions, easy API |
 
 ---
 
@@ -535,51 +259,14 @@
 - None currently
 
 ### Notes for Future Sessions
-- The `students` and `teachers` tables are legacy - new code should use `users` table
+- The `students` and `teachers` tables are legacy — new code should use `users` table
 - System prompt for student AI is at `server/data/system-prompt.txt`
 - System prompt for teacher AI is at `server/data/teacher-system-prompt.txt`
-- Ollama must be running locally for AI features to work
+- All new routes MUST be registered in `server/src/middleware/permissionRegistry.ts`
 
-### Auth Debugging Quick Reference
-```bash
-# Test login and get token
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"sarah.johnson@academio.edu","password":"password123"}'
-
-# Test authenticated endpoint (replace TOKEN with actual JWT)
-curl http://localhost:3001/api/homework \
-  -H "Authorization: Bearer TOKEN"
-
-# Check if user's sessions are linked correctly
-node -e "const db = require('better-sqlite3')('server/data/sqlite.db'); \
-  console.log(db.prepare('SELECT id, user_id, title FROM sessions WHERE user_id IS NOT NULL').all());"
-```
-
-### Common Auth Error Messages
-| Error | Meaning | Fix |
-|-------|---------|-----|
-| "No authorization header provided" | Token not sent | Check frontend includes `Authorization: Bearer <token>` |
-| "No token provided" | Empty Bearer value | Check `authApi.getToken()` returns valid token |
-| "Token expired" | JWT past expiry | User needs to re-login |
-| "Invalid token" | JWT malformed/wrong secret | Check JWT_SECRET matches, token not corrupted |
-| "Access denied" | Role check failed | User doesn't have required role (TEACHER/STUDENT) |
-| "Not authenticated" | `req.user` undefined | Middleware not applied or token invalid |
-
-### Useful Commands
-```bash
-# Start development servers
-npm run dev
-
-# Start only frontend
-npm run dev:client
-
-# Start only backend
-npm run dev:server
-
-# Reset database (delete file, restart server)
-rm server/data/sqlite.db && npm run dev:server
-```
+### Demo Credentials (all passwords: `password123`)
+- Teachers: `sarah.johnson@academio.edu`, `david.kim@academio.edu`
+- Students: `emma.rodriguez@student.academio.edu`, `alex.turner@student.academio.edu`, plus 14 more
 
 ---
 
@@ -591,7 +278,7 @@ Phase 1: Core Features (Current)
 ├── ✅ Student Chat
 ├── ✅ Teacher Dashboard
 ├── ✅ Multi-School Architecture
-├── ✅ Lesson Creation & Personalization
+├── ✅ Lesson Creation & Personalization (On-Demand)
 ├── ✅ Homework Assignment & Personalization
 ├── 🔄 Student Profiles
 └── 🔄 Teacher AI Assistant
@@ -611,14 +298,12 @@ Phase 3: Classroom Management
 Phase 4: Multi-Tenant Features
 ├── ⬜ School Admin Portal
 ├── ⬜ School Settings/Branding
-├── ⬜ Subscription Management
-└── ⬜ Cross-School Teacher Assignment
+└── ⬜ Subscription Management
 
 Phase 5: Advanced Features
 ├── ⬜ Email Notifications
 ├── ⬜ PDF Export
-├── ⬜ Mobile App
-└── ⬜ Parent Portal
+└── ⬜ Mobile App
 ```
 
 Legend: ✅ Done | 🔄 In Progress | ⬜ Not Started
@@ -633,6 +318,7 @@ When starting a new session, the AI should:
 2. Check ARCHITECT.md for system design questions
 3. Check SCHEMA.md before modifying database
 4. Check CLAUDE.md for coding guidelines and Socratic Directive
-5. Run `npm run dev` if servers aren't running
+5. Check DESIGN.md before modifying any UI/glass components
+6. Run `npm run dev` if servers aren't running
 
 The Socratic Prime Directive (from CLAUDE.md) MUST be preserved in all student-facing AI code.

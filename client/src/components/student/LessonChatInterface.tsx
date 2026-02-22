@@ -25,6 +25,8 @@ export function LessonChatInterface() {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
   const [isChatExpanded, setIsChatExpanded] = useState(true);
+  // Track whether student has triggered personalization (to show personalized content)
+  const [showPersonalized, setShowPersonalized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const readerRef = useRef<HTMLDivElement>(null);
@@ -38,13 +40,32 @@ export function LessonChatInterface() {
     lesson,
     isLoading,
     isStreaming,
+    isPersonalizing,
     currentResponse,
     error,
     sendMessage,
     cancelStream,
+    personalizeLesson,
   } = useLessonChat({
     personalizedLessonId: lessonId || '',
   });
+
+  // Specular highlight for the "Personalizar" button
+  const { elementRef: personalizeBtnRef, specularGradient: personalizeBtnGradient } =
+    useSpecularHighlight<HTMLButtonElement>();
+
+  /**
+   * Displayed content: show personalized if student has triggered it, otherwise masterContent
+   */
+  const displayContent =
+    showPersonalized && lesson?.content !== lesson?.masterContent
+      ? lesson?.content
+      : (lesson?.masterContent || lesson?.content);
+
+  const handlePersonalize = async () => {
+    await personalizeLesson();
+    setShowPersonalized(true);
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -230,9 +251,9 @@ export function LessonChatInterface() {
 
                   {/* Lesson Content with Focus Mode Rendering */}
                   <div className="relative z-10">
-                    {lesson?.content ? (
+                    {displayContent ? (
                       <SmartMarkdown
-                        content={lesson.content}
+                        content={displayContent}
                         variant="focus"
                         className="text-solid"
                       />
@@ -247,6 +268,7 @@ export function LessonChatInterface() {
 
               {/* Quick Actions */}
               <div className="mt-6 flex flex-wrap gap-3">
+                {/* Open chat (mobile only) */}
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -260,6 +282,67 @@ export function LessonChatInterface() {
                     {t('student.lessonChat.askQuestion')}
                   </span>
                 </motion.button>
+
+                {/* Personalizar mi lección — on-demand AI personalization */}
+                <AnimatePresence>
+                  {!showPersonalized && (
+                    <motion.button
+                      ref={personalizeBtnRef}
+                      key="personalize-btn"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      whileHover={{ scale: isPersonalizing ? 1 : 1.03 }}
+                      whileTap={{ scale: isPersonalizing ? 1 : 0.97 }}
+                      onClick={handlePersonalize}
+                      disabled={isPersonalizing}
+                      className="relative overflow-hidden px-5 py-2.5 backdrop-blur-md bg-gradient-to-r from-purple-500/25 to-blue-500/25 border border-purple-400/40 rounded-xl text-sm font-medium text-solid hover:from-purple-500/35 hover:to-blue-500/35 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {/* Specular highlight overlay */}
+                      <div
+                        className="absolute inset-0 pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-300"
+                        style={{ background: personalizeBtnGradient }}
+                        aria-hidden="true"
+                      />
+                      {/* Top edge highlight */}
+                      <div
+                        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                        aria-hidden="true"
+                      />
+                      <span className="relative flex items-center gap-2">
+                        {isPersonalizing ? (
+                          <>
+                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            {t('student.lessonChat.personalizing', 'Personalizando...')}
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                            </svg>
+                            {t('student.lessonChat.personalizeLesson', 'Personalizar mi lección')}
+                          </>
+                        )}
+                      </span>
+                    </motion.button>
+                  )}
+                  {showPersonalized && (
+                    <motion.div
+                      key="personalized-badge"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="flex items-center gap-2 px-4 py-2 backdrop-blur-md bg-purple-500/15 border border-purple-400/30 rounded-xl text-sm text-purple-700"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {t('student.lessonChat.personalized', 'Lección personalizada')}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>

@@ -73,6 +73,8 @@ export const PERMISSION_REGISTRY: RoutePermission[] = [
   { method: 'GET', path: '/student/homework', permissions: ['STUDENT'], description: 'Get student homework' },
   { method: 'POST', path: '/student/homework/:id/submit', permissions: ['STUDENT'], description: 'Submit homework' },
   { method: 'GET', path: '/student/homework/:id/submission', permissions: ['STUDENT'], description: 'Get homework submission' },
+  { method: 'POST', path: '/student/lessons/:lessonId/exit-ticket', permissions: ['STUDENT'], description: 'Generate exit ticket questions' },
+  { method: 'POST', path: '/student/lessons/:lessonId/exit-ticket/submit', permissions: ['STUDENT'], description: 'Submit exit ticket answers' },
 
   // ============ Teacher-Only Routes ============
   { method: 'GET', path: '/teacher/profile', permissions: ['TEACHER'], description: 'Get teacher profile' },

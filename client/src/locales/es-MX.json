@@ -244,7 +244,23 @@
       "askAnything": "Pregúntame cualquier cosa sobre la lección",
       "suggestion1": "¿Puedes explicarme el concepto principal?",
       "suggestion2": "¿Por qué es importante este tema?",
-      "suggestion3": "Dame un ejemplo práctico"
+      "suggestion3": "Dame un ejemplo práctico",
+      "personalizeLesson": "Personalizar mi lección",
+      "personalizing": "Personalizando...",
+      "personalized": "Lección personalizada",
+      "exitTicket": {
+        "title": "Verificación de Comprensión",
+        "description": "Antes de marcar esta lección como completada, responde estas preguntas para confirmar tu comprensión.",
+        "generate": "Comprobar comprensión",
+        "generating": "Generando preguntas...",
+        "answerPlaceholder": "Escribe tu respuesta aquí...",
+        "submit": "Enviar respuestas",
+        "submitting": "Evaluando...",
+        "passed": "¡Lección completada!",
+        "failed": "Repasa el material",
+        "score": "{{correct}} de {{total}} correctas",
+        "tryAgain": "Intentar de nuevo"
+      }
     },
     "homeworkForm": {
       "question": "Pregunta {{number}}",
@@ -329,7 +345,8 @@
       "subtitle": "Crea una nueva lección para tus estudiantes",
       "details": "Detalles de la lección",
       "content": "Contenido de la lección",
-      "options": "Opciones",
+      "assignLesson": "Asignar a estudiantes",
+      "assignedSuccess": "Lección asignada exitosamente",
       "form": {
         "titleLabel": "Título *",
         "titlePlaceholder": "ej., Introducción a las fracciones",
@@ -340,11 +357,13 @@
         "allStudents": "Todos los estudiantes",
         "classroomHint": "Selecciona un salón para enviar esta lección solo a los estudiantes de esa clase",
         "generateWithAI": "Generar con IA",
-        "generating": "Generando...",
-        "contentPlaceholder": "Escribe el contenido de tu lección aquí, o haz clic en 'Generar con IA' para crear contenido automáticamente...",
-        "masterContentHint": "Este es el contenido maestro que se personalizará para cada estudiante basándose en su perfil.",
-        "autoPersonalize": "Personalizar automáticamente para todos los estudiantes",
-        "autoPersonalizeHint": "La IA creará una versión personalizada para cada estudiante basándose en su perfil"
+        "generating": "Generando contenido...",
+        "generatePrompt": "Genera el contenido de la lección con IA basado en el tema",
+        "previewContent": "Vista previa",
+        "editContent": "Editar",
+        "regenerate": "Regenerar",
+        "titleTopicRequired": "El título y tema son requeridos",
+        "topicRequired": "El tema es requerido"
       },
       "creating": "Creando..."
     },
@@ -735,7 +754,13 @@
     "submittedAt": "Entregado el {{date}}",
     "submitting": "Guardando...",
     "gradeError": "La calificación debe ser entre 0 y 100",
-    "feedbackRequired": "La retroalimentación es requerida"
+    "feedbackRequired": "La retroalimentación es requerida",
+    "rubricBreakdown": "Análisis por Rúbrica",
+    "rubric": {
+      "accuracy": "Exactitud",
+      "reasoning": "Razonamiento",
+      "effort": "Esfuerzo"
+    }
   },
 
   "panels": {

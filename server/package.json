@@ -18,7 +18,9 @@
     "test:auth": "tsx src/utils/verify-auth-integrity.ts",
     "test:security": "tsx src/utils/security-stress-test.ts",
     "test:grading": "tsx src/utils/test-spanish-grading.ts",
-    "test:homework-json": "tsx src/utils/test-json-homework.ts"
+    "test:homework-json": "tsx src/utils/test-json-homework.ts",
+    "test:homework-system": "tsx src/tests/homework-system.test.ts",
+    "test:pedagogical": "tsx src/utils/test-pedagogical-grounding.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

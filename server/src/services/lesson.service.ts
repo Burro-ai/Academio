@@ -191,7 +191,8 @@ export const lessonService = {
   },
 
   /**
-   * Create a lesson and optionally personalize for students (in classroom or all)
+   * Create a lesson and distribute to students (assigns masterContent as default view)
+   * Students can then optionally trigger AI personalization on demand.
    */
   async createLesson(
     teacherId: string,
@@ -220,15 +221,89 @@ export const lessonService = {
       classroomId: data.classroomId,
     });
 
-    // Personalize for students if requested (run in background)
-    if (data.generateForStudents) {
-      // Don't await - let it run in background
-      this.personalizeForStudentsInClassroom(lesson.id, data.classroomId).catch((err) => {
-        console.error('[Lesson] Background personalization failed:', err);
-      });
-    }
+    // Always distribute to students (creates personalized_lessons rows with masterContent)
+    // This makes the lesson immediately visible in the student portal
+    // Students can optionally trigger AI personalization on demand later
+    this.distributeToStudents(lesson.id, data.classroomId, teacherId).catch((err) => {
+      console.error('[Lesson] Background distribution failed:', err);
+    });
 
     return lesson;
+  },
+
+  /**
+   * Distribute a lesson to all relevant students by creating personalized_lessons rows
+   * with masterContent as the initial content (no AI personalization at this stage).
+   * Students can later request on-demand AI personalization.
+   */
+  async distributeToStudents(lessonId: string, classroomId?: string, teacherId?: string): Promise<number> {
+    const lesson = lessonsQueries.getById(lessonId);
+    if (!lesson) {
+      throw new Error('Lesson not found');
+    }
+
+    // Get all student profiles
+    let profiles: StudentProfileWithUser[];
+    if (classroomId) {
+      const allProfiles = studentProfilesQueries.getAllWithUserDetails();
+      profiles = allProfiles.filter(p => p.classroomId === classroomId);
+    } else if (teacherId) {
+      // Filter to students assigned to this teacher
+      const allProfiles = studentProfilesQueries.getAllWithUserDetails();
+      profiles = allProfiles.filter(p => p.teacherId === teacherId);
+    } else {
+      profiles = studentProfilesQueries.getAllWithUserDetails();
+    }
+
+    let distributed = 0;
+    for (const profile of profiles) {
+      const existing = lessonsQueries.getPersonalizedByLessonAndStudent(lessonId, profile.userId);
+      if (!existing) {
+        lessonsQueries.createPersonalized({
+          lessonId,
+          studentId: profile.userId,
+          personalizedContent: lesson.masterContent,  // Use masterContent as default
+        });
+        distributed++;
+      }
+    }
+
+    console.log(`[Lesson] Distributed lesson "${lessonId}" to ${distributed} students`);
+    return distributed;
+  },
+
+  /**
+   * On-demand personalization: student clicks "Personalizar mi lección"
+   * Generates AI-personalized content based on student profile and replaces masterContent in their row.
+   * Returns the newly personalized content.
+   */
+  async personalizeOnDemand(personalizedLessonId: string, studentId: string): Promise<string> {
+    const personalizedRow = lessonsQueries.getPersonalizedById(personalizedLessonId);
+    if (!personalizedRow || personalizedRow.studentId !== studentId) {
+      throw new Error('Personalized lesson not found');
+    }
+
+    const lesson = lessonsQueries.getById(personalizedRow.lessonId);
+    if (!lesson) {
+      throw new Error('Parent lesson not found');
+    }
+
+    // Get student profile for personalization context
+    const context = studentProfilesQueries.getPersonalizationContext(studentId);
+    if (!context) {
+      // No profile = return master content as-is
+      return lesson.masterContent;
+    }
+
+    console.log(`[Lesson] Generating on-demand personalization for student ${studentId}`);
+
+    // Generate AI-personalized content
+    const personalizedContent = await this.personalizeContent(lesson.masterContent, context);
+
+    // Update the existing row with AI-personalized content
+    lessonsQueries.updatePersonalizedContent(personalizedLessonId, personalizedContent);
+
+    return personalizedContent;
   },
 
   /**

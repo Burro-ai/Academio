@@ -14,6 +14,7 @@ interface HomeworkSubmissionRow {
   feedback: string | null;
   ai_suggested_grade: number | null;
   ai_suggested_feedback: string | null;
+  rubric_scores: string | null;  // JSON: { accuracy, reasoning, effort }
   graded_by: string | null;
   graded_at: string | null;
 }
@@ -35,6 +36,12 @@ export interface HomeworkAnswer {
   value: string;
 }
 
+export interface RubricScores {
+  accuracy: number;
+  reasoning: number;
+  effort: number;
+}
+
 export interface HomeworkSubmission {
   id: string;
   personalizedHomeworkId: string;
@@ -45,6 +52,7 @@ export interface HomeworkSubmission {
   feedback?: string;
   aiSuggestedGrade?: number;
   aiSuggestedFeedback?: string;
+  rubricScores?: RubricScores;
   gradedBy?: string;
   gradedAt?: string;
 }
@@ -61,19 +69,31 @@ export interface HomeworkSubmissionWithDetails extends HomeworkSubmission {
 /**
  * Convert row to submission object
  */
-const rowToSubmission = (row: HomeworkSubmissionRow): HomeworkSubmission => ({
-  id: row.id,
-  personalizedHomeworkId: row.personalized_homework_id,
-  studentId: row.student_id,
-  answers: JSON.parse(row.answers) as HomeworkAnswer[],
-  submittedAt: row.submitted_at,
-  grade: row.grade ?? undefined,
-  feedback: row.feedback ?? undefined,
-  aiSuggestedGrade: row.ai_suggested_grade ?? undefined,
-  aiSuggestedFeedback: row.ai_suggested_feedback ?? undefined,
-  gradedBy: row.graded_by ?? undefined,
-  gradedAt: row.graded_at ?? undefined,
-});
+const rowToSubmission = (row: HomeworkSubmissionRow): HomeworkSubmission => {
+  let rubricScores: RubricScores | undefined;
+  if (row.rubric_scores) {
+    try {
+      rubricScores = JSON.parse(row.rubric_scores) as RubricScores;
+    } catch {
+      // ignore malformed JSON
+    }
+  }
+
+  return {
+    id: row.id,
+    personalizedHomeworkId: row.personalized_homework_id,
+    studentId: row.student_id,
+    answers: JSON.parse(row.answers) as HomeworkAnswer[],
+    submittedAt: row.submitted_at,
+    grade: row.grade ?? undefined,
+    feedback: row.feedback ?? undefined,
+    aiSuggestedGrade: row.ai_suggested_grade ?? undefined,
+    aiSuggestedFeedback: row.ai_suggested_feedback ?? undefined,
+    rubricScores,
+    gradedBy: row.graded_by ?? undefined,
+    gradedAt: row.graded_at ?? undefined,
+  };
+};
 
 export const homeworkSubmissionsQueries = {
   /**
@@ -262,20 +282,21 @@ export const homeworkSubmissionsQueries = {
   },
 
   /**
-   * Update AI suggested grade and feedback
+   * Update AI suggested grade, feedback, and rubric scores
    */
   updateAISuggestion(
     submissionId: string,
     aiGrade: number,
-    aiFeedback: string
+    aiFeedback: string,
+    rubricScores?: RubricScores
   ): HomeworkSubmission | null {
     const db = getDb();
 
     db.prepare(`
       UPDATE homework_submissions
-      SET ai_suggested_grade = ?, ai_suggested_feedback = ?
+      SET ai_suggested_grade = ?, ai_suggested_feedback = ?, rubric_scores = ?
       WHERE id = ?
-    `).run(aiGrade, aiFeedback, submissionId);
+    `).run(aiGrade, aiFeedback, rubricScores ? JSON.stringify(rubricScores) : null, submissionId);
 
     return this.getById(submissionId);
   },

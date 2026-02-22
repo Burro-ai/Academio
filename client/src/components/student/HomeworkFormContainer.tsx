@@ -2,9 +2,10 @@
  * HomeworkFormContainer - Focus Mode Homework Viewer
  *
  * A full-screen immersive homework experience with:
- * - Centered single-column Question Stack (max-width 800px)
+ * - Two-column layout: Questions (60%) + Sidekick (40%)
  * - Visual progress bar as questions are answered
  * - Enhanced GlassCard surfaces for questions
+ * - Socratic AI Sidekick for homework help
  * - Liquid Glass design system
  */
 
@@ -14,10 +15,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { GlassCard, GlassButton } from '@/components/glass';
 import { HomeworkQuestionCard } from './HomeworkQuestionCard';
+import { HomeworkSidekick } from './HomeworkSidekick';
 import { SmartMarkdown } from '@/components/shared/SmartMarkdown';
 import { useHomeworkForm } from '@/hooks/useHomeworkForm';
 import { studentApi } from '@/services/studentApi';
-import { PersonalizedHomeworkWithDetails } from '@/types';
+import { PersonalizedHomeworkWithDetails, HomeworkQuestionJson } from '@/types';
 
 export function HomeworkFormContainer() {
   const { id: homeworkId } = useParams<{ id: string }>();
@@ -27,6 +29,7 @@ export function HomeworkFormContainer() {
   const [isLoadingHomework, setIsLoadingHomework] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [isSidekickExpanded, setIsSidekickExpanded] = useState(true);
 
   // Load homework data
   useEffect(() => {
@@ -104,6 +107,25 @@ export function HomeworkFormContainer() {
 
   const dueStatus = homework ? getDueStatus(homework.homework.dueDate) : null;
 
+  // Get structured questions from JSON or fallback to parsed questions
+  const sidekickQuestions: HomeworkQuestionJson[] = useMemo(() => {
+    const jsonQuestions = homework?.questionsJson || homework?.homework?.questionsJson;
+    if (jsonQuestions && Array.isArray(jsonQuestions)) {
+      return jsonQuestions;
+    }
+    // Fallback: convert parsed questions to JSON format
+    return questions.map((q, idx) => ({
+      id: idx + 1,
+      text: q.text,
+      type: q.type === 'textarea' ? 'open' : 'open' as const,
+    }));
+  }, [homework, questions]);
+
+  const handleAskSidekick = (_questionId: number) => {
+    setIsSidekickExpanded(true);
+    // The sidekick component will handle the question context
+  };
+
   if (isLoadingHomework) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -151,7 +173,7 @@ export function HomeworkFormContainer() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen flex flex-col"
+      className="h-screen flex flex-col overflow-hidden"
     >
       {/* Header with Progress Bar */}
       <header className="flex-shrink-0 backdrop-blur-2xl bg-white/10 border-b border-white/15 z-10">
@@ -166,7 +188,7 @@ export function HomeworkFormContainer() {
         </div>
 
         <div className="px-4 py-3">
-          <div className="max-w-[800px] mx-auto flex items-center gap-4">
+          <div className="max-w-[95vw] mx-auto flex items-center gap-4">
             <motion.button
               onClick={handleBack}
               className="p-2.5 hover:bg-white/15 rounded-xl transition-all duration-200"
@@ -258,13 +280,38 @@ export function HomeworkFormContainer() {
                 </svg>
               </div>
             </div>
+
+            {/* Sidekick Toggle for Mobile */}
+            <button
+              onClick={() => setIsSidekickExpanded(!isSidekickExpanded)}
+              className="lg:hidden p-2.5 hover:bg-white/15 rounded-xl transition-all duration-200"
+            >
+              <svg
+                className={`w-5 h-5 text-prominent transition-transform ${isSidekickExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content - Centered Single Column */}
-      <div className="flex-1 overflow-y-auto px-4 py-8">
-        <div className="max-w-[800px] mx-auto space-y-8">
+      {/* Main Content - 60/40 Split */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* Left Pane - Questions (60%) */}
+        <motion.div
+          className={`flex-1 lg:flex-[0.6] overflow-hidden flex flex-col ${
+            !isSidekickExpanded ? 'flex' : 'hidden lg:flex'
+          }`}
+          initial={{ x: -20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="flex-1 overflow-y-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto space-y-8">
           {/* Instructions Card (Collapsible) */}
           <AnimatePresence>
             {showInstructions && (
@@ -413,9 +460,21 @@ export function HomeworkFormContainer() {
                 <span>📝</span>
                 {t('student.homeworkForm.questions')}
               </h2>
-              <span className="text-sm text-prominent px-3 py-1 backdrop-blur-sm bg-white/10 rounded-lg">
-                {answeredCount} / {totalCount}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-prominent px-3 py-1 backdrop-blur-sm bg-white/10 rounded-lg">
+                  {answeredCount} / {totalCount}
+                </span>
+                {/* Mobile: Show Sidekick Button */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setIsSidekickExpanded(true)}
+                  className="lg:hidden px-3 py-1.5 backdrop-blur-md bg-purple-500/25 border border-purple-400/40 rounded-lg text-sm font-medium text-purple-700 hover:bg-purple-500/35 transition-all flex items-center gap-1.5"
+                >
+                  <span>🤖</span>
+                  {t('homework.sidekick.title')}
+                </motion.button>
+              </div>
             </div>
 
             {questions.map((question, index) => (
@@ -433,6 +492,7 @@ export function HomeworkFormContainer() {
                   onChange={(value) => updateAnswer(question.id, value)}
                   disabled={isSubmitted}
                   isAnswered={!!answers[question.id]?.trim()}
+                  onAskSidekick={() => handleAskSidekick(index + 1)}
                 />
               </motion.div>
             ))}
@@ -455,55 +515,96 @@ export function HomeworkFormContainer() {
             )}
           </AnimatePresence>
 
-          {/* Submit Button */}
+          {/* Submit Button - Only shows when ALL questions are answered */}
           {!isSubmitted && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="flex flex-col sm:flex-row justify-end gap-4 pt-4"
+              className="pt-4"
             >
-              <div className="flex-1 sm:flex-initial">
-                <GlassButton
-                  variant="primary"
-                  size="lg"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || answeredCount === 0}
-                  className="w-full sm:w-auto"
-                >
-                  {isSubmitting ? (
-                    <span className="flex items-center gap-2">
-                      <svg
-                        className="w-5 h-5 animate-spin"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                        />
+              {answeredCount < totalCount ? (
+                /* Incomplete notice - shows remaining questions */
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 backdrop-blur-md bg-yellow-500/10 border border-yellow-400/30 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 backdrop-blur-md bg-yellow-500/20 border border-yellow-400/30 rounded-xl flex items-center justify-center">
+                      <svg className="w-5 h-5 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
-                      {t('student.homeworkForm.submitting')}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {t('student.homeworkForm.submitHomework')}
-                    </span>
-                  )}
-                </GlassButton>
-              </div>
+                    </div>
+                    <div>
+                      <p className="font-medium text-yellow-800">
+                        {t('student.homeworkForm.incompleteTitle', 'Responde todas las preguntas')}
+                      </p>
+                      <p className="text-sm text-yellow-700">
+                        {t('student.homeworkForm.incompleteMessage', 'Faltan {{remaining}} preguntas por responder', { remaining: totalCount - answeredCount })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-yellow-700 font-medium px-3 py-1 backdrop-blur-sm bg-yellow-500/20 rounded-lg">
+                    {answeredCount} / {totalCount}
+                  </div>
+                </div>
+              ) : (
+                /* Submit button - only visible when all questions answered */
+                <div className="flex flex-col sm:flex-row justify-end gap-4">
+                  <div className="flex-1 sm:flex-initial">
+                    <GlassButton
+                      variant="primary"
+                      size="lg"
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="w-full sm:w-auto"
+                    >
+                      {isSubmitting ? (
+                        <span className="flex items-center gap-2">
+                          <svg
+                            className="w-5 h-5 animate-spin"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                          </svg>
+                          {t('student.homeworkForm.submitting')}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {t('student.homeworkForm.submitHomework')}
+                        </span>
+                      )}
+                    </GlassButton>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
-          {/* Bottom Spacing */}
-          <div className="h-8" />
-        </div>
+              {/* Bottom Spacing */}
+              <div className="h-8" />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Right Pane - Homework Sidekick Chat (40%) */}
+        <AnimatePresence>
+          {isSidekickExpanded && homeworkId && (
+            <HomeworkSidekick
+              personalizedHomeworkId={homeworkId}
+              questions={sidekickQuestions}
+              isExpanded={isSidekickExpanded}
+              onToggleExpand={() => setIsSidekickExpanded(!isSidekickExpanded)}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );
