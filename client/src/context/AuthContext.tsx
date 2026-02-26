@@ -20,172 +20,137 @@ interface AuthContextType {
   profile: StudentProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** @deprecated Always false once children render (blocking hydration). */
   isInitializing: boolean;
-  isReady: boolean; // True when auth state is fully loaded and validated
+  /** @deprecated Always true once children render (blocking hydration). */
+  isReady: boolean;
   error: string | null;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
   refreshUser: () => Promise<void>;
-  waitForAuth: () => Promise<boolean>; // Wait for auth to be ready, returns isAuthenticated
+  /** @deprecated Hydration is now blocking — resolves immediately. */
+  waitForAuth: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: React.ReactNode;
-}
-
-// Initialize the interceptor once at module load (before React renders)
+// Initialize interceptor and run preflight synchronously BEFORE React renders.
 initializeAuthInterceptor();
-
-// Pre-flight check runs BEFORE React component tree
 const initialAuthState = preflightAuthCheck();
 
-export function AuthProvider({ children }: AuthProviderProps) {
-  // Initialize with pre-flight data for INSTANT hydration (no flash)
+const PUBLIC_ROUTES = ['/login', '/register', '/admin', '/'];
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // ── Synchronous hydration from localStorage (no flash) ──────────────────
   const [user, setUser] = useState<User | null>(() => {
-    if (initialAuthState.user) {
-      return {
-        ...initialAuthState.user,
-        role: normalizeRole(initialAuthState.user.role) || 'STUDENT',
-        createdAt: '',
-        updatedAt: '',
-      } as User;
-    }
-    return null;
+    if (!initialAuthState.user) return null;
+    return {
+      ...initialAuthState.user,
+      role: normalizeRole(initialAuthState.user.role) || 'STUDENT',
+      createdAt: '',
+      updatedAt: '',
+    } as User;
   });
-  const [profile, setProfile] = useState<StudentProfile | null>(() => authApi.getStoredProfile());
+
+  const [profile, setProfile] = useState<StudentProfile | null>(
+    () => authApi.getStoredProfile()
+  );
+
   const [isLoading, setIsLoading] = useState(false);
-  // NON-BLOCKING: Don't block rendering, verify in background
-  const [isVerifying, setIsVerifying] = useState(initialAuthState.needsVerification);
+
+  // BLOCKING: children don't render until this is true.
+  // Skip if no verification needed (no token → login page renders immediately).
+  const [isHydrated, setIsHydrated] = useState(!initialAuthState.needsVerification);
+
   const [error, setError] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Track if component is mounted to prevent state updates after unmount
   const isMountedRef = useRef(true);
 
   const isAuthenticated = !!user;
 
-  // Get redirect path based on role
-  const getRedirectPath = (role: UserRole): string => {
-    return role === 'TEACHER' ? '/dashboard/teacher' : '/dashboard/student';
-  };
+  const getRedirectPath = (role: UserRole): string =>
+    role === 'TEACHER' ? '/dashboard/teacher' : '/dashboard/student';
 
-  // Subscribe to global logout events from the interceptor
+  // ── 401 forced-logout from the fetch interceptor ────────────────────────
   useEffect(() => {
     const unsubscribe = onAuthEvent((event) => {
       if (event.type === 'logout' && isMountedRef.current) {
-        console.log('[AuthContext] Received logout event:', event.reason);
         setUser(null);
         setProfile(null);
-        setIsVerifying(false);
-
-        // Only navigate if not already on a public route
-        const publicRoutes = ['/login', '/register', '/admin', '/'];
-        if (!publicRoutes.some(route => location.pathname.startsWith(route))) {
+        if (!PUBLIC_ROUTES.some(r => location.pathname.startsWith(r))) {
           navigate('/login', { state: { from: location.pathname, reason: event.reason } });
         }
       }
     });
-
     return () => {
       isMountedRef.current = false;
       unsubscribe();
     };
   }, [navigate, location.pathname]);
 
-  // Verify authentication with server on mount (NON-BLOCKING)
+  // ── BLOCKING server verification ────────────────────────────────────────
+  // Show loading screen until this resolves. Only runs when there is a token
+  // to verify (initialAuthState.needsVerification === true).
   useEffect(() => {
+    if (!initialAuthState.needsVerification || !initialAuthState.token) {
+      setIsHydrated(true);
+      return;
+    }
+
     const verifyAuth = async () => {
-      // If no token or pre-flight said no verification needed, we're done
-      if (!initialAuthState.needsVerification || !initialAuthState.token) {
-        console.log('[AuthContext] No verification needed, skipping');
-        setIsVerifying(false);
-        return;
-      }
-
-      console.log('[AuthContext] Starting background session verification...');
-
-      // Create a timeout promise (3 seconds max wait)
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Verification timeout')), 3000);
-      });
-
       try {
-        // Race between verification and timeout
         const { user: currentUser, profile: currentProfile } = await Promise.race([
           authApi.getCurrentUser(),
-          timeoutPromise,
+          // 5 s timeout — on timeout we KEEP stored data (offline/slow network resilience)
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 5000)
+          ),
         ]);
-
         if (isMountedRef.current) {
           setUser(currentUser);
           setProfile(currentProfile);
-          console.log('[AuthContext] Session verified with server for:', currentUser.email, 'role:', currentUser.role);
         }
       } catch (err) {
-        // Server rejected the token, timeout, or network error
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        console.error('[AuthContext] Verification failed:', errorMsg);
-
+        const msg = err instanceof Error ? err.message : String(err);
         if (isMountedRef.current) {
-          // On timeout, keep using stored data ONLY if we have valid user
-          if (errorMsg === 'Verification timeout' && user) {
-            console.log('[AuthContext] Timeout - continuing with stored auth data');
+          if (msg === 'timeout') {
+            // Network issue — keep stored session, don't punish the user
+            console.warn('[AuthContext] Verify timed out — keeping stored session');
           } else {
-            // Server explicitly rejected OR we have no user - clear auth
-            console.log('[AuthContext] Clearing auth - rejection or missing user');
+            // Server explicitly rejected the token — wipe everything
+            console.log('[AuthContext] Verify rejected:', msg);
             setUser(null);
             setProfile(null);
             authApi.clearAll();
           }
         }
       } finally {
-        if (isMountedRef.current) {
-          setIsVerifying(false);
-          console.log('[AuthContext] Verification complete, isVerifying set to false');
-        }
+        if (isMountedRef.current) setIsHydrated(true);
       }
     };
 
-    // Safety timeout: ensure isVerifying is set to false even if something goes wrong
-    const safetyTimeout = setTimeout(() => {
-      if (isMountedRef.current && isVerifying) {
-        console.warn('[AuthContext] Safety timeout triggered - forcing isVerifying to false');
-        setIsVerifying(false);
-      }
-    }, 5000);
-
     verifyAuth();
+  }, []); // Runs once on mount
 
-    return () => clearTimeout(safetyTimeout);
-  }, []); // Run once on mount
-
-  // Redirect to login if not authenticated (except for public routes)
+  // ── Route guard (only active once hydrated) ─────────────────────────────
   useEffect(() => {
-    // Don't redirect while still verifying - user might be authenticated
-    if (isVerifying) return;
-
-    const publicRoutes = ['/login', '/register', '/admin'];
-    const isPublicRoute = publicRoutes.some(route => location.pathname.startsWith(route));
-
-    if (!isAuthenticated && !isPublicRoute && location.pathname !== '/') {
+    if (!isHydrated) return;
+    if (!isAuthenticated && !PUBLIC_ROUTES.some(r => location.pathname.startsWith(r))) {
       navigate('/login', { state: { from: location.pathname } });
     }
-  }, [isAuthenticated, isVerifying, location.pathname, navigate]);
+  }, [isAuthenticated, isHydrated, location.pathname, navigate]);
 
+  // ── Auth actions ─────────────────────────────────────────────────────────
   const login = useCallback(async (data: LoginRequest) => {
     setIsLoading(true);
     setError(null);
-
     try {
       const response = await authApi.login(data);
       setUser(response.user);
-
-      // Fetch profile if student (this also stores it in localStorage via getCurrentUser)
       const normalizedRole = normalizeRole(response.user.role);
       if (normalizedRole === 'STUDENT') {
         const { profile: userProfile } = await authApi.getCurrentUser();
@@ -194,11 +159,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setProfile(null);
         authApi.setStoredProfile(null);
       }
-
-      // Navigate to appropriate dashboard
       const from = (location.state as { from?: string })?.from;
-      const redirectTo = from || response.redirectTo || getRedirectPath(normalizedRole as UserRole);
-      navigate(redirectTo);
+      navigate(from || response.redirectTo || getRedirectPath(normalizedRole as UserRole));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       throw err;
@@ -210,12 +172,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const register = useCallback(async (data: RegisterRequest) => {
     setIsLoading(true);
     setError(null);
-
     try {
       const response = await authApi.register(data);
       setUser(response.user);
-
-      // Fetch profile if student
       const normalizedRole = normalizeRole(response.user.role);
       if (normalizedRole === 'STUDENT') {
         const { profile: userProfile } = await authApi.getCurrentUser();
@@ -224,10 +183,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setProfile(null);
         authApi.setStoredProfile(null);
       }
-
-      // Navigate to appropriate dashboard
-      const redirectTo = response.redirectTo || getRedirectPath(normalizedRole as UserRole);
-      navigate(redirectTo);
+      navigate(response.redirectTo || getRedirectPath(normalizedRole as UserRole));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
       throw err;
@@ -238,11 +194,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = useCallback(async () => {
     setIsLoading(true);
-
     try {
       await authApi.logout();
     } catch {
-      // Even if logout API fails, clear local state
       authApi.clearAll();
     } finally {
       setUser(null);
@@ -252,53 +206,47 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [navigate]);
 
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+  const clearError = useCallback(() => setError(null), []);
 
   const refreshUser = useCallback(async () => {
     if (!authApi.isAuthenticated()) return;
-
     try {
       const { user: currentUser, profile: currentProfile } = await authApi.getCurrentUser();
       setUser(currentUser);
       setProfile(currentProfile);
     } catch (err) {
-      // If refresh fails, logout (interceptor handles 401)
       console.error('[AuthContext] Failed to refresh user:', err);
     }
   }, []);
 
-  // Wait for auth to be ready - useful for components that need to ensure auth is loaded
-  const waitForAuth = useCallback(async (): Promise<boolean> => {
-    // If not verifying, return current state immediately
-    if (!isVerifying) {
-      return isAuthenticated;
-    }
+  // Hydration is now blocking — by the time children render isHydrated is already true.
+  const waitForAuth = useCallback((): Promise<boolean> =>
+    Promise.resolve(isAuthenticated), [isAuthenticated]);
 
-    // Wait for verification to complete (max 3 seconds)
-    return new Promise((resolve) => {
-      const startTime = Date.now();
-      const checkInterval = setInterval(() => {
-        if (!isVerifying || Date.now() - startTime > 3000) {
-          clearInterval(checkInterval);
-          resolve(!!user);
-        }
-      }, 50); // Check every 50ms
-    });
-  }, [isVerifying, isAuthenticated, user]);
-
-  // isReady = not initializing (always true now since we don't block)
-  // isVerifying indicates background verification is in progress
-  const isReady = true;
+  // ── BLOCKING gate: show loader until server verify completes ─────────────
+  if (!isHydrated) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: 'rgba(10,10,20,0.92)',
+      }}>
+        <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', letterSpacing: '0.08em' }}>
+          Verificando sesión...
+        </span>
+      </div>
+    );
+  }
 
   const value: AuthContextType = {
     user,
     profile,
     isAuthenticated,
     isLoading,
-    isInitializing: isVerifying, // Map to isVerifying for backwards compatibility
-    isReady,
+    isInitializing: false, // Always false once children render
+    isReady: true,         // Always true once children render
     error,
     login,
     register,
@@ -308,7 +256,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     waitForAuth,
   };
 
-  // NON-BLOCKING: Render children immediately, verification happens in background
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

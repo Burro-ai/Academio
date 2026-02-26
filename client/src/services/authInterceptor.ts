@@ -21,6 +21,15 @@ const TOKEN_KEY = 'academio_token';
 const USER_KEY = 'academio_user';
 const PROFILE_KEY = 'academio_profile';
 
+// ALL keys that have ever stored auth state — wiped on every login/logout.
+// Prevents "Identity Contamination" when switching between Teacher/Student accounts
+// or opening incognito after a previous session left stale legacy data.
+const ALL_AUTH_KEYS = [
+  TOKEN_KEY, USER_KEY, PROFILE_KEY,
+  // Legacy pre-JWT keys (from early teacher password auth)
+  'teacherPassword', 'token', 'userRole', 'role', 'user', 'academio_role',
+] as const;
+
 // Event for global logout notification
 type AuthEventType = 'logout' | 'tokenRefresh' | 'sessionExpired';
 
@@ -82,14 +91,13 @@ export function getStoredUserSync(): { id: string; email: string; role: string; 
 }
 
 /**
- * Clear all auth data from localStorage
- * Called on 401 responses or explicit logout
+ * Clear ALL auth data from localStorage — current keys plus every legacy key.
+ * Single source of truth for "wipe storage". Called on 401 responses, explicit
+ * logout, and at the start of every login() to guarantee a clean slate.
  */
 export function clearAuthData(): void {
   try {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(PROFILE_KEY);
+    ALL_AUTH_KEYS.forEach(key => localStorage.removeItem(key));
   } catch {
     // Ignore localStorage errors
   }
