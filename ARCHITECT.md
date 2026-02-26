@@ -1223,9 +1223,12 @@ Server (lessonChat.service.ts)
   yield { type: 'token', content }  ×N
          │
          ▼
-  [Server] analyticsService.calculateAndPersist(session.id, messages)
-         │   → analyticsQueries.updateStruggleDimensions(sessionId, dimensions)
-         │   → UPDATE learning_analytics SET struggle_dimensions=... WHERE session_id=?
+  [Server] analyticsService.calculateAndPersist(session.id, messages, age, grade, rowContext)
+         │   rowContext present → lessonChatQueries.updateStruggleDimensions()
+         │   → UPDATE lesson_chat_sessions SET struggle_score=?, struggle_dimensions=? WHERE id=?
+         │
+         │   rowContext absent → analyticsQueries.updateStruggleDimensions()
+         │   → UPDATE learning_analytics SET struggle_dimensions=? WHERE session_id=?
          │
          ▼
   yield { type: 'done' }
@@ -1237,15 +1240,23 @@ Server (lessonChat.service.ts)
           → setMessages([...prev, assistantMessage])
 ```
 
-### ⚠️ Known Architectural Gap (2026-02-25)
+### Analytics Storage: lesson_chat_sessions vs learning_analytics
 
-`analyticsService.calculateAndPersist()` is called with `lesson_chat_sessions.id` as `sessionId`.
-However `learning_analytics` rows are only created for the old `sessions` table entries (seeded/regular chat).
-`lesson_chat_sessions` have no corresponding `learning_analytics` row to UPDATE — so the UPDATE
-silently no-ops (0 rows affected). Analytics are **calculated** correctly but **not persisted**.
+`learning_analytics.session_id` has `FOREIGN KEY REFERENCES sessions(id) ON DELETE CASCADE`.
+`lesson_chat_sessions.id` values don't exist in `sessions` — INSERTing them throws `SQLITE_CONSTRAINT_FOREIGNKEY`.
 
-**Fix required:** `lessonChat.service.ts` must INSERT a `learning_analytics` row on first message
-of a new lesson chat session, or `updateStruggleDimensions` must do an UPSERT.
+**Resolution (2026-02-25):** Struggle data for lesson chat sessions is stored directly on `lesson_chat_sessions`:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `struggle_score` | `REAL DEFAULT 0` | Composite struggle score (0–1) |
+| `struggle_dimensions` | `TEXT` | JSON: `{socraticDepth, errorPersistence, frustrationSentiment, composite}` |
+
+`analyticsService.calculateAndPersist(sessionId, messages, age, grade, rowContext)`:
+- **`rowContext` present** → `lessonChatQueries.updateStruggleDimensions()` (lesson chat path)
+- **`rowContext` absent** → `analyticsQueries.updateStruggleDimensions()` (legacy regular chat path)
+
+Teacher intervention alerts (`getStudentsNeedingIntervention`) UNION both tables so alerts surface from either chat type.
 
 ### Consumer Hooks
 

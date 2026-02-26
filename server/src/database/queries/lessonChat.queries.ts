@@ -329,6 +329,25 @@ export const lessonChatQueries = {
   },
 
   /**
+   * Update struggle score and dimensions for a lesson chat session.
+   * Stored directly here because learning_analytics.session_id has a FK to sessions(id)
+   * which lesson_chat_sessions.id cannot satisfy.
+   */
+  updateStruggleDimensions(sessionId: string, dimensions: {
+    socraticDepth: number;
+    errorPersistence: number;
+    frustrationSentiment: number;
+    composite: number;
+  }): void {
+    const db = getDb();
+    db.prepare(`
+      UPDATE lesson_chat_sessions
+      SET struggle_score = ?, struggle_dimensions = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).run(dimensions.composite, JSON.stringify(dimensions), sessionId);
+  },
+
+  /**
    * Delete a session and all its messages
    */
   deleteSession(sessionId: string): boolean {

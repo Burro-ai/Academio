@@ -522,7 +522,13 @@ SOLO usa estos intereses si:
         session.id,
         updatedHistory,
         studentProfile?.age ?? null,
-        studentProfile?.gradeLevel ?? null
+        studentProfile?.gradeLevel ?? null,
+        {
+          userId: studentId,
+          subject: personalizedLesson.lesson?.subject || undefined,
+          topic: personalizedLesson.lesson?.title || undefined,
+          questionsAsked: updatedHistory.filter(m => m.role === 'user').length,
+        }
       );
 
       // Send completion event with metadata

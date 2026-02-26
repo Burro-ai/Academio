@@ -66,7 +66,17 @@
 
 ### 2026-02-25
 
-#### Code Compression & DRY Audit (this session)
+#### Analytics UPSERT Gap Fix
+
+- **Root cause**: `learning_analytics.session_id` has `FOREIGN KEY REFERENCES sessions(id)`. `lesson_chat_sessions.id` values don't exist in `sessions` → any INSERT attempt threw `SQLITE_CONSTRAINT_FOREIGNKEY`.
+- **Fix (4 files)**:
+  - `db.ts`: Added `addStruggleScoreToLessonChatSessions()` migration — adds `struggle_score REAL DEFAULT 0` + `struggle_dimensions TEXT` directly to `lesson_chat_sessions`
+  - `lessonChat.queries.ts`: Added `updateStruggleDimensions()` — writes to `lesson_chat_sessions` (no FK issue)
+  - `analytics.service.ts`: `calculateAndPersist()` now routes by presence of `rowContext` — lesson chat sessions write to `lessonChatQueries`, legacy sessions write to `analyticsQueries`
+  - `analytics.queries.ts`: `getStudentsNeedingIntervention()` now UNIONs `learning_analytics` with `lesson_chat_sessions` — teacher dashboards see struggle alerts from both chat types
+- **Verified live**: Sent "no entiendo nada, me rindo" → session stored `struggle_score: 0.425`, `struggle_dimensions: {socraticDepth:1, errorPersistence:0.333, frustrationSentiment:0.333, composite:0.425}` ✅
+
+#### Code Compression & DRY Audit (earlier this session)
 
 - **Phase 2 — DRY Audit: Consolidated SSE hooks**
   - Created `client/src/hooks/useAIPipe.ts` — universal SSE pipe hook
@@ -136,6 +146,8 @@
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-02-25 | Store struggle in `lesson_chat_sessions` | `learning_analytics.session_id` FK prevents lesson chat session IDs from being used there |
+| 2026-02-25 | `getStudentsNeedingIntervention` UNION | Teacher alerts must span both session types |
 | 2026-02-25 | `useAIPipe` with callback refs | Stable `pipe()` identity; callbacks always current |
 | 2026-02-25 | `clearResponseOnDone` flag | Lesson/homework chat clears currentResponse (shows in messages array) |
 | 2026-02-22 | Exit ticket pass @ 0.60 | Conservative enough to be meaningful; AI failure auto-passes at 0.5 |

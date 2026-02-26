@@ -178,9 +178,26 @@ export const analyticsQueries = {
          AND la.struggle_score > 0.7
          AND la.resolved = 0
          AND la.created_at > datetime('now', '-7 days')
-         ORDER BY la.struggle_score DESC`
+         UNION
+         SELECT
+           u.id as studentId,
+           u.name as studentName,
+           lcs.struggle_score as struggleScore,
+           l.subject,
+           l.title as topic,
+           lcs.updated_at as createdAt
+         FROM lesson_chat_sessions lcs
+         JOIN users u ON lcs.student_id = u.id
+         JOIN student_profiles sp ON u.id = sp.user_id
+         JOIN classrooms c ON sp.classroom_id = c.id
+         JOIN personalized_lessons pl ON lcs.personalized_lesson_id = pl.id
+         JOIN lessons l ON pl.lesson_id = l.id
+         WHERE c.teacher_id = ?
+         AND lcs.struggle_score > 0.7
+         AND lcs.updated_at > datetime('now', '-7 days')
+         ORDER BY struggleScore DESC`
       )
-      .all(teacherId) as {
+      .all(teacherId, teacherId) as {
         studentId: string;
         studentName: string;
         struggleScore: number;

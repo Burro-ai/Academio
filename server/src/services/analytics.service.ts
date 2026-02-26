@@ -1,4 +1,5 @@
 import { analyticsQueries } from '../database/queries/analytics.queries';
+import { lessonChatQueries } from '../database/queries/lessonChat.queries';
 import { getPedagogicalPersona } from './aiGatekeeper.service';
 import { LessonChatMessage } from '../database/queries/lessonChat.queries';
 
@@ -199,17 +200,36 @@ class AnalyticsService {
   /**
    * Calculate struggle dimensions AND persist them to learning_analytics for a session.
    * Call this after each assistant response in the lesson chat.
+   *
+   * rowContext signals that this is a lesson_chat_session (not a legacy session).
+   * When provided, dimensions are written to lesson_chat_sessions directly because
+   * learning_analytics.session_id has a FK → sessions(id) that lesson_chat_sessions.id
+   * cannot satisfy.
    */
   calculateAndPersist(
     sessionId: string,
     messages: LessonChatMessage[],
     studentAge?: number | null,
-    studentGradeLevel?: string | null
+    studentGradeLevel?: string | null,
+    rowContext?: {
+      userId: string;
+      subject?: string;
+      topic?: string;
+      questionsAsked?: number;
+    }
   ): StruggleDimensions {
     const dimensions = this.calculateStruggleDimensions(messages, studentAge, studentGradeLevel);
 
     try {
-      analyticsQueries.updateStruggleDimensions(sessionId, dimensions);
+      if (rowContext) {
+        // Lesson chat session: write directly to lesson_chat_sessions.
+        // learning_analytics.session_id has a FK → sessions(id), which
+        // lesson_chat_sessions.id cannot satisfy, so we store here instead.
+        lessonChatQueries.updateStruggleDimensions(sessionId, dimensions);
+      } else {
+        // Legacy chat session: pre-seeded row exists in learning_analytics.
+        analyticsQueries.updateStruggleDimensions(sessionId, dimensions);
+      }
     } catch (err) {
       // Analytics failure must never break the lesson chat
       console.warn('[Analytics] Failed to persist struggle dimensions:', err);

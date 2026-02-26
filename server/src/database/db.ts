@@ -55,6 +55,9 @@ export const initializeDatabase = async (): Promise<void> => {
   // Add struggle_dimensions, comprehension_score, exit_ticket_passed columns
   addStruggleDimensionsToAnalytics();
 
+  // Add struggle_score, struggle_dimensions to lesson_chat_sessions
+  addStruggleScoreToLessonChatSessions();
+
   // Read and execute schema
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
@@ -703,6 +706,30 @@ export const addQuestionsJsonColumn = (): void => {
     if (!hasQuestionsJson) {
       console.log('Adding questions_json column to personalized_homework table...');
       db.exec('ALTER TABLE personalized_homework ADD COLUMN questions_json TEXT');
+    }
+  }
+};
+
+/**
+ * Add struggle_score and struggle_dimensions to lesson_chat_sessions.
+ * lesson_chat_sessions cannot reference learning_analytics (which has a FK to sessions(id)),
+ * so struggle data is stored directly on the session that owns it.
+ */
+export const addStruggleScoreToLessonChatSessions = (): void => {
+  const tableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='lesson_chat_sessions'"
+  ).get();
+
+  if (tableExists) {
+    const info = db.prepare("PRAGMA table_info(lesson_chat_sessions)").all() as { name: string }[];
+
+    if (!info.some(col => col.name === 'struggle_score')) {
+      console.log('Adding struggle_score column to lesson_chat_sessions...');
+      db.exec('ALTER TABLE lesson_chat_sessions ADD COLUMN struggle_score REAL DEFAULT 0');
+    }
+    if (!info.some(col => col.name === 'struggle_dimensions')) {
+      console.log('Adding struggle_dimensions column to lesson_chat_sessions...');
+      db.exec('ALTER TABLE lesson_chat_sessions ADD COLUMN struggle_dimensions TEXT');
     }
   }
 };
