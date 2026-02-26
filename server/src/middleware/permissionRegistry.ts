@@ -75,6 +75,9 @@ export const PERMISSION_REGISTRY: RoutePermission[] = [
   { method: 'GET', path: '/student/homework/:id/submission', permissions: ['STUDENT'], description: 'Get homework submission' },
   { method: 'POST', path: '/student/lessons/:lessonId/exit-ticket', permissions: ['STUDENT'], description: 'Generate exit ticket questions' },
   { method: 'POST', path: '/student/lessons/:lessonId/exit-ticket/submit', permissions: ['STUDENT'], description: 'Submit exit ticket answers' },
+  { method: 'GET', path: '/student/homework-chat/stream', permissions: ['STUDENT'], description: 'Homework chat SSE stream' },
+  { method: 'GET', path: '/student/homework-chat/:homeworkId', permissions: ['STUDENT'], description: 'Get homework chat session' },
+  { method: 'POST', path: '/student/lessons/:lessonId/personalize', permissions: ['STUDENT'], description: 'Personalize lesson on demand' },
 
   // ============ Teacher-Only Routes ============
   { method: 'GET', path: '/teacher/profile', permissions: ['TEACHER'], description: 'Get teacher profile' },
@@ -119,6 +122,9 @@ export const PERMISSION_REGISTRY: RoutePermission[] = [
   { method: 'POST', path: '/homework/generate-content', permissions: ['TEACHER'], description: 'Generate homework content' },
   { method: 'GET', path: '/homework/generate-content/stream', permissions: ['TEACHER'], description: 'Stream homework content' },
   { method: 'GET', path: '/homework/:id/progress', permissions: ['TEACHER'], description: 'Get homework progress' },
+  { method: 'PUT', path: '/homework/:id/questions', permissions: ['TEACHER'], description: 'Update homework questions' },
+  { method: 'POST', path: '/homework/:id/assign', permissions: ['TEACHER'], description: 'Assign homework to students' },
+  { method: 'GET', path: '/homework/:id/status', permissions: ['TEACHER'], description: 'Get homework assignment status' },
 
   // ============ Student Management Routes (Teacher Only) ============
   { method: 'GET', path: '/students', permissions: ['TEACHER'], description: 'List students' },
@@ -135,6 +141,10 @@ export const PERMISSION_REGISTRY: RoutePermission[] = [
   { method: 'GET', path: '/classroom', permissions: ['TEACHER'], description: 'Get classroom overview' },
   { method: 'GET', path: '/classroom/struggling', permissions: ['TEACHER'], description: 'Get struggling students' },
   { method: 'GET', path: '/classroom/:classroomId/subject/:subject/average', permissions: ['TEACHER'], description: 'Get subject average' },
+
+  // ============ Insight Engine Routes (Teacher Only) ============
+  { method: 'GET',  path: '/teacher/classrooms/:classroomId/insights',       permissions: ['TEACHER'], description: 'Get classroom insight snapshot' },
+  { method: 'POST', path: '/teacher/classrooms/:classroomId/insights/audit', permissions: ['TEACHER'], description: 'Generate diagnostic audit' },
 
   // ============ Admin Routes ============
   { method: 'GET', path: '/admin/prompt', permissions: ['ADMIN'], description: 'Get system prompt' },

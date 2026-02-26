@@ -430,7 +430,7 @@ class LessonApiService {
   async updateHomeworkQuestions(id: string, questionsJson: HomeworkQuestionJson[]): Promise<HomeworkWithTeacher> {
     return this.request(`/homework/${id}/questions`, {
       method: 'PUT',
-      body: JSON.stringify({ questionsJson }),
+      body: JSON.stringify({ questions: questionsJson }),
     });
   }
 

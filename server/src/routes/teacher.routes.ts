@@ -4,6 +4,7 @@ import { teacherChatController } from '../controllers/teacherChat.controller';
 import { lessonChatController } from '../controllers/lessonChat.controller';
 import { homeworkSubmissionController } from '../controllers/homeworkSubmission.controller';
 import { studentController } from '../controllers/student.controller';
+import { insightEngineController } from '../controllers/insightEngine.controller';
 import { asyncHandler } from '../middleware/asyncHandler.middleware';
 import { authMiddleware, teacherOnly } from '../middleware/auth.middleware';
 import { teacherAuth } from '../middleware/teacherAuth.middleware';
@@ -61,5 +62,9 @@ router.get('/homework/:homeworkId/submissions', asyncHandler(homeworkSubmissionC
 router.get('/homework/submissions/:id', asyncHandler(homeworkSubmissionController.getSubmission));
 router.put('/homework/submissions/:id/grade', asyncHandler(homeworkSubmissionController.grade));
 router.post('/homework/submissions/:id/regenerate-ai', asyncHandler(homeworkSubmissionController.regenerateAISuggestion));
+
+// Classroom Insights (Insight Engine)
+router.get('/classrooms/:classroomId/insights', asyncHandler(insightEngineController.getSnapshot));
+router.post('/classrooms/:classroomId/insights/audit', asyncHandler(insightEngineController.generateAudit));
 
 export default router;

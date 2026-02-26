@@ -25,6 +25,7 @@ import {
   LessonChatMessage,
   LessonChatSessionWithDetails,
 } from '@/types';
+import { ClassroomSnapshot, DiagnosticAudit } from '../../../shared/types/insight.types';
 import { authenticatedFetch, getAuthHeaders } from './authInterceptor';
 
 const API_BASE = '/api';
@@ -326,6 +327,19 @@ class TeacherApiService {
     } | null;
   }> {
     return this.request(`/teacher/lesson-chats/${sessionId}`);
+  }
+
+  // ============ Insight Engine ============
+
+  async getClassroomSnapshot(classroomId: string): Promise<ClassroomSnapshot> {
+    return this.request<ClassroomSnapshot>(`/teacher/classrooms/${classroomId}/insights`);
+  }
+
+  async generateDiagnosticAudit(classroomId: string, snapshot: ClassroomSnapshot): Promise<DiagnosticAudit> {
+    return this.request<DiagnosticAudit>(`/teacher/classrooms/${classroomId}/insights/audit`, {
+      method: 'POST',
+      body: JSON.stringify({ snapshot }),
+    });
   }
 }
 

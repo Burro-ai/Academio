@@ -1137,3 +1137,127 @@ FAIL: comprehensionScore = 0.40 < 0.60 → markAsViewed() NOT called → viewed_
 | `learning_analytics` | `struggle_dimensions` | TEXT | JSON StruggleDimensions object |
 | `learning_analytics` | `comprehension_score` | REAL | Exit ticket score (0-1) |
 | `learning_analytics` | `exit_ticket_passed` | INTEGER | 1 = passed, 0 = failed |
+
+---
+
+## Frontend SSE Architecture — `useAIPipe` Pattern (Added 2026-02-25)
+
+### Overview
+
+All real-time AI chat in the client goes through a single shared hook:
+`client/src/hooks/useAIPipe.ts`
+
+It centralizes the SSE reader loop, AbortController lifecycle, and JWT auth injection,
+eliminating ~200 lines of duplicated code that previously existed across 4 hooks.
+
+### Hook API
+
+```typescript
+export interface SSEEvent {
+  type: 'start' | 'token' | 'done' | 'error';
+  content?: string;
+  sessionId?: string;
+  userMessageId?: string;
+  assistantMessageId?: string;
+  error?: string;
+}
+
+interface UseAIPipeOptions {
+  onStart?: (event: SSEEvent) => void;
+  onDone?: (event: SSEEvent, fullText: string) => void;
+  onError?: (message: string) => void;
+  clearResponseOnDone?: boolean; // true = clear currentResponse in finally (lesson/homework chat)
+}
+
+interface UseAIPipeReturn {
+  isStreaming: boolean;
+  currentResponse: string;       // Accumulates token-by-token during stream
+  error: string | null;
+  pipe: (url: string) => Promise<void>; // Starts streaming; cancels any prior stream
+  cancel: () => void;
+}
+```
+
+### Internal Mechanics
+
+```
+useAIPipe() call
+│
+├── onStartRef.current = onStart  ← Sync ref update each render (no useEffect needed)
+├── onDoneRef.current  = onDone   ← Callbacks always current; pipe() stays stable
+├── onErrorRef.current = onError
+│
+└── pipe(url) → authenticatedFetch(url, { signal })
+       │
+       ├── SSE reader loop:
+       │     'start'  → capture userMessageId + assistantMessageId into local vars
+       │             → call onStart(event)
+       │     'token'  → accumulate fullResponseText; setCurrentResponse()
+       │     'done'   → enrich event with captured IDs; call onDone(enrichedEvent, fullText)
+       │     'error'  → setError(); call onError()
+       │
+       └── finally: setIsStreaming(false)
+                    if clearResponseOnDone → setCurrentResponse('')
+```
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Callback refs (not useMemo) | `pipe()` is stable even as callers pass new inline functions each render |
+| `authenticatedFetch` internally | JWT auto-injected for all `/api/*` calls; no manual token handling |
+| `clearResponseOnDone` flag | Lesson/homework hooks maintain message arrays — clear after done; general chat keeps visible |
+| `capturedAssistantMessageId` | Server `done` event doesn't always echo IDs; captured from `start` and forwarded |
+| `cancel()` called at start of `pipe()` | Prevents double-streams if caller fires `sendMessage` twice rapidly |
+
+### SSE Event Chain → DB Linkage
+
+```
+Server (lessonChat.service.ts)
+  yield { type: 'start', sessionId, userMessageId, assistantMessageId }
+         │
+         ▼
+  Client: useAIPipe captures assistantMessageId into capturedAssistantMessageId
+         │
+         ▼
+  yield { type: 'token', content }  ×N
+         │
+         ▼
+  [Server] analyticsService.calculateAndPersist(session.id, messages)
+         │   → analyticsQueries.updateStruggleDimensions(sessionId, dimensions)
+         │   → UPDATE learning_analytics SET struggle_dimensions=... WHERE session_id=?
+         │
+         ▼
+  yield { type: 'done' }
+         │
+         ▼
+  Client: useAIPipe enriches done event with capturedAssistantMessageId
+          calls onDone(enrichedEvent, fullText)
+          → callers build LessonChatMessage { id: assistantMessageId, ... }
+          → setMessages([...prev, assistantMessage])
+```
+
+### ⚠️ Known Architectural Gap (2026-02-25)
+
+`analyticsService.calculateAndPersist()` is called with `lesson_chat_sessions.id` as `sessionId`.
+However `learning_analytics` rows are only created for the old `sessions` table entries (seeded/regular chat).
+`lesson_chat_sessions` have no corresponding `learning_analytics` row to UPDATE — so the UPDATE
+silently no-ops (0 rows affected). Analytics are **calculated** correctly but **not persisted**.
+
+**Fix required:** `lessonChat.service.ts` must INSERT a `learning_analytics` row on first message
+of a new lesson chat session, or `updateStruggleDimensions` must do an UPSERT.
+
+### Consumer Hooks
+
+| Hook | `clearResponseOnDone` | Extra State | Purpose |
+|------|-----------------------|-------------|---------|
+| `useChat` | `false` | — | General student chat |
+| `useTeacherChat` | `false` | — | Teacher AI assistant |
+| `useLessonChat` | `true` | `session`, `messages`, `lesson`, `isPersonalizing` | Lesson Socratic chat |
+| `useHomeworkChat` | `true` | `session`, `messages`, `homework`, `questions` | Homework Sidekick |
+
+### Rule for New Hooks
+
+> **Any new hook that streams from an AI SSE endpoint MUST use `useAIPipe`.**
+> Never re-implement the SSE reader loop. Add a consumer hook that wraps `useAIPipe`
+> with domain-specific callbacks and state.

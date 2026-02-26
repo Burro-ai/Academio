@@ -5,8 +5,9 @@ import { TeacherSidebar } from '@/components/teacher/TeacherSidebar';
 import { Dashboard } from '@/components/teacher/Dashboard';
 import { StudentsView } from '@/components/teacher/StudentsView';
 import { TeacherChat } from '@/components/teacher/TeacherChat';
+import { ClassroomInsights } from '@/components/teacher/ClassroomInsights';
 
-type Tab = 'dashboard' | 'students' | 'assistant';
+type Tab = 'dashboard' | 'students' | 'assistant' | 'insights';
 
 export function TeacherPage() {
   const { isAuthenticated, isLoading, loadInterventionAlerts } = useTeacherContext();
@@ -46,6 +47,7 @@ export function TeacherPage() {
             <TeacherChat />
           </div>
         )}
+        {activeTab === 'insights' && <ClassroomInsights />}
       </main>
     </div>
   );

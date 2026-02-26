@@ -810,6 +810,54 @@
         "daysLeft": "{{count}}d restantes"
       },
       "due": "Vence el"
+    },
+    "insights": {
+      "title": "Motor de Insights",
+      "subtitle": "Mapa de calor de dificultades del salón",
+      "loadSnapshot": "Cargar Análisis",
+      "generateAudit": "Generar Diagnóstico con IA",
+      "generatingAudit": "Generando diagnóstico...",
+      "noClassroom": "Selecciona un salón para ver los insights",
+      "noData": "Sin datos suficientes para este salón",
+      "heatmap": {
+        "student": "Estudiante",
+        "noActivity": "Sin actividad"
+      },
+      "detail": {
+        "struggleDimensions": "Dimensiones de Dificultad",
+        "socraticDepth": "Profundidad Socrática",
+        "errorPersistence": "Persistencia de Errores",
+        "frustrationSentiment": "Sentimiento de Frustración",
+        "exitTicket": "Exit Ticket",
+        "passed": "Aprobado",
+        "failed": "Reprobado",
+        "pending": "Pendiente",
+        "rubricScores": "Rúbrica",
+        "accuracy": "Precisión",
+        "reasoning": "Razonamiento",
+        "effort": "Esfuerzo"
+      },
+      "audit": {
+        "title": "Diagnóstico Pedagógico",
+        "rootCause": "Causa Raíz",
+        "failureType": "Tipo de Falla",
+        "severity": "Severidad",
+        "bridgeActivity": "Actividad Puente (10 min)",
+        "recommendations": "Recomendaciones",
+        "types": {
+          "conceptual": "Conceptual",
+          "procedural": "Procedimental",
+          "motivational": "Motivacional",
+          "prerequisite": "Prerrequisito",
+          "linguistic": "Lingüístico"
+        },
+        "severityLevels": {
+          "low": "Baja",
+          "medium": "Media",
+          "high": "Alta",
+          "critical": "Crítica"
+        }
+      }
     }
   },
 

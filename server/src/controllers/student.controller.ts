@@ -5,7 +5,7 @@ import { learningAnalyticsService } from '../services/learningAnalytics.service'
 import { teachersQueries } from '../database/queries/teachers.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
 import { studentStatsQueries } from '../database/queries/studentStats.queries';
-import { CreateStudentRequest, UpdateStudentRequest, AddGradeRequest, JwtAuthenticatedRequest } from '../types';
+import { CreateStudentRequest, UpdateStudentRequest, AddGradeRequest, JwtAuthenticatedRequest, Subject } from '../types';
 import { AppError } from '../middleware/errorHandler.middleware';
 
 export const studentController = {
@@ -66,7 +66,7 @@ export const studentController = {
     const { subject } = req.query;
 
     if (subject && typeof subject === 'string') {
-      const grades = gradesService.getGradesForSubject(id, subject as any);
+      const grades = gradesService.getGradesForSubject(id, subject as Subject);
       res.json(grades);
       return;
     }

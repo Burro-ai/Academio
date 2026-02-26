@@ -1,15 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { LessonChatMessage, LessonChatSession, LessonChatResponse } from '@/types';
-import { authApi } from '@/services/authApi';
-
-interface StreamEvent {
-  type: 'start' | 'token' | 'done' | 'error';
-  content?: string;
-  sessionId?: string;
-  userMessageId?: string;
-  assistantMessageId?: string;
-  error?: string;
-}
+import { authenticatedFetch } from '@/services/authInterceptor';
+import { useAIPipe, SSEEvent } from './useAIPipe';
 
 interface UseLessonChatOptions {
   personalizedLessonId: string;
@@ -39,221 +31,98 @@ export function useLessonChat({
   const [messages, setMessages] = useState<LessonChatMessage[]>([]);
   const [lesson, setLesson] = useState<LessonChatResponse['lesson'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isStreaming, setIsStreaming] = useState(false);
   const [isPersonalizing, setIsPersonalizing] = useState(false);
-  const [currentResponse, setCurrentResponse] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Refs for values needed inside stable callbacks
+  const sessionRef = useRef(session);
+  const pendingMessageRef = useRef('');
+  const onMessageCompleteRef = useRef(onMessageComplete);
+  sessionRef.current = session;
+  onMessageCompleteRef.current = onMessageComplete;
 
-  // Load existing session and messages
+  const { isStreaming, currentResponse, error: streamError, pipe, cancel } = useAIPipe({
+    clearResponseOnDone: true,
+    onStart: (event: SSEEvent) => {
+      const userMessage: LessonChatMessage = {
+        id: event.userMessageId || '',
+        sessionId: event.sessionId || sessionRef.current?.id || '',
+        role: 'user',
+        content: pendingMessageRef.current,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+    },
+    onDone: (event: SSEEvent, fullText: string) => {
+      if (event.assistantMessageId) {
+        const assistantMessage: LessonChatMessage = {
+          id: event.assistantMessageId,
+          sessionId: sessionRef.current?.id || '',
+          role: 'assistant',
+          content: fullText,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        onMessageCompleteRef.current?.(assistantMessage);
+      }
+    },
+  });
+
   const loadSession = useCallback(async () => {
     if (!personalizedLessonId) return;
 
     setIsLoading(true);
-    setError(null);
+    setLoadError(null);
 
     try {
-      const token = authApi.getToken();
-      const response = await fetch(`/api/student/lesson-chat/${personalizedLessonId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      const response = await authenticatedFetch(`/api/student/lesson-chat/${personalizedLessonId}`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-
       const data: LessonChatResponse = await response.json();
       setSession(data.session);
       setMessages(data.messages);
       setLesson(data.lesson);
     } catch (err) {
       console.error('Failed to load lesson chat:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load chat');
+      setLoadError(err instanceof Error ? err.message : 'Failed to load chat');
     } finally {
       setIsLoading(false);
     }
   }, [personalizedLessonId]);
 
-  // Load on mount
   useEffect(() => {
     loadSession();
   }, [loadSession]);
 
-  const cancelStream = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    setIsStreaming(false);
-  }, []);
-
   const sendMessage = useCallback(
     async (message: string) => {
       if (!personalizedLessonId || isStreaming) return;
-
-      // Cancel any existing stream
-      cancelStream();
-
-      setIsStreaming(true);
-      setCurrentResponse('');
-      setError(null);
-
-      // Build SSE URL with query parameters
-      const params = new URLSearchParams({
-        lessonId: personalizedLessonId,
-        message,
-      });
-
-      // Build headers with JWT auth token
-      const headers: Record<string, string> = {};
-      const token = authApi.getToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      try {
-        abortControllerRef.current = new AbortController();
-
-        const response = await fetch(`/api/student/lesson-chat/stream?${params}`, {
-          method: 'GET',
-          headers,
-          signal: abortControllerRef.current.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        if (!response.body) {
-          throw new Error('Response body is null');
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let fullResponseText = '';
-        let userMessageId = '';
-        let assistantMessageId = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          // Process SSE events
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data.trim()) {
-                try {
-                  const event: StreamEvent = JSON.parse(data);
-
-                  switch (event.type) {
-                    case 'start':
-                      userMessageId = event.userMessageId || '';
-                      assistantMessageId = event.assistantMessageId || '';
-
-                      // Add user message to the list
-                      const userMessage: LessonChatMessage = {
-                        id: userMessageId,
-                        sessionId: event.sessionId || session?.id || '',
-                        role: 'user',
-                        content: message,
-                        timestamp: new Date().toISOString(),
-                      };
-                      setMessages((prev) => [...prev, userMessage]);
-                      break;
-
-                    case 'token':
-                      if (event.content) {
-                        fullResponseText += event.content;
-                        setCurrentResponse(fullResponseText);
-                      }
-                      break;
-
-                    case 'done':
-                      if (assistantMessageId) {
-                        const assistantMessage: LessonChatMessage = {
-                          id: assistantMessageId,
-                          sessionId: session?.id || '',
-                          role: 'assistant',
-                          content: fullResponseText,
-                          timestamp: new Date().toISOString(),
-                        };
-                        setMessages((prev) => [...prev, assistantMessage]);
-
-                        if (onMessageComplete) {
-                          onMessageComplete(assistantMessage);
-                        }
-                      }
-                      break;
-
-                    case 'error':
-                      setError(event.error || 'Unknown error');
-                      break;
-                  }
-                } catch (e) {
-                  console.error('Failed to parse SSE event:', data);
-                }
-              }
-            }
-          }
-        }
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          // Stream was cancelled
-          return;
-        }
-        console.error('Stream error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to connect');
-      } finally {
-        setIsStreaming(false);
-        setCurrentResponse('');
-        abortControllerRef.current = null;
-      }
+      pendingMessageRef.current = message;
+      const params = new URLSearchParams({ lessonId: personalizedLessonId, message });
+      await pipe(`/api/student/lesson-chat/stream?${params}`);
     },
-    [personalizedLessonId, isStreaming, cancelStream, session, onMessageComplete]
+    [personalizedLessonId, isStreaming, pipe]
   );
 
-  /**
-   * Trigger on-demand AI personalization for this lesson
-   */
   const personalizeLesson = useCallback(async () => {
     if (!personalizedLessonId || isPersonalizing) return;
 
     setIsPersonalizing(true);
 
     try {
-      const token = authApi.getToken();
-      const response = await fetch(`/api/student/lesson-chat/${personalizedLessonId}/personalize`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
+      const response = await authenticatedFetch(
+        `/api/student/lesson-chat/${personalizedLessonId}/personalize`,
+        { method: 'POST' }
+      );
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-
       const data: { personalizedContent: string } = await response.json();
-
-      // Update the lesson content in state
-      setLesson((prev) =>
-        prev ? { ...prev, content: data.personalizedContent } : prev
-      );
+      setLesson((prev) => (prev ? { ...prev, content: data.personalizedContent } : prev));
     } catch (err) {
       console.error('Failed to personalize lesson:', err);
-      setError(err instanceof Error ? err.message : 'Failed to personalize');
+      setLoadError(err instanceof Error ? err.message : 'Failed to personalize');
     } finally {
       setIsPersonalizing(false);
     }
@@ -267,9 +136,9 @@ export function useLessonChat({
     isStreaming,
     isPersonalizing,
     currentResponse,
-    error,
+    error: loadError || streamError,
     sendMessage,
-    cancelStream,
+    cancelStream: cancel,
     reload: loadSession,
     personalizeLesson,
   };
