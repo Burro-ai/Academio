@@ -22,7 +22,11 @@
     "test:homework-system": "tsx src/tests/homework-system.test.ts",
     "test:pedagogical": "tsx src/utils/test-pedagogical-grounding.ts",
     "curriculum:fetch": "tsx src/utils/fetch-nem-books.ts",
-    "curriculum:fetch:dry": "tsx src/utils/fetch-nem-books.ts -- --dry-run"
+    "curriculum:fetch:dry": "tsx src/utils/fetch-nem-books.ts -- --dry-run",
+    "curriculum:ingest": "tsx src/utils/ingest-curriculum.ts",
+    "curriculum:ingest:grade1": "tsx src/utils/ingest-curriculum.ts -- --grade 01_primaria_1",
+    "curriculum:ingest:clear": "tsx src/utils/ingest-curriculum.ts -- --clear",
+    "curriculum:query": "tsx src/utils/query-curriculum.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

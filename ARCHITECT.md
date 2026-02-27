@@ -1368,28 +1368,73 @@ Output filenames follow: `{subject_name}_{level}_{grade_number}.pdf`
 - **Approx size:** ~6.4 GB (PDFs are Git LFS objects, 33–98 MB each)
 - **Coverage:** Primaria grades 1–6, Secundaria grades 1–3
 
-### Future: RAG Indexing Pipeline
-
-The downloaded PDFs are the input for the planned curriculum RAG pipeline:
+### RAG Indexing Pipeline (Added 2026-02-27)
 
 ```
 nem-2023/ PDFs
     │
-    ▼
-[PDF text extraction — server/src/utils/index-curriculum.ts (TODO)]
-    │  pdf-parse per file
-    ▼
-[Chunk by section/page]
+    ▼  server/src/utils/ingest-curriculum.ts
     │
-    ▼
-[Embed via Ollama qwen3-embedding]
+    ├─ pdf-parse → full text + page count per book
     │
-    ▼
-[Store in ChromaDB — collection: curriculum_nem2023]
+    ├─ Recursive Character Text Splitter
+    │    chunk_size: 1000 chars  |  overlap: 200 chars
+    │    separators: ['\n\n', '\n', '. ', ' '] (priority order)
     │
-    ▼
-[Retrieval in lessonChat.service.ts — inject as context]
+    ├─ Per-chunk metadata enrichment
+    │    grade_level, grade_dir, subject, subject_code
+    │    book_title, source_file, source_page (estimated), chunk_index
+    │
+    ├─ Batch 50 → Ollama qwen3-embedding (sequential per item)
+    │    POST /api/embeddings  { model, prompt }  → { embedding: number[] }
+    │
+    └─ ChromaDB upsert — collection: curriculum_standards
+         Deterministic IDs: nem_{grade_dir}_{subject}_p{page}_c{chunk}
+         Upsert is idempotent — re-run safe
+    │
+    ▼  server/src/utils/query-curriculum.ts
+    │
+    └─ Embed query → collection.query(queryEmbeddings, nResults=5)
+         Similarity = 1 / (1 + L2_distance)
+         Verdict: ≥0.5 PASSED | ≥0.3 PARTIAL | <0.3 WEAK
 ```
 
-> **Status:** PDF download utility complete. Indexing pipeline is a future task.
-> The `pdf-parse` dependency is already installed in `server/package.json`.
+**Files:**
+
+| File | Purpose |
+|------|---------|
+| `server/src/utils/ingest-curriculum.ts` | PDF → chunks → embeddings → ChromaDB |
+| `server/src/utils/query-curriculum.ts` | RAG validation query tool |
+
+**npm scripts (run from `server/`):**
+```bash
+npm run curriculum:ingest:grade1    # Pilot: only 01_primaria_1
+npm run curriculum:ingest           # All grades
+npm run curriculum:ingest:clear     # Clear collection first, then ingest all
+npm run curriculum:ingest -- --dry-run --grade 02_primaria_2  # Count chunks only
+
+npm run curriculum:query -- "Fricción y fuerza"      # Validate RAG result
+npm run curriculum:query -- "fracciones equivalentes"
+```
+
+**Pre-requisites:**
+1. PDFs downloaded: `npm run curriculum:fetch`
+2. ChromaDB running: `docker run -p 8000:8000 chromadb/chroma`
+3. Ollama running with embedding model: `ollama pull qwen3-embedding && ollama serve`
+
+**ChromaDB collection schema:**
+
+| Field | Type | Example |
+|-------|------|---------|
+| `id` | string | `nem_01_primaria_1_saberes_y_pensamient_p0003_c0002` |
+| `document` | string | chunk text (≤1200 chars with overlap) |
+| `grade_level` | string | `1° Primaria` |
+| `grade_dir` | string | `01_primaria_1` |
+| `subject` | string | `Saberes y Pensamiento Científico` |
+| `subject_code` | string | `saberes_y_pensamiento_cientifico` |
+| `book_title` | string | `Saberes y Pensamiento Científico — 1° Primaria` |
+| `source_file` | string | `saberes_y_pensamiento_cientifico_primaria_1.pdf` |
+| `source_page` | number | `42` (estimated) |
+| `chunk_index` | number | `17` |
+
+**Future integration point:** `lessonChat.service.ts` — inject top-3 curriculum chunks as context when building the AI prompt for lesson chat. Similar to how `memory.service.ts` injects student long-term memory.

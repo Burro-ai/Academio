@@ -69,6 +69,17 @@
 
 #### NEM 2023 Curriculum Acquisition Utility
 
+- Created `server/src/utils/ingest-curriculum.ts` — PDF → chunks → embeddings → ChromaDB pipeline
+  - Recursive character text splitter (1000 chars / 200 overlap)
+  - Batch 50 chunks → embed via Ollama qwen3-embedding → upsert to `curriculum_standards`
+  - Metadata per chunk: grade_level, subject, book_title, source_page, chunk_index
+  - Deterministic chunk IDs → idempotent upserts (re-run safe)
+  - `--grade` flag for per-grade pilot; `--clear` to reset collection; `--dry-run` to count chunks
+- Created `server/src/utils/query-curriculum.ts` — RAG validation query tool
+  - Embeds query via Ollama, retrieves top-5 similar chunks from `curriculum_standards`
+  - Prints similarity score, book title, grade, subject, and page estimate per result
+  - Verdict: PASSED ≥ 0.5 / PARTIAL ≥ 0.3 / WEAK < 0.3
+- Added 4 npm scripts: `curriculum:ingest`, `curriculum:ingest:grade1`, `curriculum:ingest:clear`, `curriculum:query`
 - Created `server/src/utils/fetch-nem-books.ts` — one-shot download + organizer script
   - Git sparse checkout (blobless clone + `--filter=blob:none`) of CONALITEG repo
   - Downloads only `Primaria/PDF/` and `Secundaria/PDF/` (~6 GB via Git LFS)
@@ -80,7 +91,7 @@
   - Cleans up temp clone after successful move; also cleans on error
   - Appends PDF-count-by-grade summary to JOURNAL.md automatically
   - `--dry-run` flag for zero-download preview
-- Added `npm run curriculum:fetch` and `npm run curriculum:fetch:dry` to `server/package.json`
+- Added `npm run curriculum:fetch`, `curriculum:fetch:dry`, `curriculum:ingest`, `curriculum:ingest:grade1`, `curriculum:ingest:clear`, `curriculum:query` to `server/package.json`
 - Source: CC0-1.0 public domain (https://github.com/incognia/CONALITEG)
 
 #### Auth & Port Hardening (earlier this session)
@@ -201,9 +212,14 @@ npm run memory:verify                 # Check ChromaDB sync
 npx tsc --noEmit -p client/tsconfig.json   # TypeScript check (client)
 npx tsc --noEmit -p server/tsconfig.json   # TypeScript check (server)
 
-# NEM Curriculum
+# NEM Curriculum — fetch
 cd server && npm run curriculum:fetch:dry  # Preview without downloading
-cd server && npm run curriculum:fetch      # Full ~6 GB download
+cd server && npm run curriculum:fetch      # Full ~6 GB download (needs git-lfs)
+
+# NEM Curriculum — ingest (requires ChromaDB + Ollama with qwen3-embedding)
+cd server && npm run curriculum:ingest:grade1            # Pilot: Grade 1 only
+cd server && npm run curriculum:ingest                   # All grades
+cd server && npm run curriculum:query -- "texto a buscar"  # Validate RAG
 ```
 
 ### Auth Quick Debug
