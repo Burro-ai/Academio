@@ -36,9 +36,9 @@ export const config = {
   teacherPassword: process.env.TEACHER_PASSWORD || 'teacher123',
 
   // CORS - supports multiple origins for development flexibility
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5174',
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5200',
   // Additional allowed origins (comma-separated in env)
-  allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://localhost:5175').split(',').map(o => o.trim()),
+  allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:5200,http://127.0.0.1:5200').split(',').map(o => o.trim()),
 
   // Paths
   paths: {
