@@ -1,7 +1,7 @@
 # JOURNAL.md - Academio Development Progress Log
 
 > **Purpose:** Track current state, active decisions, and next steps for context continuity.
-> **Last Updated:** 2026-02-27
+> **Last Updated:** 2026-02-27 (evening)
 > **Archive:** Entries older than 3 days → see HISTORY.md
 
 ---
@@ -29,6 +29,7 @@
 - [x] **es-MX Localization**: full Mexican Spanish UI throughout
 - [x] Liquid Glass design system (Apple 2026 glassmorphism)
 - [x] **NEM 2023 Curriculum Fetcher**: git sparse-checkout downloader for CONALITEG textbooks → `server/data/curriculum/nem-2023/`
+- [x] **NEM Curriculum RAG**: `curriculum_standards` ChromaDB collection wired into lesson chat — grade-filtered, concurrent retrieval, `## MARCO PEDAGÓGICO NEM` prompt injection
 
 ### Known Issues
 - Sharp library not available (graceful fallback to jimp)
@@ -66,6 +67,20 @@
 ## Progress Log
 
 ### 2026-02-27
+
+#### NEM Curriculum RAG — Wired into lessonChat.service.ts
+
+- Added `getNEMContext(message, gradeLevel)` to `LessonChatService`:
+  - Lazy ChromaDB init (`initNEMClient()`) — graceful degradation when unavailable
+  - `resolveGradeDir()` parses student's `gradeLevel` string → `grade_dir` value for ChromaDB `$eq` filter
+    - "1° de Primaria" → `01_primaria_1`; "2° de Secundaria" → `08_secundaria_2`; "Preparatoria" → null (outside NEM)
+  - Embeds student's message via Ollama `qwen3-embedding`
+  - Queries `curriculum_standards` with grade-scoped filter (1st grader never gets 6th grade results)
+  - Filters by minimum similarity 0.25; returns null if no relevant chunks found
+- Added `buildNEMFramework(chunks)` — wraps chunks in `## MARCO PEDAGÓGICO NEM` section with anti-citation-bot instructions
+- Injected NEM section at position 4 in prompt hierarchy (after lesson content, before response guidelines)
+- Concurrent retrieval: `Promise.all([memoryService.retrieveRelevantMemories(), getNEMContext()])` — zero added latency
+- Updated `buildSystemPrompt()` log line: shows `NEM chunks: yes/no` alongside persona/struggle info
 
 #### NEM 2023 Curriculum Acquisition Utility
 
@@ -186,6 +201,10 @@
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-02-27 | `Promise.all` for memory + NEM retrieval | Both are independent async calls — parallelizing adds zero latency to lesson chat |
+| 2026-02-27 | NEM similarity threshold 0.25 | Low enough to capture topically adjacent content; filters pure noise/unrelated chunks |
+| 2026-02-27 | NEM section at prompt position 4 (after lesson content) | Treated as background knowledge, not primary content; lesson always takes precedence |
+| 2026-02-27 | Anti-citation instruction baked into section | Prevents AI becoming a citation bot — NEM context enriches tone/examples, not sourced quotes |
 | 2026-02-25 | Store struggle in `lesson_chat_sessions` | `learning_analytics.session_id` FK prevents lesson chat session IDs from being used there |
 | 2026-02-25 | `getStudentsNeedingIntervention` UNION | Teacher alerts must span both session types |
 | 2026-02-25 | `useAIPipe` with callback refs | Stable `pipe()` identity; callbacks always current |

@@ -1437,4 +1437,70 @@ npm run curriculum:query -- "fracciones equivalentes"
 | `source_page` | number | `42` (estimated) |
 | `chunk_index` | number | `17` |
 
-**Future integration point:** `lessonChat.service.ts` — inject top-3 curriculum chunks as context when building the AI prompt for lesson chat. Similar to how `memory.service.ts` injects student long-term memory.
+### Live Integration: lessonChat.service.ts (Added 2026-02-27)
+
+The `curriculum_standards` collection is now wired into `LessonChatService`. Every lesson chat turn triggers a grade-filtered curriculum retrieval that enriches the system prompt.
+
+**Retrieval flow per chat turn:**
+
+```
+Student sends message
+    │
+    ├─ [parallel] memoryService.retrieveRelevantMemories()   ← student's past chats
+    └─ [parallel] lessonChatService.getNEMContext()          ← NEM curriculum
+           │
+           ├─ resolveGradeDir(studentProfile.gradeLevel)
+           │      "1° de Primaria"  → "01_primaria_1"
+           │      "2° Secundaria"   → "08_secundaria_2"
+           │      "Preparatoria"    → null (outside NEM scope)
+           │
+           ├─ Embed message → Ollama qwen3-embedding
+           │
+           ├─ collection.query(queryEmbeddings, nResults=3,
+           │      where: { grade_dir: { $eq: gradeDir } })   ← grade-scoped filter
+           │
+           └─ Filter by similarity ≥ 0.25 → return chunks (or null)
+    │
+    ▼ Promise.all resolves
+    │
+    buildSystemPrompt(lessonContent, profile, history, memories, nemContext)
+```
+
+**System prompt injection hierarchy:**
+
+```
+1. Core Directive          (Socratic role + persona)
+2. Socratic Methodology    (age-adapted method)
+3. Lesson Content          (specific material student is studying)
+4. ┌──────────────────────────────────────────┐
+   │  ## MARCO PEDAGÓGICO NEM                 │  ← grade-filtered curriculum
+   │  "Utiliza este contexto como base de     │     background knowledge
+   │  conocimiento. NO cites el libro         │     NOT a citation bot
+   │  directamente..."                        │
+   └──────────────────────────────────────────┘
+5. Response Guidelines     (formatting, tone)
+6. Prohibitions
+7. Student Context         (age/grade only)
+8. Struggle Support        (conditional — 2+ failed attempts)
+9. Long-Term Memory        (student's past interactions)
+```
+
+**Grade mapping table (`resolveGradeDir`):**
+
+| Student `gradeLevel` | `grade_dir` | ChromaDB filter |
+|---|---|---|
+| "1° de Primaria" / "1er Grado de Primaria" | `01_primaria_1` | `$eq: "01_primaria_1"` |
+| "4to de Primaria" | `04_primaria_4` | `$eq: "04_primaria_4"` |
+| "2° de Secundaria" | `08_secundaria_2` | `$eq: "08_secundaria_2"` |
+| "Preparatoria" / "Universidad" | `null` | no filter (graceful skip) |
+| `undefined` | `null` | no filter (graceful skip) |
+
+**Key files:**
+
+| File | Role |
+|------|------|
+| `server/src/services/lessonChat.service.ts` | `getNEMContext()`, `resolveGradeDir()`, `buildNEMFramework()`, concurrent retrieval |
+| `server/src/utils/ingest-curriculum.ts` | Populates `curriculum_standards` collection |
+| `server/src/utils/query-curriculum.ts` | Validates retrieval quality |
+
+**Graceful degradation:** If ChromaDB is unavailable, `initNEMClient()` sets `nemClient=null` on first call (logged once). All subsequent `getNEMContext()` calls return `null` immediately. Lesson chat continues normally without NEM enrichment — zero impact on user experience.
