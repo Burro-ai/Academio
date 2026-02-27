@@ -1,7 +1,7 @@
 # JOURNAL.md - Academio Development Progress Log
 
 > **Purpose:** Track current state, active decisions, and next steps for context continuity.
-> **Last Updated:** 2026-02-25
+> **Last Updated:** 2026-02-27
 > **Archive:** Entries older than 3 days → see HISTORY.md
 
 ---
@@ -28,6 +28,7 @@
 - [x] **Permission Registry**: centralized RBAC, all routes registered
 - [x] **es-MX Localization**: full Mexican Spanish UI throughout
 - [x] Liquid Glass design system (Apple 2026 glassmorphism)
+- [x] **NEM 2023 Curriculum Fetcher**: git sparse-checkout downloader for CONALITEG textbooks → `server/data/curriculum/nem-2023/`
 
 ### Known Issues
 - Sharp library not available (graceful fallback to jimp)
@@ -63,6 +64,34 @@
 ---
 
 ## Progress Log
+
+### 2026-02-27
+
+#### NEM 2023 Curriculum Acquisition Utility
+
+- Created `server/src/utils/fetch-nem-books.ts` — one-shot download + organizer script
+  - Git sparse checkout (blobless clone + `--filter=blob:none`) of CONALITEG repo
+  - Downloads only `Primaria/PDF/` and `Secundaria/PDF/` (~6 GB via Git LFS)
+  - LFS auto-detection: samples first PDF; if pointer → runs `git lfs pull`
+  - Organizes into `server/data/curriculum/nem-2023/` with 9 grade subdirs:
+    `01_primaria_1` … `06_primaria_6`, `07_secundaria_1` … `09_secundaria_3`
+  - Renames cryptic codes to human-readable subjects:
+    `P1LPM.pdf` → `libro_para_maestros_primaria_1.pdf`
+  - Cleans up temp clone after successful move; also cleans on error
+  - Appends PDF-count-by-grade summary to JOURNAL.md automatically
+  - `--dry-run` flag for zero-download preview
+- Added `npm run curriculum:fetch` and `npm run curriculum:fetch:dry` to `server/package.json`
+- Source: CC0-1.0 public domain (https://github.com/incognia/CONALITEG)
+
+#### Auth & Port Hardening (earlier this session)
+
+- Migrated client to port 5200; deleted stale session cache from SQLite
+- Persistence-First auth: single `isHydrated` gate in `AuthContext` (replaces triple boolean)
+- CORS: `127.0.0.1:*` added alongside `localhost:*` in dev allowlist
+- `clearAuthData()` now wipes all 9 legacy localStorage keys (prevents identity contamination)
+- Pinned `--config vite.config.ts` in all client npm scripts (prevents hoisting config miss)
+
+---
 
 ### 2026-02-25
 
@@ -171,6 +200,10 @@ npm run test:pedagogical              # 23-assertion grounding audit
 npm run memory:verify                 # Check ChromaDB sync
 npx tsc --noEmit -p client/tsconfig.json   # TypeScript check (client)
 npx tsc --noEmit -p server/tsconfig.json   # TypeScript check (server)
+
+# NEM Curriculum
+cd server && npm run curriculum:fetch:dry  # Preview without downloading
+cd server && npm run curriculum:fetch      # Full ~6 GB download
 ```
 
 ### Auth Quick Debug

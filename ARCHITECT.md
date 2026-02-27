@@ -14,7 +14,7 @@ Academio is an AI-powered tutoring platform with two portals:
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              CLIENT (React + Vite)                          │
-│                              http://localhost:5174                          │
+│                              http://localhost:5200                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
 │  │  LoginPage  │  │  Student    │  │  Teacher    │  │  Admin              │ │
@@ -994,7 +994,7 @@ Student submits answers
 
 | Service | Default URL | Purpose |
 |---------|-------------|---------|
-| Vite Dev Server | http://localhost:5174 | Frontend development |
+| Vite Dev Server | http://localhost:5200 | Frontend development |
 | Express Server | http://localhost:3001 | Backend API |
 | Ollama | http://localhost:11434 | AI model inference |
 | SQLite | server/data/sqlite.db | Data persistence |
@@ -1272,3 +1272,124 @@ Teacher intervention alerts (`getStudentsNeedingIntervention`) UNION both tables
 > **Any new hook that streams from an AI SSE endpoint MUST use `useAIPipe`.**
 > Never re-implement the SSE reader loop. Add a consumer hook that wraps `useAIPipe`
 > with domain-specific callbacks and state.
+
+---
+
+## Curriculum RAG System — NEM 2023 Textbooks (Added 2026-02-27)
+
+### Overview
+
+Academio ingests the official 2023 NEM (Nueva Escuela Mexicana) textbooks as curriculum
+grounding for the AI tutor. Downloaded from the CONALITEG open repository (CC0-1.0 public
+domain) and organized locally for RAG indexing.
+
+### Download Utility
+
+| File | Purpose |
+|------|---------|
+| `server/src/utils/fetch-nem-books.ts` | One-shot download + organizer script |
+
+**npm scripts (run from `server/`):**
+```bash
+npm run curriculum:fetch:dry   # Preview — no download, shows plan
+npm run curriculum:fetch       # Full download (~6 GB via Git LFS)
+```
+
+### Git Sparse Checkout Strategy
+
+```
+1. git clone --no-checkout --filter=blob:none --depth=1 <REPO> <tmpdir>
+   └─ Fetches commit + tree metadata only (fast, ~MB not GB)
+
+2. git sparse-checkout init --cone
+   git sparse-checkout set "Primaria/PDF" "Secundaria/PDF"
+   └─ Pins checkout to only the two curriculum directories
+
+3. git checkout
+   └─ Fetches blobs for those paths only (~6 GB PDFs)
+
+4. [if Git LFS detected] git lfs pull --include="Primaria/PDF/**,Secundaria/PDF/**"
+   └─ Resolves LFS pointers to actual PDF content
+```
+
+**LFS detection:** Script samples the first PDF found; if file starts with
+`version https://git-lfs.github.com/spec/v1`, it triggers `git lfs pull` before
+copying. Files that remain LFS pointers (unresolved) are skipped with a warning.
+
+### Output Directory Structure
+
+```
+server/data/curriculum/nem-2023/
+  01_primaria_1/
+  02_primaria_2/
+  03_primaria_3/
+  04_primaria_4/
+  05_primaria_5/
+  06_primaria_6/
+  07_secundaria_1/
+  08_secundaria_2/
+  09_secundaria_3/
+```
+
+### Filename Convention
+
+Source filenames use a compact code: `[P|S][grade][CODE].pdf`
+
+Output filenames follow: `{subject_name}_{level}_{grade_number}.pdf`
+
+| Source | Output |
+|--------|--------|
+| `P1LPM.pdf` | `libro_para_maestros_primaria_1.pdf` |
+| `P3SDA.pdf` | `saberes_y_pensamiento_cientifico_primaria_3.pdf` |
+| `S1HUA.pdf` | `humanidades_secundaria_1.pdf` |
+| `S2LEA.pdf` | `lengua_y_literatura_secundaria_2.pdf` |
+
+### Subject Code Map
+
+| Code | Subject | Levels |
+|------|---------|--------|
+| LPM | libro_para_maestros (teacher guide) | Primaria + Secundaria |
+| MLA | multiples_lenguajes | Primaria |
+| PAA | proyectos_de_aula | Primaria |
+| PCA | proyectos_comunitarios | Primaria |
+| PEA | proyectos_escolares | Primaria |
+| SDA | saberes_y_pensamiento_cientifico | Primaria |
+| TPA | de_lo_humano_y_comunitario | Primaria |
+| ETA | etica_naturaleza_y_sociedades | Secundaria |
+| HUA | humanidades | Secundaria |
+| LEA | lengua_y_literatura | Secundaria |
+| NLA | nuestros_saberes | Secundaria |
+| SAA | saberes_cientificos | Secundaria |
+
+### Source Repository
+
+- **URL:** https://github.com/incognia/CONALITEG
+- **License:** CC0-1.0 (public domain — free for any use)
+- **Approx size:** ~6.4 GB (PDFs are Git LFS objects, 33–98 MB each)
+- **Coverage:** Primaria grades 1–6, Secundaria grades 1–3
+
+### Future: RAG Indexing Pipeline
+
+The downloaded PDFs are the input for the planned curriculum RAG pipeline:
+
+```
+nem-2023/ PDFs
+    │
+    ▼
+[PDF text extraction — server/src/utils/index-curriculum.ts (TODO)]
+    │  pdf-parse per file
+    ▼
+[Chunk by section/page]
+    │
+    ▼
+[Embed via Ollama qwen3-embedding]
+    │
+    ▼
+[Store in ChromaDB — collection: curriculum_nem2023]
+    │
+    ▼
+[Retrieval in lessonChat.service.ts — inject as context]
+```
+
+> **Status:** PDF download utility complete. Indexing pipeline is a future task.
+> The `pdf-parse` dependency is already installed in `server/package.json`.
