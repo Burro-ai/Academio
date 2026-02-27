@@ -8,7 +8,7 @@
 ## System Overview
 
 Academio is an AI-powered tutoring platform with two portals:
-1. **Student Portal** - Socratic AI tutor that guides students through learning
+1. **Student Portal** - Velocity Coach AI tutor (adaptive: Socratic / Direct+Depth-Check / Sprint)
 2. **Teacher Portal** - Student monitoring, analytics, and AI-assisted material generation
 
 ```
@@ -1504,3 +1504,69 @@ Student sends message
 | `server/src/utils/query-curriculum.ts` | Validates retrieval quality |
 
 **Graceful degradation:** If ChromaDB is unavailable, `initNEMClient()` sets `nemClient=null` on first call (logged once). All subsequent `getNEMContext()` calls return `null` immediately. Lesson chat continues normally without NEM enrichment — zero impact on user experience.
+
+---
+
+## Velocity Coach Pedagogy Model (Added 2026-02-27)
+
+### Overview
+
+The student AI is no longer a pure Socratic tutor. It is a **Velocity Coach** — an adaptive system that chooses between three operating modes in real time based on the student's state. The goal: make students learn 2× faster without sacrificing depth.
+
+### Three Adaptive Modes
+
+| Mode | Trigger | AI Behavior |
+|------|---------|-------------|
+| **Socrático** (default) | Student is engaging and progressing | Guide via questions; never give the answer directly |
+| **Directo + Depth-Check** | Student is blocked (2+ failed attempts or frustration signals) | Give direct answer + mandatory Depth-Check question immediately after |
+| **Sprint** | Student in flow (3+ consecutive fast, correct responses) | Short messages, fast-paced, no over-explaining — preserve momentum |
+
+### Depth-Check Protocol
+
+Every time the AI gives a direct answer (Directo mode), it MUST immediately follow with a Depth-Check:
+
+```
+"[Respuesta directa]. [Explicación breve del razonamiento]. Ahora dime: [pregunta de verificación]"
+```
+
+The Depth-Check verifies understanding — not memorization. This is enforced in `buildProhibitions()`:
+```
+❌ Dar una respuesta directa sin seguirla inmediatamente de un Depth-Check (sin excepción)
+```
+
+### Gamification — Age-Gated
+
+| Student Age | Power-Up Format | Sprint Format |
+|-------------|-----------------|---------------|
+| ≤ 12 years | `"⚡ Power-Up desbloqueado: [Nombre]"` | `"🔥 ¡Estás en Sprint! Siguiente:"` |
+| 13+ years | `"Concepto dominado: [nombre]."` | `"Sólido. Siguiente:"` |
+
+The age gate maps to the `allowsEnthusiasm` boolean on `PedagogicalPersona` in `aiGatekeeper.service.ts`.
+
+### Implementation Map
+
+```
+buildCoreDirective()          → Velocity Coach identity + 3-mode table
+buildSocraticMethodology()    → Age-differentiated 3-mode methodology + gamification
+buildProhibitions()           → No direct answer without Depth-Check; no Sprint-breaking
+server/data/system-prompt.txt → Runtime prompt for student AI (full Velocity Coach)
+shared/types/velocity.types.ts → VelocityMode, PowerUp, VelocitySprint, VelocitySessionStats
+```
+
+### Architect Co-Pilot (Teacher AI)
+
+The teacher AI is a separate persona — NOT a tutor. It is a **material generator**:
+- Zero fluff, starts with the deliverable immediately
+- Analytics-Aware: when given `struggle_score` / exit ticket data → Diagnose → Prescribe → Generate
+- 40/40/20 rubric baked into all generated rubrics (Exactitud 40% / Razonamiento 40% / Esfuerzo 20%)
+
+**Contextual Feedback Protocol thresholds:**
+
+| Signal | Threshold | Response |
+|--------|-----------|----------|
+| `struggle_score` | > 0.70 | Brecha crítica → re-enseñanza grupal inmediata |
+| `struggle_score` | 0.40–0.70 | Brecha moderada → refuerzo dirigido |
+| Exit ticket | < 0.60 | Concepto no dominado → no avanzar |
+| Exit ticket | 0.60–0.80 | Comprensión parcial → actividad de consolidación |
+
+Runtime prompt: `server/data/teacher-system-prompt.txt`

@@ -6,3 +6,4 @@ export * from './auth.types';
 export * from './studentProfile.types';
 export * from './lesson.types';
 export * from './school.types';
+export * from './velocity.types';

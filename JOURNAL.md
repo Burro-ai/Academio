@@ -30,6 +30,9 @@
 - [x] Liquid Glass design system (Apple 2026 glassmorphism)
 - [x] **NEM 2023 Curriculum Fetcher**: git sparse-checkout downloader for CONALITEG textbooks → `server/data/curriculum/nem-2023/`
 - [x] **NEM Curriculum RAG**: `curriculum_standards` ChromaDB collection wired into lesson chat — grade-filtered, concurrent retrieval, `## MARCO PEDAGÓGICO NEM` prompt injection
+- [x] **Velocity Coach Directive**: Student AI refactored — three adaptive modes (Socratic / Direct+Depth-Check / Sprint), age-gated gamification (Power-Ups + Sprints)
+- [x] **Architect Co-Pilot Directive**: Teacher AI refactored — zero fluff, analytics-aware, Diagnose→Prescribe→Generate protocol, 40/40/20 rubric standard
+- [x] **`shared/types/velocity.types.ts`**: `VelocityMode`, `PowerUp`, `VelocitySprint`, `VelocitySessionStats`
 
 ### Known Issues
 - Sharp library not available (graceful fallback to jimp)
@@ -67,6 +70,27 @@
 ## Progress Log
 
 ### 2026-02-27
+
+#### High-Velocity Pedagogy Refactor
+
+- **CLAUDE.md**: Replaced `## THE SOCRATIC PRIME DIRECTIVE` with two new directives:
+  - `## THE VELOCITY COACH DIRECTIVE (Student AI)`: Three-mode table, gamification layer, required/forbidden behavior tables, three example interactions
+  - `## THE ARCHITECT CO-PILOT DIRECTIVE (Teacher AI)`: Core rules table, Contextual Feedback Protocol (3 steps), 40/40/20 output standard
+- **`server/data/system-prompt.txt`**: Complete rewrite — Velocity Coach runtime prompt:
+  - Three adaptive modes (Socrático / Directo+Depth-Check / Sprint)
+  - Age-gated gamification: emojis + Power-Up/Sprint for ≤12; clean professional notation for 13+
+  - Depth-Check format: `"[Respuesta]. [Por qué]. Ahora dime: [verificación]"`
+- **`server/data/teacher-system-prompt.txt`**: Complete rewrite — Architect Co-Pilot runtime prompt:
+  - Contextual Feedback Protocol: Diagnose → Prescribe → Generate (from analytics data)
+  - Struggle score thresholds: >0.70 = critical, 0.40–0.70 = moderate, exit ticket <0.60 = not mastered
+  - 40/40/20 rubric baked in: Exactitud 40% / Razonamiento 40% / Esfuerzo 20%
+- **`lessonChat.service.ts`**: Three method rewrites:
+  - `buildCoreDirective()`: Velocity Coach identity + three-mode mode-switching table
+  - `buildSocraticMethodology()` (kept name): Fully rewritten as adaptive 3-mode methodology, age-differentiated
+  - `buildProhibitions()`: Updated — "sin Depth-Check" replaces "sin razonamiento"; added Sprint-breaking prohibition
+- **`shared/types/velocity.types.ts`**: New file — `VelocityMode`, `PowerUp`, `VelocitySprint`, `VelocitySessionStats`
+- **`shared/types/index.ts`**: Exports `velocity.types.ts`
+- TypeScript: ✅ 0 errors (client + server)
 
 #### NEM Curriculum RAG — Wired into lessonChat.service.ts
 
@@ -201,6 +225,10 @@
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-02-27 | Velocity Coach replaces pure Socratic model | Pure Socratic blocks students who are genuinely stuck — 2× speed requires direct answers when needed, gated by mandatory Depth-Check |
+| 2026-02-27 | Depth-Check mandatory after every direct answer | Prevents surface-level memorization; verifies real comprehension every time the AI breaks Socratic mode |
+| 2026-02-27 | Age gate: 13+ gets professional gamification, ≤12 gets emoji/Power-Up | Cringe prevention for teens; energy/motivation works differently across age bands |
+| 2026-02-27 | Architect Co-Pilot separate from Velocity Coach | Teacher AI is a generator (direct materials), not a tutor — different mental model, different system prompt |
 | 2026-02-27 | `Promise.all` for memory + NEM retrieval | Both are independent async calls — parallelizing adds zero latency to lesson chat |
 | 2026-02-27 | NEM similarity threshold 0.25 | Low enough to capture topically adjacent content; filters pure noise/unrelated chunks |
 | 2026-02-27 | NEM section at prompt position 4 (after lesson content) | Treated as background knowledge, not primary content; lesson always takes precedence |
