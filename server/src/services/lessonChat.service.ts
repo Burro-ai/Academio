@@ -1,3 +1,4 @@
+import { ChromaClient, IncludeEnum } from 'chromadb';
 import { ollamaService } from './ollama.service';
 import { aiGatekeeper, getPedagogicalPersona, PedagogicalPersona } from './aiGatekeeper.service';
 import { memoryService, RetrievedMemory } from './memory.service';
@@ -6,6 +7,13 @@ import { lessonChatQueries, LessonChatMessage } from '../database/queries/lesson
 import { lessonsQueries } from '../database/queries/lessons.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
 import { StudentProfile } from '../types';
+
+const CHROMA_HOST       = process.env.CHROMA_HOST       || 'localhost';
+const CHROMA_PORT       = process.env.CHROMA_PORT       || '8000';
+const OLLAMA_BASE_URL   = process.env.OLLAMA_BASE_URL   || 'http://localhost:11434';
+const NEM_COLLECTION    = 'curriculum_standards';
+const NEM_EMBED_MODEL   = 'qwen3-embedding';
+const NEM_TOP_K         = 3;
 
 /**
  * Lesson Chat Service
@@ -16,6 +24,178 @@ import { StudentProfile } from '../types';
  * - Age-appropriate tone: Professional for 13+, warm for younger students
  */
 class LessonChatService {
+  // ── NEM Curriculum RAG ────────────────────────────────────────────────────
+  private nemClient: ChromaClient | null = null;
+  private nemInitialized = false;
+
+  /**
+   * Lazy-init the ChromaDB client for curriculum retrieval.
+   * Silently sets nemClient=null if ChromaDB is unavailable.
+   */
+  private async initNEMClient(): Promise<void> {
+    if (this.nemInitialized) return;
+    this.nemInitialized = true;
+    try {
+      const client = new ChromaClient({ path: `http://${CHROMA_HOST}:${CHROMA_PORT}` });
+      await client.listCollections(); // connection test
+      this.nemClient = client;
+      console.log('[LessonChat] ChromaDB connected for NEM curriculum RAG');
+    } catch {
+      this.nemClient = null;
+      console.warn('[LessonChat] ChromaDB unavailable — NEM curriculum enrichment disabled');
+    }
+  }
+
+  /**
+   * Map a student's gradeLevel string to the `grade_dir` stored in ChromaDB metadata.
+   *
+   * Examples:
+   *   "1° de Primaria"        → "01_primaria_1"
+   *   "3er Grado de Primaria" → "03_primaria_3"
+   *   "2° de Secundaria"      → "08_secundaria_2"
+   *   "Preparatoria"          → null  (outside NEM scope)
+   */
+  private resolveGradeDir(gradeLevel?: string): string | null {
+    if (!gradeLevel) return null;
+    const g = gradeLevel.toLowerCase();
+
+    // NEM only covers Primaria (1–6) and Secundaria (1–3)
+    if (
+      g.includes('preparatoria') || g.includes('prepa') ||
+      g.includes('bachillerato') || g.includes('universidad') ||
+      g.includes('university')
+    ) {
+      return null;
+    }
+
+    const isSecundaria = g.includes('secundaria') || g.includes('secun');
+    const isPrimaria   = g.includes('primaria')   || g.includes('prim');
+    if (!isSecundaria && !isPrimaria) return null;
+
+    // Extract the first digit 1–6 present in the string
+    const numMatch = g.match(/\b([1-6])\b/);
+    if (!numMatch) return null;
+    const n = parseInt(numMatch[1], 10);
+
+    if (isSecundaria && n >= 1 && n <= 3) {
+      return `${String(n + 6).padStart(2, '0')}_secundaria_${n}`;
+    }
+    if (isPrimaria && n >= 1 && n <= 6) {
+      return `${String(n).padStart(2, '0')}_primaria_${n}`;
+    }
+    return null;
+  }
+
+  /**
+   * Retrieve grade-filtered NEM curriculum chunks relevant to the student's message.
+   *
+   * Returns null (gracefully) when:
+   *  - ChromaDB is unavailable
+   *  - The curriculum_standards collection is empty or missing
+   *  - Ollama embedding fails
+   *  - No chunks score above 0.25 similarity
+   */
+  async getNEMContext(
+    message: string,
+    gradeLevel?: string
+  ): Promise<string | null> {
+    await this.initNEMClient();
+    if (!this.nemClient) return null;
+
+    try {
+      // 1. Get (or create) the curriculum collection
+      const collections = await this.nemClient.listCollections();
+      const names = (collections as unknown as Array<{ name: string } | string>)
+        .map(c => (typeof c === 'string' ? c : c.name));
+      if (!names.includes(NEM_COLLECTION)) return null;
+
+      const collection = await this.nemClient.getOrCreateCollection({ name: NEM_COLLECTION });
+      if ((await collection.count()) === 0) return null;
+
+      // 2. Embed the student's message via Ollama
+      const embedRes = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: NEM_EMBED_MODEL, prompt: message }),
+      });
+      if (!embedRes.ok) return null;
+      const { embedding } = await embedRes.json() as { embedding: number[] };
+      if (!embedding?.length) return null;
+
+      // 3. Grade-filtered similarity search
+      const gradeDir = this.resolveGradeDir(gradeLevel);
+      const queryParams: Parameters<typeof collection.query>[0] = {
+        queryEmbeddings: [embedding],
+        nResults: NEM_TOP_K,
+        include: [IncludeEnum.Documents, IncludeEnum.Metadatas, IncludeEnum.Distances],
+      };
+      if (gradeDir) {
+        // Restrict results to the student's exact grade level
+        (queryParams as Record<string, unknown>).where = { grade_dir: { $eq: gradeDir } };
+      }
+
+      const results = await collection.query(queryParams);
+      const docs      = results.documents?.[0] ?? [];
+      const metas     = results.metadatas?.[0]  ?? [];
+      const distances = results.distances?.[0]  ?? [];
+
+      // 4. Filter by minimum similarity (L2 distance → similarity)
+      const MIN_SIMILARITY = 0.25;
+      const relevant: string[] = [];
+
+      for (let i = 0; i < docs.length; i++) {
+        const doc  = docs[i];
+        const meta = metas[i] as Record<string, string | number> | null ?? {};
+        const sim  = 1 / (1 + (distances[i] ?? 999));
+        if (doc && sim >= MIN_SIMILARITY) {
+          const label = meta.book_title
+            ? `[${meta.book_title}, pág. ~${meta.source_page ?? '?'}]`
+            : '';
+          relevant.push(`${label}\n${doc.trim()}`);
+        }
+      }
+
+      if (relevant.length === 0) return null;
+
+      console.log(
+        `[LessonChat] NEM RAG: ${relevant.length} chunk(s) retrieved` +
+        (gradeDir ? ` for grade_dir=${gradeDir}` : ' (no grade filter)')
+      );
+      return relevant.join('\n\n---\n\n');
+
+    } catch (err) {
+      console.warn('[LessonChat] NEM context retrieval failed (non-fatal):', err);
+      return null;
+    }
+  }
+
+  /**
+   * Inject NEM curriculum context into the system prompt.
+   *
+   * Positioned AFTER the specific lesson content so the AI treats it as
+   * deep background knowledge — not as content to cite verbatim.
+   */
+  private buildNEMFramework(nemChunks: string): string {
+    return `## MARCO PEDAGÓGICO NEM
+
+El siguiente contexto proviene de los libros de texto oficiales de la **Nueva Escuela Mexicana 2023** correspondientes al nivel del estudiante. Úsalo como base de conocimiento de fondo para fundamentar tus explicaciones.
+
+### Instrucciones de uso:
+- Utiliza este contexto para asegurar que tus explicaciones sean **modernas, precisas y alineadas al currículo mexicano NEM 2023**
+- **NO cites el libro directamente** a menos que el estudiante lo solicite explícitamente
+- Úsalo para enriquecer tus analogías, marcos conceptuales y vocabulario disciplinar
+- **Prioriza siempre** el contenido específico de la lección del estudiante sobre este contexto
+- Si el contexto no es relevante para la pregunta, ignóralo y responde con base en la lección
+
+### Contexto curricular relevante:
+
+---
+${nemChunks}
+---
+
+`;
+  }
+
   /**
    * Analyze conversation history to detect if student is struggling
    * Struggling indicators:
@@ -116,7 +296,8 @@ class LessonChatService {
     lessonContent: string,
     studentProfile?: StudentProfile | null,
     conversationHistory?: LessonChatMessage[],
-    retrievedMemories?: RetrievedMemory[]
+    retrievedMemories?: RetrievedMemory[],
+    nemContext?: string | null
   ): string {
     // Get the appropriate pedagogical persona based on age/grade
     const persona = getPedagogicalPersona(studentProfile?.age, studentProfile?.gradeLevel);
@@ -127,12 +308,32 @@ class LessonChatService {
       : { isStruggling: false, failedAttempts: 0, conceptsStruggledWith: [] };
 
     const memoryCount = retrievedMemories?.length || 0;
-    console.log(`[LessonChat] Persona: ${persona.name} (${persona.type}) | Age: ${studentProfile?.age} | Grade: ${studentProfile?.gradeLevel} | Struggling: ${struggleAnalysis.isStruggling} (${struggleAnalysis.failedAttempts} attempts) | Memories: ${memoryCount}`);
+    console.log(
+      `[LessonChat] Persona: ${persona.name} (${persona.type}) | ` +
+      `Age: ${studentProfile?.age} | Grade: ${studentProfile?.gradeLevel} | ` +
+      `Struggling: ${struggleAnalysis.isStruggling} (${struggleAnalysis.failedAttempts} attempts) | ` +
+      `Memories: ${memoryCount} | NEM chunks: ${nemContext ? 'yes' : 'no'}`
+    );
 
     // Build the hierarchical system prompt
+    // ┌─ 1. Core Directive (Socratic role + persona)
+    // ├─ 2. Socratic Methodology (adapted to age)
+    // ├─ 3. Lesson Content (specific material student is studying)
+    // ├─ 4. NEM Framework (grade-filtered curriculum background) ← NEW
+    // ├─ 5. Response Guidelines (formatting, tone)
+    // ├─ 6. Prohibitions
+    // ├─ 7. Student Context (age/grade — NO interests yet)
+    // ├─ 8. Struggle Support (conditional — only after 2+ failed attempts)
+    // └─ 9. Long-Term Memory (RAG — past interactions)
     let prompt = this.buildCoreDirective(persona);
     prompt += this.buildSocraticMethodology(persona);
     prompt += this.buildLessonContext(lessonContent);
+
+    // NEM CURRICULUM ENRICHMENT: inject after lesson content, before response rules
+    if (nemContext) {
+      prompt += this.buildNEMFramework(nemContext);
+    }
+
     prompt += this.buildResponseGuidelines(persona);
     prompt += this.buildProhibitions(persona);
 
@@ -433,23 +634,21 @@ SOLO usa estos intereses si:
       // Get conversation history BEFORE building system prompt (for struggle analysis)
       const history = lessonChatQueries.getRecentMessages(session.id, 20);
 
-      // RAG PIPELINE: Retrieve relevant past interactions from long-term memory
-      let retrievedMemories: RetrievedMemory[] = [];
-      if (memoryService.isAvailable()) {
-        retrievedMemories = await memoryService.retrieveRelevantMemories(
-          studentId,
-          message,
-          3 // Top 3 most relevant memories
-        );
-      }
+      // RAG PIPELINE: Retrieve long-term memory AND NEM curriculum context concurrently
+      const [retrievedMemories, nemContext] = await Promise.all([
+        memoryService.isAvailable()
+          ? memoryService.retrieveRelevantMemories(studentId, message, 3)
+          : Promise.resolve([] as RetrievedMemory[]),
+        this.getNEMContext(message, studentProfile?.gradeLevel ?? undefined),
+      ]);
 
-      // Build system prompt with lesson context, conversation history, AND long-term memory
-      // This enables conditional interest-based support based on struggle detection
+      // Build system prompt: lesson content + NEM curriculum enrichment + memory
       const systemPrompt = this.buildSystemPrompt(
         personalizedLesson.personalizedContent,
         studentProfile,
-        history, // Pass history for struggle analysis
-        retrievedMemories // Pass retrieved memories for RAG injection
+        history,
+        retrievedMemories,
+        nemContext
       );
 
       // Save user message
