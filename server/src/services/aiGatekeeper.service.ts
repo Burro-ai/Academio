@@ -329,6 +329,72 @@ export function getPedagogicalPersona(age?: number, gradeLevel?: string): Pedago
 }
 
 // ============================================================================
+// VELOCITY LEAP DIRECTIVE
+// ============================================================================
+
+export interface VelocityLeapResult {
+  /** Severity of the detected block */
+  threshold: 'moderate' | 'high';
+  /** Prompt segment to inject into the system prompt when struggle is detected */
+  promptSegment: string;
+}
+
+/** Failed-attempt thresholds for Velocity Leap activation */
+const VELOCITY_LEAP_MODERATE = 2;
+const VELOCITY_LEAP_HIGH     = 4;
+
+/**
+ * Returns a Velocity Leap directive when a student is genuinely blocked.
+ *
+ * The directive instructs the AI to exit Socratic mode and immediately provide:
+ *  1. The direct answer / solution
+ *  2. A brief "why it works" explanation
+ *  3. A mandatory "Verificación de Comprensión" (Relatability Check) —
+ *     a question that confirms the student understands the *logic* behind
+ *     the answer, not just the answer itself.
+ *
+ * Returns null when failedAttempts is below the activation threshold.
+ */
+export function getVelocityLeapDirective(
+  failedAttempts: number,
+  persona: PedagogicalPersona
+): VelocityLeapResult | null {
+  if (failedAttempts < VELOCITY_LEAP_MODERATE) return null;
+
+  const threshold: 'moderate' | 'high' =
+    failedAttempts >= VELOCITY_LEAP_HIGH ? 'high' : 'moderate';
+
+  const urgencyNote = threshold === 'high'
+    ? `⚠️ BLOQUEO SEVERO — el estudiante lleva ${failedAttempts} intentos fallidos. ` +
+      'Responde de forma completamente directa, sin ningún preámbulo socrático.'
+    : `⚠️ BLOQUEO DETECTADO — el estudiante lleva ${failedAttempts} intentos fallidos.`;
+
+  const verificationFormat = persona.allowsEnthusiasm
+    ? '"¿Lo tienes? Ahora dime: [pregunta sencilla que confirme que entendieron el POR QUÉ, no solo el QUÉ]"'
+    : '"Comprensión: [pregunta directa que verifique el razonamiento, no la memorización]"';
+
+  const promptSegment = `## 🚀 VELOCITY LEAP — MODO DIRECTO + VERIFICACIÓN
+
+${urgencyNote}
+
+### Protocolo Obligatorio (sigue los 3 pasos en orden):
+1. **RESPUESTA DIRECTA** — da la solución ahora mismo, sin preguntas previas ni rodeos
+2. **EL PORQUÉ** — explica el principio o razón detrás de la respuesta en 1–2 oraciones
+3. **VERIFICACIÓN DE COMPRENSIÓN** — cierra con una sola pregunta de Relatabilidad:
+   ${verificationFormat}
+
+La Verificación de Comprensión es **obligatoria** — no termines tu respuesta sin ella.
+Su función es confirmar que el estudiante captó la *lógica*, no solo la respuesta final.
+
+**Formato de salida:**
+[Respuesta]. [Por qué funciona así — 1–2 oraciones]. ${
+  persona.allowsEnthusiasm ? '¿Lo tienes? Dime:' : 'Comprensión:'
+} [pregunta de verificación]`;
+
+  return { threshold, promptSegment };
+}
+
+// ============================================================================
 // FORMATTER PROMPTS
 // ============================================================================
 

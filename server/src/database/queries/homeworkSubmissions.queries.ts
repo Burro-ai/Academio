@@ -334,6 +334,43 @@ export const homeworkSubmissionsQueries = {
   },
 
   /**
+   * Get a student's average rubric scores across all past AI-graded submissions.
+   * Returns null averages when there are no graded submissions yet.
+   * Uses SQLite json_extract for the rubric_scores JSON column.
+   */
+  getStudentRubricAverages(studentId: string): {
+    avgAccuracy: number | null;
+    avgReasoning: number | null;
+    avgEffort: number | null;
+    submissionCount: number;
+  } {
+    const db = getDb();
+    const row = db
+      .prepare(`
+        SELECT
+          AVG(CAST(json_extract(rubric_scores, '$.accuracy')  AS REAL)) AS avg_accuracy,
+          AVG(CAST(json_extract(rubric_scores, '$.reasoning') AS REAL)) AS avg_reasoning,
+          AVG(CAST(json_extract(rubric_scores, '$.effort')    AS REAL)) AS avg_effort,
+          COUNT(*) AS submission_count
+        FROM homework_submissions
+        WHERE student_id = ? AND rubric_scores IS NOT NULL
+      `)
+      .get(studentId) as {
+        avg_accuracy: number | null;
+        avg_reasoning: number | null;
+        avg_effort: number | null;
+        submission_count: number;
+      };
+
+    return {
+      avgAccuracy:  row.avg_accuracy  !== null ? Math.round(row.avg_accuracy)  : null,
+      avgReasoning: row.avg_reasoning !== null ? Math.round(row.avg_reasoning) : null,
+      avgEffort:    row.avg_effort    !== null ? Math.round(row.avg_effort)    : null,
+      submissionCount: row.submission_count,
+    };
+  },
+
+  /**
    * Delete a submission
    */
   delete(submissionId: string): boolean {

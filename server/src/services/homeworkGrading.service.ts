@@ -1,6 +1,7 @@
 import { ollamaService } from './ollama.service';
 import { aiGatekeeper, getPedagogicalPersona, PedagogicalPersona } from './aiGatekeeper.service';
 import { homeworkSubmissionsQueries, HomeworkAnswer } from '../database/queries/homeworkSubmissions.queries';
+import { lessonChatQueries } from '../database/queries/lessonChat.queries';
 import { studentProfilesQueries } from '../database/queries/studentProfiles.queries';
 
 /**
@@ -12,6 +13,28 @@ export interface RubricScores {
   accuracy: number;   // Correctness of final answers (40%)
   reasoning: number;  // Logical steps / process shown (40%)
   effort: number;     // Depth of engagement, all problems attempted (20%)
+}
+
+/**
+ * Historical + real-time analytics context injected into grading prompts.
+ * Enables the "Objective Feedback Loop" — comparative, data-grounded feedback.
+ */
+interface AnalyticsContext {
+  rubricHistory: {
+    avgAccuracy: number | null;
+    avgReasoning: number | null;
+    avgEffort: number | null;
+    submissionCount: number;
+  } | null;
+  recentStruggle: {
+    struggleScore: number;
+    dimensions: {
+      socraticDepth: number;
+      errorPersistence: number;
+      frustrationSentiment: number;
+      composite: number;
+    };
+  } | null;
 }
 
 /**
@@ -28,16 +51,68 @@ class HomeworkGradingService {
   }
 
   /**
-   * Build a rubric-aware grading prompt with age-appropriate feedback tone
+   * Build a rubric-aware grading prompt with age-appropriate feedback tone.
+   * When analyticsContext is provided, injects an "Objective Feedback Loop"
+   * section so the AI compares current performance against historical averages
+   * and recent struggle dimensions.
    */
   private buildGradingPrompt(
     homeworkContent: string,
     answers: HomeworkAnswer[],
-    persona: PedagogicalPersona
+    persona: PedagogicalPersona,
+    analyticsContext?: AnalyticsContext
   ): string {
     const answersFormatted = answers
       .map((a, i) => `Pregunta ${i + 1} (ID: ${a.questionId}):\nRespuesta del Estudiante: ${a.value || '(sin respuesta)'}`)
       .join('\n\n');
+
+    // ── Objective Feedback Loop section ──────────────────────────────────────
+    let feedbackLoopSection = '';
+    if (analyticsContext) {
+      const { rubricHistory, recentStruggle } = analyticsContext;
+
+      const historyLines: string[] = [];
+      if (rubricHistory && rubricHistory.submissionCount >= 1) {
+        const fmt = (v: number | null) => v !== null ? `${v}%` : 'sin datos';
+        historyLines.push(
+          `- Promedio histórico de EXACTITUD:    ${fmt(rubricHistory.avgAccuracy)}  (${rubricHistory.submissionCount} entregas anteriores)`,
+          `- Promedio histórico de RAZONAMIENTO: ${fmt(rubricHistory.avgReasoning)}`,
+          `- Promedio histórico de ESFUERZO:     ${fmt(rubricHistory.avgEffort)}`
+        );
+      }
+
+      const struggleLines: string[] = [];
+      if (recentStruggle) {
+        const d = recentStruggle.dimensions;
+        const pct = (v: number) => `${Math.round(v * 100)}%`;
+        struggleLines.push(
+          `- Struggle score reciente:  ${pct(recentStruggle.struggleScore)} (compuesto)`,
+          `- Profundidad socrática:    ${pct(d.socraticDepth)}   (cuánto razona antes de responder)`,
+          `- Persistencia de error:    ${pct(d.errorPersistence)} (repite los mismos errores)`,
+          `- Sentimiento de frustración: ${pct(d.frustrationSentiment)}`
+        );
+      }
+
+      if (historyLines.length > 0 || struggleLines.length > 0) {
+        feedbackLoopSection = `
+## BUCLE DE RETROALIMENTACIÓN OBJETIVA — DATOS ANALÍTICOS
+
+Usa estos datos para generar retroalimentación COMPARATIVA y ESPECÍFICA.
+No menciones los datos en crudo — tradúcelos a frases naturales en español.
+
+${historyLines.length > 0 ? `### Historial de Rúbrica\n${historyLines.join('\n')}` : ''}
+${struggleLines.length > 0 ? `\n### Métricas de Dificultad Reciente\n${struggleLines.join('\n')}` : ''}
+
+### Instrucciones de Uso del Bucle de Retroalimentación:
+- Si la EXACTITUD actual supera el promedio histórico → reconócelo explícitamente
+- Si el RAZONAMIENTO actual está por debajo del promedio → menciona que debe mostrar más el proceso ("El 'cómo llegaste ahí' es tan importante como la respuesta")
+- Si errorPersistence > 0.65 → señala que debe revisar sus respuestas antes de entregar
+- Si socraticDepth < 0.3 → sugiere que piense en voz alta o escriba sus pasos antes de responder
+- Usa frases como: "Esta vez dominaste la Exactitud (X%), pero tu Razonamiento estuvo 2× más débil que tu promedio. El siguiente enfoque: muestra el 'por qué' paso a paso."
+
+`;
+      }
+    }
 
     return `# IDIOMA: ESPAÑOL MEXICANO OBLIGATORIO
 TODA tu respuesta DEBE estar en ESPAÑOL MEXICANO. PROHIBIDO usar inglés.
@@ -49,7 +124,7 @@ Eres un evaluador educativo mexicano experto. Evalúa la entrega usando una RÚB
 - Adapta tu retroalimentación al nivel apropiado para su edad.
 
 ${persona.systemPromptSegment}
-
+${feedbackLoopSection}
 ## Contenido de la Tarea
 ${homeworkContent}
 
@@ -91,13 +166,14 @@ Responde ÚNICAMENTE con JSON válido:
   "accuracy": <número 0-100>,
   "reasoning": <número 0-100>,
   "effort": <número 0-100>,
-  "feedback": "<retroalimentación constructiva EN ESPAÑOL MEXICANO que mencione específicamente qué hizo bien en cada dimensión y qué puede mejorar>"
+  "feedback": "<retroalimentación constructiva EN ESPAÑOL MEXICANO — si tienes datos analíticos, úsalos para generar feedback comparativo específico>"
 }
 
 La retroalimentación debe:
 - Reconocer logros específicos ("Tu razonamiento en la pregunta 2 fue muy claro")
 - Señalar errores de forma alentadora ("Para la pregunta 3, revisa el concepto de...")
-- Dar un consejo concreto de mejora
+- Dar un consejo concreto y medible de mejora
+- Si hay datos históricos: comparar esta entrega con el promedio del estudiante de forma natural
 
 RECUERDA: JSON válido únicamente. Todo en ESPAÑOL MEXICANO. Cero inglés.`;
   }
@@ -118,6 +194,24 @@ RECUERDA: JSON válido únicamente. Todo en ESPAÑOL MEXICANO. Cero inglés.`;
       if (studentProfile) {
         persona = getPedagogicalPersona(studentProfile.age, studentProfile.gradeLevel);
         console.log(`[HomeworkGrading] Using persona: ${persona.name} for student ${studentId}`);
+      }
+    }
+
+    // ── Objective Feedback Loop — fetch analytics context ───────────────────
+    let analyticsContext: AnalyticsContext | undefined;
+    if (studentId) {
+      try {
+        const rubricHistory = homeworkSubmissionsQueries.getStudentRubricAverages(studentId);
+        const recentStruggle = lessonChatQueries.getStudentRecentStruggle(studentId);
+        analyticsContext = { rubricHistory, recentStruggle };
+        console.log(
+          `[HomeworkGrading] Analytics context — ` +
+          `${rubricHistory.submissionCount} past submissions, ` +
+          `struggle: ${recentStruggle?.struggleScore ?? 'none'}`
+        );
+      } catch (err) {
+        // Non-fatal: grading works without analytics context
+        console.warn('[HomeworkGrading] Failed to fetch analytics context (non-fatal):', err);
       }
     }
 
@@ -144,7 +238,7 @@ Responde ÚNICAMENTE con JSON válido:
   "feedback": "<retroalimentación en ESPAÑOL MEXICANO>"
 }`;
 
-    const prompt = this.buildGradingPrompt(homeworkContent, answers, persona);
+    const prompt = this.buildGradingPrompt(homeworkContent, answers, persona, analyticsContext);
 
     try {
       const response = await ollamaService.generate(prompt, undefined, systemPrompt);

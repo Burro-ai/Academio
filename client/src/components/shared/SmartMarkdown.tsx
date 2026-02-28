@@ -26,6 +26,12 @@ export interface SmartMarkdownProps {
   className?: string;
   variant?: 'default' | 'lesson' | 'homework' | 'chat' | 'feedback' | 'focus';
   compact?: boolean;
+  /**
+   * Number of Depth-Checks the student has completed this session.
+   * A "Velocity Streak" badge renders when this reaches 3+.
+   * Tracked externally by the chat hook; SmartMarkdown only renders it.
+   */
+  velocityStreak?: number;
 }
 
 /**
@@ -299,6 +305,47 @@ const createComponents = (variant: SmartMarkdownProps['variant'], compact: boole
   };
 };
 
+// ── Velocity Streak Badge ────────────────────────────────────────────────────
+
+interface VelocityStreakBadgeProps {
+  streak: number;
+}
+
+/**
+ * Glassmorphism badge that appears once a student has completed 3+ Depth-Checks.
+ * - 3–4 completions: "Racha de Velocidad" (amber)
+ * - 5+  completions: "Racha de Fuego"     (orange → red gradient)
+ */
+function VelocityStreakBadge({ streak }: VelocityStreakBadgeProps) {
+  const isFire = streak >= 5;
+
+  return (
+    <div
+      className={`inline-flex items-center gap-1.5 mb-3 px-3 py-1 rounded-full
+        backdrop-blur-sm border w-fit select-none
+        ${isFire
+          ? 'bg-gradient-to-r from-orange-500/25 to-red-500/20 border-orange-400/40'
+          : 'bg-gradient-to-r from-amber-500/20 to-yellow-500/15 border-amber-400/35'
+        }`}
+    >
+      <span className="text-sm leading-none" aria-hidden="true">
+        {isFire ? '🔥' : '⚡'}
+      </span>
+      <span
+        className={`text-xs font-semibold tracking-wide ${
+          isFire ? 'text-orange-500' : 'text-amber-600'
+        }`}
+      >
+        {isFire ? 'Racha de Fuego' : 'Racha de Velocidad'}
+        {' · '}
+        <span className="tabular-nums">{streak}</span>
+      </span>
+    </div>
+  );
+}
+
+// ── SmartMarkdown Component ───────────────────────────────────────────────────
+
 /**
  * SmartMarkdown Component
  * Renders markdown content with full LaTeX support
@@ -308,6 +355,7 @@ export function SmartMarkdown({
   className = '',
   variant = 'default',
   compact = false,
+  velocityStreak,
 }: SmartMarkdownProps) {
   // Pre-process content to fix common issues
   const processedContent = useMemo(() => preprocessContent(content), [content]);
@@ -328,8 +376,11 @@ export function SmartMarkdown({
     focus: 'focus-content',
   };
 
+  const showStreak = velocityStreak !== undefined && velocityStreak >= 3;
+
   return (
     <div className={`smart-markdown ${variantClasses[variant]} ${className}`}>
+      {showStreak && <VelocityStreakBadge streak={velocityStreak} />}
       <ReactMarkdown
         remarkPlugins={[remarkMath, remarkGfm]}
         rehypePlugins={[rehypeKatex, rehypeRaw]}

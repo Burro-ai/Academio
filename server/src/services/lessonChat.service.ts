@@ -1,6 +1,6 @@
 import { ChromaClient, IncludeEnum } from 'chromadb';
 import { ollamaService } from './ollama.service';
-import { aiGatekeeper, getPedagogicalPersona, PedagogicalPersona } from './aiGatekeeper.service';
+import { aiGatekeeper, getPedagogicalPersona, PedagogicalPersona, getVelocityLeapDirective } from './aiGatekeeper.service';
 import { memoryService, RetrievedMemory } from './memory.service';
 import { analyticsService } from './analytics.service';
 import { lessonChatQueries, LessonChatMessage } from '../database/queries/lessonChat.queries';
@@ -344,7 +344,7 @@ ${nemChunks}
 
     // CONDITIONAL: Add support resources ONLY if struggling
     if (struggleAnalysis.isStruggling && studentProfile) {
-      prompt += this.buildStruggleSupportResources(studentProfile, struggleAnalysis);
+      prompt += this.buildStruggleSupportResources(studentProfile, struggleAnalysis, persona);
     }
 
     // RAG: Inject relevant past interactions from long-term memory
@@ -553,55 +553,56 @@ ${toneGuidance}
 
   /**
    * CONDITIONAL SUPPORT RESOURCES
-   * Only activated after 2+ failed comprehension attempts
-   * This is the "mental crutch" for struggle, NOT default personalization
+   * Only activated after 2+ failed comprehension attempts.
+   *
+   * Injects two layers:
+   *  1. Velocity Leap directive (from aiGatekeeper) — switches AI to Direct+Depth-Check mode
+   *  2. Personalization resources — interests only as last-resort analogies
    */
   private buildStruggleSupportResources(
     studentProfile: StudentProfile,
-    struggleAnalysis: { failedAttempts: number }
+    struggleAnalysis: { failedAttempts: number },
+    persona: PedagogicalPersona
   ): string {
+    // ── Layer 1: Velocity Leap — always present when struggling ──────────────
+    const leap = getVelocityLeapDirective(struggleAnalysis.failedAttempts, persona);
+    let block = leap ? leap.promptSegment + '\n\n' : '';
+
+    // ── Layer 2: Personalization resources (interest-based analogies) ─────────
     const hasInterests = studentProfile.favoriteSports && studentProfile.favoriteSports.length > 0;
 
     if (!hasInterests) {
-      return `## RECURSO DE APOYO: ESTUDIANTE EN DIFICULTAD
+      block += `## RECURSO DE APOYO: BLOQUEO DETECTADO
 
-⚠️ Se han detectado ${struggleAnalysis.failedAttempts} intentos de comprensión sin éxito.
+Se han detectado ${struggleAnalysis.failedAttempts} intentos sin éxito.
 
-### Estrategia de Apoyo Activada:
-1. **Simplifica**: Reduce la complejidad de tu explicación
-2. **Más Concreto**: Usa ejemplos más básicos y tangibles
-3. **Pasos Más Pequeños**: Divide el concepto en micro-pasos
-4. **Verifica Prerrequisitos**: Asegúrate de que domina los conceptos base antes de avanzar
+### Estrategias de Apoyo (si la Verificación de Comprensión sigue fallando):
+1. **Simplifica** — reduce la complejidad de la explicación al mínimo
+2. **Más Concreto** — usa ejemplos tangibles del mundo cotidiano
+3. **Micro-pasos** — divide el concepto en el paso más pequeño posible
+4. **Verifica Prerrequisitos** — confirma que domina los conceptos base
 
 `;
+      return block;
     }
 
-    return `## RECURSOS DE APOYO PARA DIFICULTADES
+    block += `## RECURSOS DE APOYO PARA BLOQUEO PERSISTENTE
 
-⚠️ **ACTIVACIÓN CONDICIONAL**: Se han detectado ${struggleAnalysis.failedAttempts} intentos de comprensión sin éxito. Los siguientes recursos de personalización están ahora disponibles como "muleta mental".
+⚠️ ${struggleAnalysis.failedAttempts} intentos fallidos — recursos de personalización activados como última opción.
 
-### Intereses del Estudiante (USAR SOLO SI ES NECESARIO)
+### Intereses del Estudiante (USAR SOLO COMO ANALOGÍA DE ÚLTIMO RECURSO)
 - **Actividades/Deportes**: ${(studentProfile.favoriteSports || []).join(', ')}
 
-### Instrucciones de Uso:
-SOLO usa estos intereses si:
-1. Las explicaciones académicas estándar no están funcionando
-2. Necesitas una analogía de "último recurso" para conectar el concepto
-3. El estudiante parece desconectado y necesita un "gancho" emocional
+### Cuándo usarlos:
+SOLO después de que la Verificación de Comprensión falle dos veces más:
+1. Si las explicaciones directas + Verificación siguen sin funcionar
+2. Necesitas una analogía de "gancho" para que el concepto conecte
 
-**EJEMPLO DE USO APROPIADO**:
-"Veo que este concepto está siendo difícil. Déjame intentar algo diferente: imagina que estás [actividad del estudiante]. En ese contexto, [concepto] funcionaría como..."
-
-**EJEMPLO DE USO INAPROPIADO**:
-"¡Hola! Como te gusta [deporte], ¡vamos a aprender matemáticas con [deporte]!" ← NUNCA hagas esto
-
-### Estrategias de Apoyo Adicionales:
-1. **Simplifica el lenguaje** sin perder precisión
-2. **Usa ejemplos más concretos** del mundo cotidiano
-3. **Divide en pasos más pequeños**
-4. **Verifica comprensión de prerrequisitos**
+**USO CORRECTO**: "Déjame intentar algo diferente: imagina que estás [actividad]. En ese contexto, [concepto] funcionaría como..."
+**USO INCORRECTO**: "¡Como te gusta [deporte], aprendamos matemáticas con [deporte]!" ← NUNCA
 
 `;
+    return block;
   }
 
   /**

@@ -1570,3 +1570,72 @@ The teacher AI is a separate persona — NOT a tutor. It is a **material generat
 | Exit ticket | 0.60–0.80 | Comprensión parcial → actividad de consolidación |
 
 Runtime prompt: `server/data/teacher-system-prompt.txt`
+
+---
+
+## Velocity Engine — Hard-Wired AI Services + UI (Added 2026-02-27)
+
+### Velocity Leap — `getVelocityLeapDirective()`
+
+Central gatekeeper function that generates the "switch to direct mode" prompt segment whenever struggle is detected.
+
+```
+getVelocityLeapDirective(failedAttempts: number, persona: PedagogicalPersona)
+  → VelocityLeapResult | null
+```
+
+| failedAttempts | threshold  | Behavior |
+|----------------|------------|----------|
+| < 2            | —          | Returns null (stay in Socratic mode) |
+| 2–3            | moderate   | Inject Velocity Leap + Verificación de Comprensión |
+| 4+             | high       | Same, plus "sin preámbulo" urgency instruction |
+
+**Data flow:**
+```
+analyzeStruggleLevel()          (lessonChat.service.ts)
+  ↓ { failedAttempts }
+getVelocityLeapDirective()      (aiGatekeeper.service.ts)  ← single source of truth
+  ↓ VelocityLeapResult.promptSegment
+buildStruggleSupportResources() (lessonChat.service.ts)
+  ↓ injected into system prompt as Layer 1
+streamChat() → LLM              uses the directive
+```
+
+**Age-gated Verificación de Comprensión format:**
+- ≤12: `"¿Lo tienes? Ahora dime: [pregunta sencilla del POR QUÉ]"`
+- 13+: `"Comprensión: [pregunta directa de razonamiento]"`
+
+### Objective Feedback Loop — `homeworkGrading.service.ts`
+
+Every AI grading call now fetches two analytics sources before building the prompt:
+
+```
+generateAISuggestion(submissionId, homeworkContent, answers, studentId)
+  ├─ homeworkSubmissionsQueries.getStudentRubricAverages(studentId)
+  │    → AVG(json_extract(rubric_scores, '$.accuracy|reasoning|effort'))
+  │    across all past graded homework submissions
+  │
+  └─ lessonChatQueries.getStudentRecentStruggle(studentId)
+       → most recent lesson_chat_sessions row with struggle_score IS NOT NULL
+       → returns composite score + socraticDepth, errorPersistence, frustrationSentiment
+```
+
+Both feed `AnalyticsContext` → injected into `buildGradingPrompt()` as `## BUCLE DE RETROALIMENTACIÓN OBJETIVA`.
+
+**Feedback generation example (AI output):**
+> "Esta vez dominaste la Exactitud (95%), que está por encima de tu promedio (72%). Sin embargo, tu Razonamiento (30%) estuvo 2× más débil que tu historial (65%). El siguiente enfoque: muestra el 'cómo llegaste' paso a paso."
+
+Analytics fetch is non-fatal — wrapped in try/catch; grading succeeds without analytics context.
+
+### Velocity Streak Badge — `SmartMarkdown.tsx`
+
+New `velocityStreak?: number` prop. When `velocityStreak >= 3`, a `VelocityStreakBadge` renders above the content.
+
+| Streak | Label | Color |
+|--------|-------|-------|
+| 3–4    | ⚡ Racha de Velocidad · N | Amber glassmorphism |
+| 5+     | 🔥 Racha de Fuego · N    | Orange–red glassmorphism |
+
+The badge uses the Liquid Glass design system: `backdrop-blur-sm`, gradient `bg-gradient-to-r`, pill shape, `w-fit`.
+
+**Counting responsibility:** the parent chat hook tracks how many Depth-Checks the student has answered. SmartMarkdown only renders; no internal state. This keeps the component pure and reusable across different chat contexts.

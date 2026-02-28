@@ -348,6 +348,46 @@ export const lessonChatQueries = {
   },
 
   /**
+   * Get the most recent struggle score and dimensions for a student.
+   * Returns null when no struggle data has been recorded yet.
+   */
+  getStudentRecentStruggle(studentId: string): {
+    struggleScore: number;
+    dimensions: {
+      socraticDepth: number;
+      errorPersistence: number;
+      frustrationSentiment: number;
+      composite: number;
+    };
+  } | null {
+    const db = getDb();
+    const row = db
+      .prepare(`
+        SELECT struggle_score, struggle_dimensions
+        FROM lesson_chat_sessions
+        WHERE student_id = ? AND struggle_score IS NOT NULL
+        ORDER BY updated_at DESC
+        LIMIT 1
+      `)
+      .get(studentId) as { struggle_score: number; struggle_dimensions: string } | undefined;
+
+    if (!row) return null;
+    try {
+      return {
+        struggleScore: row.struggle_score,
+        dimensions: JSON.parse(row.struggle_dimensions) as {
+          socraticDepth: number;
+          errorPersistence: number;
+          frustrationSentiment: number;
+          composite: number;
+        },
+      };
+    } catch {
+      return null;
+    }
+  },
+
+  /**
    * Delete a session and all its messages
    */
   deleteSession(sessionId: string): boolean {

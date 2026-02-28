@@ -71,6 +71,32 @@
 
 ### 2026-02-27
 
+#### Velocity Engine — Hard-Wired AI Services + UI
+
+- **`aiGatekeeper.service.ts`** — added `VelocityLeapResult` interface + `getVelocityLeapDirective(failedAttempts, persona)`:
+  - Moderate threshold: 2+ failed attempts → 3-step protocol (Direct Answer → Why → Verificación de Comprensión)
+  - High threshold: 4+ failed attempts → same protocol + urgent no-preamble instruction
+  - Relatability Check (Verificación) format is age-gated: warm/emoji for ≤12, clinical for 13+
+- **`lessonChat.service.ts`** — `buildStruggleSupportResources()` refactored:
+  - Now accepts `persona` parameter and calls `getVelocityLeapDirective()` from gatekeeper
+  - Velocity Leap prompt injected as Layer 1 (always); interest-based analogies remain Layer 2 (last resort)
+- **`homeworkGrading.service.ts`** — Objective Feedback Loop:
+  - Fetches `rubricHistory` via new `getStudentRubricAverages(studentId)` — SQLite `json_extract` AVG across past submissions
+  - Fetches `recentStruggle` via new `getStudentRecentStruggle(studentId)` — most recent session's struggle_score + dimensions
+  - Both injected as `AnalyticsContext` into `buildGradingPrompt()` under `## BUCLE DE RETROALIMENTACIÓN OBJETIVA`
+  - AI generates comparative feedback: "dominaste Exactitud (X%) pero tu Razonamiento estuvo 2× más débil que tu promedio"
+  - Analytics fetch is non-fatal — grading works normally if it fails
+- **`homeworkSubmissions.queries.ts`** — added `getStudentRubricAverages(studentId)`:
+  - `AVG(json_extract(rubric_scores, '$.accuracy|reasoning|effort'))` across graded submissions
+- **`lessonChat.queries.ts`** — added `getStudentRecentStruggle(studentId)`:
+  - Most recent session with `struggle_score IS NOT NULL`, returns composite + 3 dimensions
+- **`SmartMarkdown.tsx`** — Velocity Streak badge:
+  - New `velocityStreak?: number` prop
+  - `VelocityStreakBadge` component renders above content when `velocityStreak >= 3`
+  - 3–4: amber "⚡ Racha de Velocidad · N"; 5+: orange-red "🔥 Racha de Fuego · N"
+  - Glass design system consistent (backdrop-blur, gradient border, w-fit pill)
+- TypeScript: ✅ 0 errors (client + server)
+
 #### High-Velocity Pedagogy Refactor
 
 - **CLAUDE.md**: Replaced `## THE SOCRATIC PRIME DIRECTIVE` with two new directives:
@@ -225,6 +251,10 @@
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-02-27 | `getVelocityLeapDirective()` lives in aiGatekeeper | Gatekeeper is the single source of pedagogical directives — keeps lessonChat.service lean; permits future reuse in homeworkChat |
+| 2026-02-27 | Objective Feedback Loop is non-fatal | Analytics fetch wrapped in try/catch; grading never breaks due to missing struggle data |
+| 2026-02-27 | `velocityStreak` is a prop, not derived from content | SmartMarkdown renders; the chat hook owns counting logic — clean separation of concerns |
+| 2026-02-27 | Relatability Check = Verificación de Comprensión | Same concept as Depth-Check but named for the gatekeeper context; confirms logic, not memorization |
 | 2026-02-27 | Velocity Coach replaces pure Socratic model | Pure Socratic blocks students who are genuinely stuck — 2× speed requires direct answers when needed, gated by mandatory Depth-Check |
 | 2026-02-27 | Depth-Check mandatory after every direct answer | Prevents surface-level memorization; verifies real comprehension every time the AI breaks Socratic mode |
 | 2026-02-27 | Age gate: 13+ gets professional gamification, ≤12 gets emoji/Power-Up | Cringe prevention for teens; energy/motivation works differently across age bands |
