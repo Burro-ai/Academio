@@ -25,6 +25,7 @@ import {
   LessonChatMessage,
   LessonChatSessionWithDetails,
 } from '@/types';
+import { StudentLessonAnalytic } from '../../../shared/types/student.types';
 import { ClassroomSnapshot, DiagnosticAudit } from '../../../shared/types/insight.types';
 import { authenticatedFetch, getAuthHeaders } from './authInterceptor';
 
@@ -327,6 +328,12 @@ class TeacherApiService {
     } | null;
   }> {
     return this.request(`/teacher/lesson-chats/${sessionId}`);
+  }
+
+  // ============ Student Lesson Analytics (Analítica tab) ============
+
+  async getStudentLessonAnalytics(studentId: string): Promise<StudentLessonAnalytic[]> {
+    return this.request<StudentLessonAnalytic[]>(`/teacher/students/${studentId}/lesson-analytics`);
   }
 
   // ============ Insight Engine ============

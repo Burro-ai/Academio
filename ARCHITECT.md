@@ -814,6 +814,7 @@ CREATE TABLE teacher_chat_sessions (
 | GET | `/api/teacher/chat/stream` | SSE stream for material generation | Teacher |
 | GET | `/api/teacher/students/:id/lesson-chats` | Student's lesson chat sessions | Teacher |
 | GET | `/api/teacher/lesson-chats/:sessionId` | View specific lesson chat | Teacher |
+| GET | `/api/teacher/students/:id/lesson-analytics` | Per-lesson analytics (struggle, exit ticket, rubric, grade) | Teacher |
 | GET | `/api/teacher/homework/pending` | Pending ungraded submissions | Teacher |
 | GET | `/api/teacher/homework/:id/submissions` | All submissions for a homework | Teacher |
 | PUT | `/api/teacher/homework/submissions/:id/grade` | Grade a submission | Teacher |
@@ -825,7 +826,7 @@ CREATE TABLE teacher_chat_sessions (
 |-------|-----------|---------|
 | `/teacher` | `TeacherPage.tsx` | Main teacher dashboard |
 | `/teacher/students` | `StudentList.tsx` | View all students |
-| `/teacher/students/:id` | `StudentProfile.tsx` | Individual student details |
+| `/teacher/students/:id` | `StudentProfile.tsx` | Individual student details (4 tabs: Learning Context, Chat Transcripts, Academic Performance, Analítica) |
 | `/teacher/assistant` | `TeacherChat.tsx` | AI material generator |
 | `/teacher/classroom` | `ClassroomOverview.tsx` | Class-wide analytics |
 
@@ -953,6 +954,44 @@ Replaces the static struggle_score seed with a live, per-message calculation eng
 **New DB column:** `homework_submissions.rubric_scores TEXT` (JSON: `{accuracy, reasoning, effort}`)
 
 **Teacher Portal:** `HomeworkGradingModal.tsx` shows 3 progress bars (Exactitud/Razonamiento/Esfuerzo) when `rubricScores` is present in the submission.
+
+---
+
+### StudentProfile — 4 Tabs
+
+`client/src/components/teacher/StudentProfile.tsx`
+
+| Tab | ID | Data Source |
+|-----|----|-------------|
+| Contexto de Aprendizaje | `learningContext` | `useStudents()` hook (profile, activity) |
+| Transcripciones de Chat | `chatTranscripts` | `GET /teacher/students/:id/stats` + `StudentLessonChats` |
+| Rendimiento Académico | `academicPerformance` | Same stats + `grades` |
+| **Analítica** | **`analytics`** | **`GET /teacher/students/:id/lesson-analytics`** (lazy, loads on first tab activation) |
+
+**Analítica tab — per-lesson card** (`LessonAnalyticCard`):
+- Struggle score bar (green < 0.4, amber 0.4–0.7, red > 0.7)
+- 3 dimension mini-bars: socraticDepth / errorPersistence / frustrationSentiment (purple)
+- Exit ticket badge (Aprobado / Reprobado / Pendiente)
+- Rubric grid: Exactitud / Razonamiento / Esfuerzo (color-coded out of 100)
+- Submission grade chip (green ≥70, amber ≥50, red <50)
+
+**Accepts `initialTab?: TabType`** — when navigated from the Insight Engine heatmap, `StudentsView` passes `initialTab='analytics'` so the teacher lands directly on the data.
+
+### Heatmap → Profile Navigation Bridge
+
+State is lifted to `TeacherPage.tsx`:
+```
+ClassroomInsights → onViewStudent(studentId)
+                          ↓
+TeacherPage: setNavStudentId(id) + setActiveTab('students')
+                          ↓
+StudentsView: initialStudentId={navStudentId} → fromInsights=true
+                          ↓
+StudentProfile: initialTab='analytics'
+```
+
+- **"Ver perfil completo →"** button rendered in the CellDetail right panel (only when `onViewStudent` prop is present and a cell is selected)
+- `navStudentId` is cleared via `onStudentCleared` when the teacher hits the back button — clean re-entry
 
 ---
 

@@ -319,6 +319,78 @@ export const studentStatsQueries = {
   },
 
   /**
+   * Get per-lesson analytics for a student (for the Analítica tab)
+   * Joins learning_analytics → lesson_chat_sessions → personalized_lessons → lessons
+   * Left-joins homework_assignments (via source_lesson_id) and homework_submissions for rubric data
+   */
+  getStudentLessonAnalytics(studentId: string): Array<{
+    lessonId: string;
+    lessonTitle: string;
+    lessonTopic: string;
+    subject: string | null;
+    struggleScore: number | null;
+    struggleDimensions: string | null;
+    comprehensionScore: number | null;
+    exitTicketPassed: number | null;
+    rubricScores: string | null;
+    submissionGrade: number | null;
+    lastActivity: string | null;
+  }> {
+    const db = getDb();
+
+    const rows = db.prepare(`
+      SELECT
+        l.id                    AS lesson_id,
+        l.title                 AS lesson_title,
+        l.topic                 AS lesson_topic,
+        l.subject,
+        la.struggle_score,
+        la.struggle_dimensions,
+        la.comprehension_score,
+        la.exit_ticket_passed,
+        hs.rubric_scores,
+        hs.grade                AS submission_grade,
+        la.updated_at           AS last_activity
+      FROM learning_analytics la
+      JOIN lesson_chat_sessions lcs ON lcs.id = la.session_id
+      JOIN personalized_lessons pl  ON pl.id  = lcs.personalized_lesson_id
+      JOIN lessons l                ON l.id   = pl.lesson_id
+      LEFT JOIN homework_assignments ha ON ha.source_lesson_id = l.id
+      LEFT JOIN personalized_homework ph
+             ON ph.homework_id = ha.id AND ph.student_id = ?
+      LEFT JOIN homework_submissions hs ON hs.personalized_homework_id = ph.id
+      WHERE la.student_id = ?
+      ORDER BY la.updated_at DESC
+    `).all(studentId, studentId) as Array<{
+      lesson_id: string;
+      lesson_title: string;
+      lesson_topic: string;
+      subject: string | null;
+      struggle_score: number | null;
+      struggle_dimensions: string | null;
+      comprehension_score: number | null;
+      exit_ticket_passed: number | null;
+      rubric_scores: string | null;
+      submission_grade: number | null;
+      last_activity: string | null;
+    }>;
+
+    return rows.map(row => ({
+      lessonId: row.lesson_id,
+      lessonTitle: row.lesson_title,
+      lessonTopic: row.lesson_topic,
+      subject: row.subject,
+      struggleScore: row.struggle_score,
+      struggleDimensions: row.struggle_dimensions,
+      comprehensionScore: row.comprehension_score,
+      exitTicketPassed: row.exit_ticket_passed,
+      rubricScores: row.rubric_scores,
+      submissionGrade: row.submission_grade,
+      lastActivity: row.last_activity,
+    }));
+  },
+
+  /**
    * Get complete student stats (aggregates all above queries)
    */
   getStudentStats(studentId: string): StudentStats {

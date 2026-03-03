@@ -217,6 +217,46 @@ export const studentController = {
   },
 
   /**
+   * Get per-lesson analytics for a student (for the Analítica tab)
+   * GET /api/teacher/students/:studentId/lesson-analytics
+   */
+  async getStudentLessonAnalytics(req: Request, res: Response) {
+    const { studentId } = req.params;
+    const jwtReq = req as JwtAuthenticatedRequest;
+
+    // Verify teacher has access to this student
+    if (jwtReq.user && jwtReq.user.role === 'TEACHER') {
+      const studentProfile = studentProfilesQueries.getByUserId(studentId);
+      if (studentProfile && studentProfile.teacherId !== jwtReq.user.id) {
+        throw new AppError('Access denied: student not assigned to you', 403);
+      }
+    }
+
+    const rawRows = studentStatsQueries.getStudentLessonAnalytics(studentId);
+
+    // Parse JSON strings for dimensions and rubric scores
+    const analytics = rawRows.map(row => ({
+      lessonId: row.lessonId,
+      lessonTitle: row.lessonTitle,
+      lessonTopic: row.lessonTopic,
+      subject: row.subject,
+      struggleScore: row.struggleScore,
+      struggleDimensions: row.struggleDimensions
+        ? (() => { try { return JSON.parse(row.struggleDimensions!); } catch { return null; } })()
+        : null,
+      comprehensionScore: row.comprehensionScore,
+      exitTicketPassed: row.exitTicketPassed === null ? null : row.exitTicketPassed === 1,
+      rubricScores: row.rubricScores
+        ? (() => { try { return JSON.parse(row.rubricScores!); } catch { return null; } })()
+        : null,
+      submissionGrade: row.submissionGrade,
+      lastActivity: row.lastActivity,
+    }));
+
+    res.json(analytics);
+  },
+
+  /**
    * Get activity summary for all students (batch query for Activity Pulse)
    * GET /api/teacher/students/activity-summary
    */

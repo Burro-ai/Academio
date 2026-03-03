@@ -93,6 +93,7 @@ export const PERMISSION_REGISTRY: RoutePermission[] = [
   { method: 'DELETE', path: '/teacher/chat/sessions/:id', permissions: ['TEACHER'], description: 'Delete teacher chat session' },
   { method: 'GET', path: '/teacher/students/activity-summary', permissions: ['TEACHER'], description: 'Get activity summary' },
   { method: 'GET', path: '/teacher/students/:studentId/stats', permissions: ['TEACHER'], description: 'Get student stats' },
+  { method: 'GET', path: '/teacher/students/:studentId/lesson-analytics', permissions: ['TEACHER'], description: 'Get per-lesson analytics for student' },
   { method: 'GET', path: '/teacher/students/:studentId/lesson-chats', permissions: ['TEACHER'], description: 'Get student lesson chats' },
   { method: 'GET', path: '/teacher/lesson-chats/:sessionId', permissions: ['TEACHER'], description: 'View lesson chat' },
   { method: 'GET', path: '/teacher/homework/pending', permissions: ['TEACHER'], description: 'Get pending submissions' },

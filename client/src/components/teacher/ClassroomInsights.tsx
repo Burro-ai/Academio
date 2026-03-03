@@ -226,7 +226,11 @@ function ClusterList({ clusters }: ClusterListProps) {
 // Main Component
 // ============================================================
 
-export function ClassroomInsights() {
+interface ClassroomInsightsProps {
+  onViewStudent?: (studentId: string) => void;
+}
+
+export function ClassroomInsights({ onViewStudent }: ClassroomInsightsProps) {
   const { t } = useTranslation();
   const { classrooms } = useTeacherContext();
   const { snapshot, audit, isLoadingSnapshot, isGeneratingAudit, error, loadSnapshot, generateAudit } =
@@ -408,7 +412,17 @@ export function ClassroomInsights() {
             {/* Cell Detail */}
             <div className="backdrop-blur-md bg-white/5 border border-white/15 rounded-2xl p-4">
               {selectedCell ? (
-                <CellDetail cell={selectedCell.cell} studentName={selectedCell.student.studentName} />
+                <>
+                  <CellDetail cell={selectedCell.cell} studentName={selectedCell.student.studentName} />
+                  {onViewStudent && (
+                    <button
+                      onClick={() => onViewStudent(selectedCell.student.studentId)}
+                      className="mt-4 w-full py-2 px-3 rounded-xl backdrop-blur-md bg-emerald-500/15 border border-emerald-400/25 text-emerald-300 text-xs font-medium hover:bg-emerald-500/25 transition-all text-center"
+                    >
+                      {t('teacher.insights.detail.viewFullProfile')}
+                    </button>
+                  )}
+                </>
               ) : (
                 <p className="text-xs text-white/30 text-center py-6">
                   Haz clic en una celda para ver el detalle

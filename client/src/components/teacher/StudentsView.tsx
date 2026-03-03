@@ -1,18 +1,39 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StudentList } from './StudentList';
 import { StudentProfile } from './StudentProfile';
 import { useTeacherContext } from '@/context/TeacherContext';
 
-export function StudentsView() {
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+interface StudentsViewProps {
+  initialStudentId?: string | null;
+  onStudentCleared?: () => void;
+}
+
+export function StudentsView({ initialStudentId, onStudentCleared }: StudentsViewProps) {
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(initialStudentId || null);
+  const [fromInsights, setFromInsights] = useState<boolean>(!!initialStudentId);
   const [selectedClassroomId, setSelectedClassroomId] = useState<string | undefined>();
   const { classrooms, interventionAlerts } = useTeacherContext();
+
+  // When TeacherPage navigates here with a pre-selected student (from heatmap)
+  useEffect(() => {
+    if (initialStudentId) {
+      setSelectedStudentId(initialStudentId);
+      setFromInsights(true);
+    }
+  }, [initialStudentId]);
+
+  const handleBack = () => {
+    setSelectedStudentId(null);
+    setFromInsights(false);
+    onStudentCleared?.();
+  };
 
   if (selectedStudentId) {
     return (
       <StudentProfile
         studentId={selectedStudentId}
-        onBack={() => setSelectedStudentId(null)}
+        initialTab={fromInsights ? 'analytics' : undefined}
+        onBack={handleBack}
       />
     );
   }

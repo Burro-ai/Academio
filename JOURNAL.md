@@ -9,6 +9,8 @@
 ## Current State
 
 ### What's Working
+- [x] **Student Profile Analítica Tab**: 4th tab in `StudentProfile.tsx` — per-lesson analytics (struggle score, 3 dimensions, exit ticket, rubric, grade)
+- [x] **Heatmap → Profile Navigation**: clicking "Ver perfil completo →" in ClassroomInsights CellDetail teleports to Students tab, opens the student's Analítica tab automatically
 - [x] **Insight Audit Persistence**: `insight_audits` table — audits stored on generation, history + by-ID retrieval endpoints live
 - [x] Authentication system (JWT-based, 7-day expiry, persistence-first)
 - [x] Student portal: AI tutor chat, lesson chat, homework sidekick
@@ -53,8 +55,8 @@
 
 ### High Priority
 1. ~~Persist insight audit results to DB~~ ✅ Done
-2. Classroom management CRUD (create/edit/delete classrooms from teacher UI)
-3. Student profile detail view (teacher side: grades, analytics, chat history)
+2. ~~Student profile detail view — Analítica tab + heatmap navigation~~ ✅ Done
+3. Classroom management CRUD (create/edit/delete classrooms from teacher UI)
 
 ### Medium Priority
 4. Export features: PDF report from diagnostic audit
@@ -109,6 +111,28 @@
   - `VelocityStreakBadge` component renders above content when `velocityStreak >= 3`
   - 3–4: amber "⚡ Racha de Velocidad · N"; 5+: orange-red "🔥 Racha de Fuego · N"
   - Glass design system consistent (backdrop-blur, gradient border, w-fit pill)
+- TypeScript: ✅ 0 errors (client + server)
+
+#### Student Profile Analítica Tab + Heatmap Navigation
+
+- **`shared/types/student.types.ts`** — added `StudentLessonAnalytic` interface (per-lesson analytics shape)
+- **`server/src/database/queries/studentStats.queries.ts`** — added `getStudentLessonAnalytics(studentId)`:
+  - Joins `learning_analytics → lesson_chat_sessions → personalized_lessons → lessons`
+  - Left-joins `homework_assignments` (via `source_lesson_id`) and `homework_submissions` for rubric/grade data
+- **`server/src/controllers/student.controller.ts`** — added `getStudentLessonAnalytics()` handler:
+  - Parses JSON columns (`struggle_dimensions`, `rubric_scores`) server-side
+  - Converts SQLite `exit_ticket_passed` integer → boolean
+- **`server/src/routes/teacher.routes.ts`** — `GET /teacher/students/:studentId/lesson-analytics`
+- **`server/src/middleware/permissionRegistry.ts`** — new route registered as TEACHER
+- **`client/src/services/teacherApi.ts`** — added `getStudentLessonAnalytics(studentId)`
+- **`client/src/pages/TeacherPage.tsx`** — added `navStudentId` state; `handleViewStudent` now stores ID + switches tab; passed as `initialStudentId` to `StudentsView` and `onViewStudent` to `ClassroomInsights`
+- **`client/src/components/teacher/ClassroomInsights.tsx`** — added `onViewStudent?` prop; "Ver perfil completo →" pill button appears at bottom of CellDetail when a cell is selected
+- **`client/src/components/teacher/StudentsView.tsx`** — added `initialStudentId` + `onStudentCleared` props; `fromInsights` flag passes `initialTab='analytics'` to `StudentProfile`
+- **`client/src/components/teacher/StudentProfile.tsx`** — 4th "Analítica" tab:
+  - `initialTab?: TabType` prop (defaults to 'learningContext')
+  - Lazy-loads analytics on first tab activation via `GET .../lesson-analytics`
+  - `AnalyticsTab` + `LessonAnalyticCard` components: struggle bar, 3 dimension mini-bars, exit ticket badge, rubric grid, grade chip
+- **`client/src/locales/es-MX.json`** — added `teacher.studentProfile.tabs.analytics`, `teacher.studentProfile.analytics.*`, `teacher.insights.detail.viewFullProfile`
 - TypeScript: ✅ 0 errors (client + server)
 
 #### Insight Audit Persistence

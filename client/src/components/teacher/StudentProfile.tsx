@@ -6,25 +6,36 @@ import { GlassCard } from '@/components/glass';
 import { StudentLessonChats } from './StudentLessonChats';
 import { teacherApi } from '@/services/teacherApi';
 import { GradesBySubject, StudentStats } from '@/types';
+import { StudentLessonAnalytic } from '../../../../shared/types/student.types';
 
 interface StudentProfileProps {
   studentId: string;
   onBack: () => void;
+  initialTab?: TabType;
 }
 
-type TabType = 'learningContext' | 'chatTranscripts' | 'academicPerformance';
+type TabType = 'learningContext' | 'chatTranscripts' | 'academicPerformance' | 'analytics';
 
-export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
+export function StudentProfile({ studentId, onBack, initialTab }: StudentProfileProps) {
   const { t } = useTranslation();
   const { selectedStudent, studentGrades, studentActivity, isLoading, selectStudent } = useStudents();
-  const [activeTab, setActiveTab] = useState<TabType>('learningContext');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab ?? 'learningContext');
   const [stats, setStats] = useState<StudentStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [analytics, setAnalytics] = useState<StudentLessonAnalytic[] | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   useEffect(() => {
     selectStudent(studentId);
     loadStats();
   }, [studentId, selectStudent]);
+
+  // Load analytics when tab is activated
+  useEffect(() => {
+    if (activeTab === 'analytics' && analytics === null && !analyticsLoading) {
+      loadAnalytics();
+    }
+  }, [activeTab]);
 
   const loadStats = async () => {
     setStatsLoading(true);
@@ -35,6 +46,19 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
       console.error('Failed to load student stats:', err);
     } finally {
       setStatsLoading(false);
+    }
+  };
+
+  const loadAnalytics = async () => {
+    setAnalyticsLoading(true);
+    try {
+      const data = await teacherApi.getStudentLessonAnalytics(studentId);
+      setAnalytics(data);
+    } catch (err) {
+      console.error('Failed to load lesson analytics:', err);
+      setAnalytics([]);
+    } finally {
+      setAnalyticsLoading(false);
     }
   };
 
@@ -57,6 +81,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
     { id: 'learningContext', label: t('teacher.studentProfile.tabs.learningContext') },
     { id: 'chatTranscripts', label: t('teacher.studentProfile.tabs.chatTranscripts') },
     { id: 'academicPerformance', label: t('teacher.studentProfile.tabs.academicPerformance') },
+    { id: 'analytics', label: t('teacher.studentProfile.tabs.analytics') },
   ];
 
   return (
@@ -161,6 +186,13 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
               grades={studentGrades}
               stats={stats}
               statsLoading={statsLoading}
+              t={t}
+            />
+          )}
+          {activeTab === 'analytics' && (
+            <AnalyticsTab
+              analytics={analytics}
+              isLoading={analyticsLoading}
               t={t}
             />
           )}
@@ -479,6 +511,181 @@ function AcademicPerformanceTab({
         </GlassCard>
       </div>
     </div>
+  );
+}
+
+// Tab 4: Analytics
+function AnalyticsTab({
+  analytics,
+  isLoading,
+  t,
+}: {
+  analytics: StudentLessonAnalytic[] | null;
+  isLoading: boolean;
+  t: (key: string) => string;
+}) {
+  if (isLoading || analytics === null) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400" />
+      </div>
+    );
+  }
+
+  if (analytics.length === 0) {
+    return (
+      <GlassCard variant="card" className="p-8 text-center">
+        <svg className="w-12 h-12 mx-auto text-prominent mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        <p className="text-prominent">{t('teacher.studentProfile.analytics.noData')}</p>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {analytics.map((item) => (
+        <LessonAnalyticCard key={item.lessonId} item={item} t={t} />
+      ))}
+    </div>
+  );
+}
+
+function LessonAnalyticCard({ item, t }: { item: StudentLessonAnalytic; t: (key: string) => string }) {
+  const struggle = item.struggleScore ?? 0;
+  const struggleColor =
+    struggle < 0.4 ? 'bg-emerald-400' :
+    struggle < 0.7 ? 'bg-yellow-400' :
+    'bg-red-400';
+  const struggleBorder =
+    struggle < 0.4 ? 'border-emerald-400/30' :
+    struggle < 0.7 ? 'border-yellow-400/30' :
+    'border-red-400/30';
+
+  return (
+    <GlassCard variant="card" className={`p-5 border ${item.struggleScore !== null ? struggleBorder : 'border-white/10'}`}>
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-solid truncate">{item.lessonTitle}</p>
+          <p className="text-sm text-prominent truncate">{item.lessonTopic}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {item.subject && (
+            <span className="text-xs px-2 py-0.5 rounded-full backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-blue-700">
+              {item.subject}
+            </span>
+          )}
+          {item.submissionGrade !== null && (
+            <span className={`text-sm font-bold ${
+              item.submissionGrade >= 70 ? 'text-green-600' :
+              item.submissionGrade >= 50 ? 'text-yellow-600' : 'text-red-600'
+            }`}>
+              {item.submissionGrade.toFixed(0)}/100
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {/* Struggle score bar */}
+        {item.struggleScore !== null && (
+          <div>
+            <div className="flex justify-between text-xs text-prominent mb-1">
+              <span>{t('teacher.studentProfile.analytics.struggleGlobal')}</span>
+              <span>{Math.round(item.struggleScore * 100)}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${struggleColor}`}
+                style={{ width: `${item.struggleScore * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Struggle dimensions */}
+        {item.struggleDimensions && (
+          <div>
+            <p className="text-xs font-semibold text-prominent mb-1.5 uppercase tracking-wide">
+              {t('teacher.studentProfile.analytics.dimensions')}
+            </p>
+            <div className="space-y-1.5">
+              {[
+                { key: 'socraticDepth', label: t('teacher.studentProfile.analytics.socraticDepth'), value: item.struggleDimensions.socraticDepth },
+                { key: 'errorPersistence', label: t('teacher.studentProfile.analytics.errorPersistence'), value: item.struggleDimensions.errorPersistence },
+                { key: 'frustrationSentiment', label: t('teacher.studentProfile.analytics.frustrationSentiment'), value: item.struggleDimensions.frustrationSentiment },
+              ].map(({ key, label, value }) => (
+                <div key={key}>
+                  <div className="flex justify-between text-xs text-prominent mb-0.5">
+                    <span>{label}</span>
+                    <span>{Math.round(value * 100)}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-purple-400/60 transition-all"
+                      style={{ width: `${value * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Exit ticket + rubric row */}
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-prominent">{t('teacher.studentProfile.analytics.exitTicket')}:</span>
+            {item.exitTicketPassed === null ? (
+              <span className="text-xs px-2 py-0.5 rounded-full backdrop-blur-sm bg-white/10 text-prominent">
+                {t('teacher.studentProfile.analytics.exitTicketPending')}
+              </span>
+            ) : item.exitTicketPassed ? (
+              <span className="text-xs px-2 py-0.5 rounded-full backdrop-blur-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-700">
+                {t('teacher.studentProfile.analytics.exitTicketPassed')}
+              </span>
+            ) : (
+              <span className="text-xs px-2 py-0.5 rounded-full backdrop-blur-sm bg-red-500/20 border border-red-400/30 text-red-700">
+                {t('teacher.studentProfile.analytics.exitTicketFailed')}
+              </span>
+            )}
+          </div>
+          {item.lastActivity && (
+            <span className="text-xs text-prominent ml-auto">
+              {new Date(item.lastActivity).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+
+        {/* Rubric scores */}
+        {item.rubricScores && (
+          <div>
+            <p className="text-xs font-semibold text-prominent mb-1.5 uppercase tracking-wide">
+              {t('teacher.studentProfile.analytics.rubric')}
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: t('teacher.studentProfile.analytics.rubricAccuracy'), value: item.rubricScores.accuracy },
+                { label: t('teacher.studentProfile.analytics.rubricReasoning'), value: item.rubricScores.reasoning },
+                { label: t('teacher.studentProfile.analytics.rubricEffort'), value: item.rubricScores.effort },
+              ].map(({ label, value }) => (
+                <div key={label} className="p-2 glass-surface text-center">
+                  <p className="text-xs text-prominent truncate">{label}</p>
+                  <p className={`text-sm font-semibold mt-0.5 ${
+                    value >= 70 ? 'text-green-600' : value >= 50 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {value}/100
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </GlassCard>
   );
 }
 

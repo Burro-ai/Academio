@@ -51,6 +51,7 @@ router.delete('/chat/sessions/:id', asyncHandler(teacherChatController.deleteSes
 // Student Stats (360-Degree View)
 router.get('/students/activity-summary', asyncHandler(studentController.getActivitySummary));
 router.get('/students/:studentId/stats', asyncHandler(studentController.getStudentStats));
+router.get('/students/:studentId/lesson-analytics', asyncHandler(studentController.getStudentLessonAnalytics));
 
 // Student Lesson Chats (Teacher Oversight)
 router.get('/students/:studentId/lesson-chats', asyncHandler(lessonChatController.getStudentLessonChats));

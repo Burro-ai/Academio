@@ -428,7 +428,8 @@
       "tabs": {
         "learningContext": "Contexto de Aprendizaje",
         "chatTranscripts": "Transcripciones de Chat",
-        "academicPerformance": "Rendimiento Académico"
+        "academicPerformance": "Rendimiento Académico",
+        "analytics": "Analítica"
       },
       "learningContext": {
         "title": "Perfil de Aprendizaje",
@@ -467,6 +468,25 @@
         "recent": "Actividad reciente",
         "inactive": "Sin actividad reciente",
         "pendingHomework": "{{count}} tareas pendientes"
+      },
+      "analytics": {
+        "title": "Analítica por Lección",
+        "noData": "Aún no hay datos de analítica para este alumno",
+        "struggleGlobal": "Dificultad Global",
+        "dimensions": "Dimensiones de Dificultad",
+        "socraticDepth": "Profundidad Socrática",
+        "errorPersistence": "Persistencia de Errores",
+        "frustrationSentiment": "Sentimiento de Frustración",
+        "exitTicket": "Exit Ticket",
+        "exitTicketPassed": "Aprobado",
+        "exitTicketFailed": "Reprobado",
+        "exitTicketPending": "Pendiente",
+        "rubric": "Rúbrica",
+        "rubricAccuracy": "Exactitud",
+        "rubricReasoning": "Razonamiento",
+        "rubricEffort": "Esfuerzo",
+        "grade": "Calificación",
+        "lastActivity": "Última actividad"
       },
       "noData": "Sin actividad registrada",
       "stats": {
@@ -835,7 +855,8 @@
         "rubricScores": "Rúbrica",
         "accuracy": "Precisión",
         "reasoning": "Razonamiento",
-        "effort": "Esfuerzo"
+        "effort": "Esfuerzo",
+        "viewFullProfile": "Ver perfil completo →"
       },
       "audit": {
         "title": "Diagnóstico Pedagógico",

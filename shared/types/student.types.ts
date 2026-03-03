@@ -162,3 +162,22 @@ export interface ActivitySummary {
   pendingHomework: number;
   totalChatMessages: number;
 }
+
+// Per-lesson analytics for the Analítica tab in StudentProfile
+export interface StudentLessonAnalytic {
+  lessonId: string;
+  lessonTitle: string;
+  lessonTopic: string;
+  subject: string | null;
+  struggleScore: number | null;
+  struggleDimensions: {
+    socraticDepth: number;
+    errorPersistence: number;
+    frustrationSentiment: number;
+  } | null;
+  comprehensionScore: number | null;
+  exitTicketPassed: boolean | null;
+  rubricScores: { accuracy: number; reasoning: number; effort: number } | null;
+  submissionGrade: number | null;
+  lastActivity: string | null;
+}

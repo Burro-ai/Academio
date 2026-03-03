@@ -12,6 +12,7 @@ type Tab = 'dashboard' | 'students' | 'assistant' | 'insights';
 export function TeacherPage() {
   const { isAuthenticated, isLoading, loadInterventionAlerts } = useTeacherContext();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [navStudentId, setNavStudentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -19,7 +20,8 @@ export function TeacherPage() {
     }
   }, [isAuthenticated, loadInterventionAlerts]);
 
-  const handleViewStudent = (_studentId: string) => {
+  const handleViewStudent = (studentId: string) => {
+    setNavStudentId(studentId);
     setActiveTab('students');
   };
 
@@ -41,13 +43,18 @@ export function TeacherPage() {
 
       <main className="flex-1 overflow-hidden">
         {activeTab === 'dashboard' && <Dashboard onViewStudent={handleViewStudent} />}
-        {activeTab === 'students' && <StudentsView />}
+        {activeTab === 'students' && (
+          <StudentsView
+            initialStudentId={navStudentId}
+            onStudentCleared={() => setNavStudentId(null)}
+          />
+        )}
         {activeTab === 'assistant' && (
           <div className="h-screen">
             <TeacherChat />
           </div>
         )}
-        {activeTab === 'insights' && <ClassroomInsights />}
+        {activeTab === 'insights' && <ClassroomInsights onViewStudent={handleViewStudent} />}
       </main>
     </div>
   );
