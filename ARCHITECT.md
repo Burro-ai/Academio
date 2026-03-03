@@ -968,6 +968,12 @@ Replaces the static struggle_score seed with a live, per-message calculation eng
 | Rendimiento Académico | `academicPerformance` | Same stats + `grades` |
 | **Analítica** | **`analytics`** | **`GET /teacher/students/:id/lesson-analytics`** (lazy, loads on first tab activation) |
 
+**Analítica tab query** (`studentStats.queries.getStudentLessonAnalytics`):
+- Root table: `lesson_chat_sessions` (struggle lives here, not in `learning_analytics`)
+- `LEFT JOIN learning_analytics la ON la.session_id = lcs.id` — for comprehension/exit_ticket if present
+- `LEFT JOIN homework_assignments ha ON ha.source_lesson_id = l.id` — links homework to lesson
+- See "Analytics Storage" section for why struggle is on `lesson_chat_sessions`
+
 **Analítica tab — per-lesson card** (`LessonAnalyticCard`):
 - Struggle score bar (green < 0.4, amber 0.4–0.7, red > 0.7)
 - 3 dimension mini-bars: socraticDepth / errorPersistence / frustrationSentiment (purple)

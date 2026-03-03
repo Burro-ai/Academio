@@ -320,8 +320,14 @@ export const studentStatsQueries = {
 
   /**
    * Get per-lesson analytics for a student (for the Analítica tab)
-   * Joins learning_analytics → lesson_chat_sessions → personalized_lessons → lessons
-   * Left-joins homework_assignments (via source_lesson_id) and homework_submissions for rubric data
+   *
+   * Architecture note: struggle data is stored directly on lesson_chat_sessions
+   * (not learning_analytics) because learning_analytics.session_id has a FK to
+   * sessions(id), not lesson_chat_sessions(id). Comprehension/exit_ticket are
+   * left-joined from learning_analytics in case a row exists.
+   *
+   * Chain: lesson_chat_sessions → personalized_lessons → lessons
+   *        left-join homework_assignments (source_lesson_id) → personalized_homework → homework_submissions
    */
   getStudentLessonAnalytics(studentId: string): Array<{
     lessonId: string;
@@ -344,23 +350,23 @@ export const studentStatsQueries = {
         l.title                 AS lesson_title,
         l.topic                 AS lesson_topic,
         l.subject,
-        la.struggle_score,
-        la.struggle_dimensions,
+        lcs.struggle_score,
+        lcs.struggle_dimensions,
         la.comprehension_score,
         la.exit_ticket_passed,
         hs.rubric_scores,
         hs.grade                AS submission_grade,
-        la.updated_at           AS last_activity
-      FROM learning_analytics la
-      JOIN lesson_chat_sessions lcs ON lcs.id = la.session_id
+        lcs.updated_at          AS last_activity
+      FROM lesson_chat_sessions lcs
       JOIN personalized_lessons pl  ON pl.id  = lcs.personalized_lesson_id
       JOIN lessons l                ON l.id   = pl.lesson_id
+      LEFT JOIN learning_analytics la ON la.session_id = lcs.id
       LEFT JOIN homework_assignments ha ON ha.source_lesson_id = l.id
       LEFT JOIN personalized_homework ph
              ON ph.homework_id = ha.id AND ph.student_id = ?
       LEFT JOIN homework_submissions hs ON hs.personalized_homework_id = ph.id
-      WHERE la.student_id = ?
-      ORDER BY la.updated_at DESC
+      WHERE lcs.student_id = ?
+      ORDER BY lcs.updated_at DESC
     `).all(studentId, studentId) as Array<{
       lesson_id: string;
       lesson_title: string;
