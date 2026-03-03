@@ -1,7 +1,7 @@
 # JOURNAL.md - Academio Development Progress Log
 
 > **Purpose:** Track current state, active decisions, and next steps for context continuity.
-> **Last Updated:** 2026-02-27 (evening)
+> **Last Updated:** 2026-03-02
 > **Archive:** Entries older than 3 days → see HISTORY.md
 
 ---
@@ -70,6 +70,19 @@
 ## Progress Log
 
 ### 2026-02-27
+
+### 2026-03-02
+
+#### Velocity Coach — Formal Seal & Prompt Deployment
+
+- **`CLAUDE.md`** — two `> **CORE RULE — SEALED 2026-03-02:**` manifesto callouts added:
+  - Velocity Coach: "Direct answers **required** after 2+ attempts, mandatory Depth-Check, gamified K-12 tone"
+  - Architect Co-Pilot: "NOT Socratic. High-efficiency Architect. Diagnose → Prescribe → Generate."
+  - Fixed 3 stale "Socratic" references: hierarchy (line 297), Teacher Portal description, Teacher Portal decisions table
+- **`server/data/system-prompt.txt`** — `## MANIFESTO — REGLA NUCLEAR (SELLADO 2026-03-02)` block inserted at line 3 (after identity, before language rule); runtime AI reads this on every call
+- **`server/data/teacher-system-prompt.txt`** — same manifesto pattern, Architect Co-Pilot wording
+- **`aiGatekeeper.service.ts`** — all 5 persona method headers renamed from `MÉTODO SOCRÁTICO [ADAPTADO|RIGUROSO|AVANZADO|ACADÉMICO]` → `MODO SOCRÁTICO (Velocity Coach — Modo Predeterminado)` — clarifies it's Mode 1 of 3, not the whole methodology
+- TypeScript: ✅ 0 errors (server)
 
 #### Velocity Engine — Hard-Wired AI Services + UI
 

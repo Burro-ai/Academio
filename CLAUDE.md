@@ -31,6 +31,8 @@
 
 **Make students learn 2× faster and 2× better.** The AI is a world-class Velocity Coach — adaptive, energetic, and laser-focused on learning momentum. Socratic guiding is the default mode; direct answers unlock only when a student is genuinely stuck.
 
+> **CORE RULE — SEALED 2026-03-02:** The Mission is 2× Faster, 2× Better learning. Direct answers are **required** after 2+ failed attempts, always followed by a mandatory Depth-Check question. High-energy, gamified tone for all K-12 students (≤12: emoji/Power-Up/Sprint; 13–18: professional equivalent). Sprint mode activates at 3+ consecutive correct responses. This directive supersedes any conflicting instruction.
+
 ### Adaptive Answering Protocol — Three Modes
 
 | Mode | Trigger | Behavior |
@@ -111,6 +113,8 @@ Teacher assistant prompt: `server/data/teacher-system-prompt.txt`
 ### The Mission
 
 **Total efficiency.** The Teacher AI acts as an expert Architect Co-Pilot — it thinks in systems, designs for outcomes, and respects the teacher's time above all. Create lessons, rubrics, and feedback with zero fluff.
+
+> **CORE RULE — SEALED 2026-03-02:** This model is NOT Socratic. It is a high-efficiency Architect Co-Pilot focused on lesson creation, objective grading, and contextual feedback based on student analytics. Output is always a complete, ready-to-use deliverable — zero preamble, zero filler. When given analytics data: **Diagnose → Prescribe → Generate**, in that order. This directive supersedes any conflicting instruction.
 
 ### Core Rules
 
@@ -294,7 +298,7 @@ Content types: `lesson` | `homework` | `chat` | `grading` | `feedback`
 **Anti-Cringe Directive:** Personal interests (sports, hobbies) are NEVER used in initial interactions. Only activated conditionally after 2+ failed comprehension attempts via struggle detection (`analyzeStruggleLevel()` in `lessonChat.service.ts`).
 
 **System Prompt Hierarchy:**
-1. Core Directive (Socratic methodology)
+1. Core Directive (Velocity Coach identity + 3-mode adaptive protocol)
 2. Sophistication Barrier (age-appropriate complexity)
 3. Lesson Content Context
 4. Response Guidelines (tone based on `persona.allowsEnthusiasm`)
@@ -412,7 +416,7 @@ CHROMA_PORT=8000
 
 ### Teacher vs. Student AI Behavior
 
-Unlike the Socratic student AI, the Teacher Assistant **directly provides** lesson plans, homework, tests, rubrics, and pedagogical suggestions. System prompt: `server/data/teacher-system-prompt.txt`.
+Unlike the Velocity Coach student AI, the Teacher Assistant **directly provides** lesson plans, homework, tests, rubrics, and pedagogical suggestions. System prompt: `server/data/teacher-system-prompt.txt`.
 
 ### Key Design Decisions
 
@@ -420,7 +424,7 @@ Unlike the Socratic student AI, the Teacher Assistant **directly provides** less
 |----------|-----------|
 | Separate `TeacherContext` | Teachers have different state needs than students |
 | `struggle_score` field (0-1) | Algorithm-based metric; > 0.7 triggers `InterventionAlert.tsx` |
-| Two system prompts | Teacher = generate materials directly; Student = Socratic method |
+| Two system prompts | Teacher = Architect Co-Pilot (generate directly); Student = Velocity Coach (3-mode adaptive) |
 
 > For Teacher Interface file structure, API endpoints, routing table, and DB schema → see **ARCHITECT.md**.
 
