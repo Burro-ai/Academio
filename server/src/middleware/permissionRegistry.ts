@@ -143,8 +143,10 @@ export const PERMISSION_REGISTRY: RoutePermission[] = [
   { method: 'GET', path: '/classroom/:classroomId/subject/:subject/average', permissions: ['TEACHER'], description: 'Get subject average' },
 
   // ============ Insight Engine Routes (Teacher Only) ============
-  { method: 'GET',  path: '/teacher/classrooms/:classroomId/insights',       permissions: ['TEACHER'], description: 'Get classroom insight snapshot' },
-  { method: 'POST', path: '/teacher/classrooms/:classroomId/insights/audit', permissions: ['TEACHER'], description: 'Generate diagnostic audit' },
+  { method: 'GET',  path: '/teacher/classrooms/:classroomId/insights',                    permissions: ['TEACHER'], description: 'Get classroom insight snapshot' },
+  { method: 'POST', path: '/teacher/classrooms/:classroomId/insights/audit',              permissions: ['TEACHER'], description: 'Generate diagnostic audit' },
+  { method: 'GET',  path: '/teacher/classrooms/:classroomId/insights/audits',             permissions: ['TEACHER'], description: 'Get audit history for classroom' },
+  { method: 'GET',  path: '/teacher/classrooms/:classroomId/insights/audits/:auditId',    permissions: ['TEACHER'], description: 'Get specific audit by ID' },
 
   // ============ Admin Routes ============
   { method: 'GET', path: '/admin/prompt', permissions: ['ADMIN'], description: 'Get system prompt' },

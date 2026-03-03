@@ -66,5 +66,7 @@ router.post('/homework/submissions/:id/regenerate-ai', asyncHandler(homeworkSubm
 // Classroom Insights (Insight Engine)
 router.get('/classrooms/:classroomId/insights', asyncHandler(insightEngineController.getSnapshot));
 router.post('/classrooms/:classroomId/insights/audit', asyncHandler(insightEngineController.generateAudit));
+router.get('/classrooms/:classroomId/insights/audits', asyncHandler(insightEngineController.getAuditHistory));
+router.get('/classrooms/:classroomId/insights/audits/:auditId', asyncHandler(insightEngineController.getAuditById));
 
 export default router;

@@ -56,3 +56,17 @@ export interface DiagnosticAudit {
   bridgeActivity: string;             // 10-min classroom intervention (markdown)
   recommendations: string[];
 }
+
+export interface SnapshotSummary {
+  studentCount: number;
+  lessonCount: number;
+  avgStruggleScore: number;
+  topCluster: string;                 // topic of the worst-performing cluster
+}
+
+export interface StoredDiagnosticAudit extends DiagnosticAudit {
+  id: string;
+  classroomId: string;
+  teacherId: string;
+  snapshotSummary: SnapshotSummary;
+}

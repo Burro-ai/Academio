@@ -9,7 +9,10 @@ import {
   DiagnosticAudit,
   FailureType,
   DiagnosticSeverity,
+  SnapshotSummary,
+  StoredDiagnosticAudit,
 } from '../../../shared/types/insight.types';
+import { insightAuditsQueries } from '../database/queries/insightAudits.queries';
 import { RubricScores } from '../../../shared/types/lesson.types';
 
 // ============================================================
@@ -392,14 +395,44 @@ class InsightEngineService {
   }
 
   /**
-   * Generate an AI-powered diagnostic audit for a classroom snapshot.
+   * Generate an AI-powered diagnostic audit for a classroom snapshot and persist it.
    */
-  async generateDiagnosticAudit(snapshot: ClassroomSnapshot): Promise<DiagnosticAudit> {
+  async generateDiagnosticAudit(
+    snapshot: ClassroomSnapshot,
+    teacherId: string
+  ): Promise<StoredDiagnosticAudit> {
     const prompt = buildDiagnosticPrompt(snapshot);
-
     const raw = await ollamaService.generate(prompt, undefined, DIAGNOSTIC_SYSTEM_PROMPT, 'chat');
+    const audit = parseDiagnosticJson(raw);
 
-    return parseDiagnosticJson(raw);
+    const snapshotSummary: SnapshotSummary = {
+      studentCount: snapshot.students.length,
+      lessonCount: snapshot.lessons.length,
+      avgStruggleScore: snapshot.clusters.length > 0
+        ? snapshot.clusters.reduce((sum, c) => sum + c.avgStruggleScore, 0) / snapshot.clusters.length
+        : 0,
+      topCluster: snapshot.clusters.length > 0
+        ? snapshot.clusters.reduce((worst, c) =>
+            c.avgStruggleScore > worst.avgStruggleScore ? c : worst
+          ).topic
+        : 'N/A',
+    };
+
+    return insightAuditsQueries.create(snapshot.classroomId, teacherId, audit, snapshotSummary);
+  }
+
+  /**
+   * Retrieve persisted audit history for a classroom.
+   */
+  getAuditHistory(classroomId: string, limit = 20): StoredDiagnosticAudit[] {
+    return insightAuditsQueries.getByClassroom(classroomId, limit);
+  }
+
+  /**
+   * Retrieve a single stored audit by ID.
+   */
+  getAuditById(id: string): StoredDiagnosticAudit | null {
+    return insightAuditsQueries.getById(id);
   }
 }
 

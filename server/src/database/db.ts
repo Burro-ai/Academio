@@ -58,6 +58,9 @@ export const initializeDatabase = async (): Promise<void> => {
   // Add struggle_score, struggle_dimensions to lesson_chat_sessions
   addStruggleScoreToLessonChatSessions();
 
+  // Create insight_audits table for persisting diagnostic audit results
+  addInsightAuditsTable();
+
   // Read and execute schema
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
@@ -715,6 +718,33 @@ export const addQuestionsJsonColumn = (): void => {
  * lesson_chat_sessions cannot reference learning_analytics (which has a FK to sessions(id)),
  * so struggle data is stored directly on the session that owns it.
  */
+export const addInsightAuditsTable = (): void => {
+  const tableExists = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='insight_audits'"
+  ).get();
+
+  if (!tableExists) {
+    console.log('Creating insight_audits table...');
+    db.exec(`
+      CREATE TABLE insight_audits (
+        id TEXT PRIMARY KEY,
+        classroom_id TEXT NOT NULL,
+        teacher_id TEXT NOT NULL,
+        generated_at TEXT NOT NULL,
+        root_cause TEXT NOT NULL,
+        failure_type TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        bridge_activity TEXT NOT NULL,
+        recommendations TEXT NOT NULL,
+        snapshot_summary TEXT NOT NULL
+      )
+    `);
+    db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_insight_audits_classroom ON insight_audits(classroom_id, generated_at DESC)'
+    );
+  }
+};
+
 export const addStruggleScoreToLessonChatSessions = (): void => {
   const tableExists = db.prepare(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='lesson_chat_sessions'"

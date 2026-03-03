@@ -9,6 +9,7 @@
 ## Current State
 
 ### What's Working
+- [x] **Insight Audit Persistence**: `insight_audits` table — audits stored on generation, history + by-ID retrieval endpoints live
 - [x] Authentication system (JWT-based, 7-day expiry, persistence-first)
 - [x] Student portal: AI tutor chat, lesson chat, homework sidekick
 - [x] Teacher dashboard: lesson & homework creation with AI streaming
@@ -51,7 +52,7 @@
 ## Next Steps
 
 ### High Priority
-1. Persist insight audit results to DB (currently returned but not stored)
+1. ~~Persist insight audit results to DB~~ ✅ Done
 2. Classroom management CRUD (create/edit/delete classrooms from teacher UI)
 3. Student profile detail view (teacher side: grades, analytics, chat history)
 
@@ -108,6 +109,33 @@
   - `VelocityStreakBadge` component renders above content when `velocityStreak >= 3`
   - 3–4: amber "⚡ Racha de Velocidad · N"; 5+: orange-red "🔥 Racha de Fuego · N"
   - Glass design system consistent (backdrop-blur, gradient border, w-fit pill)
+- TypeScript: ✅ 0 errors (client + server)
+
+#### Insight Audit Persistence
+
+- **`shared/types/insight.types.ts`** — added `SnapshotSummary` + `StoredDiagnosticAudit extends DiagnosticAudit`:
+  - `SnapshotSummary`: `{ studentCount, lessonCount, avgStruggleScore, topCluster }`
+  - `StoredDiagnosticAudit`: extends `DiagnosticAudit` with `id`, `classroomId`, `teacherId`, `snapshotSummary`
+- **`server/src/database/db.ts`** — `addInsightAuditsTable()` migration:
+  - Creates `insight_audits` table (idempotent — skips if exists)
+  - Columns: `id, classroom_id, teacher_id, generated_at, root_cause, failure_type, severity, bridge_activity, recommendations (JSON), snapshot_summary (JSON)`
+  - Index: `idx_insight_audits_classroom` on `(classroom_id, generated_at DESC)` for fast history queries
+  - Called in `initializeDatabase()` before schema execution
+- **`server/src/database/queries/insightAudits.queries.ts`** — NEW FILE:
+  - `create(classroomId, teacherId, audit, snapshotSummary)` → `StoredDiagnosticAudit`
+  - `getByClassroom(classroomId, limit=20)` — most recent first
+  - `getById(id)` — nullable return
+- **`server/src/services/insightEngine.service.ts`** — `generateDiagnosticAudit()` updated:
+  - Now accepts `teacherId` parameter
+  - Computes `SnapshotSummary` from snapshot (worst cluster = highest avgStruggleScore)
+  - Persists via `insightAuditsQueries.create()` after AI generates the audit
+  - Returns `StoredDiagnosticAudit` (includes `id` for future retrieval)
+  - Added `getAuditHistory(classroomId, limit)` and `getAuditById(id)` service methods
+- **`server/src/controllers/insightEngine.controller.ts`** — `generateAudit()` passes `teacherId`; added `getAuditHistory()` and `getAuditById()` handlers
+- **`server/src/routes/teacher.routes.ts`** — 2 new GET routes:
+  - `GET /classrooms/:classroomId/insights/audits` — history list
+  - `GET /classrooms/:classroomId/insights/audits/:auditId` — single audit
+- **`server/src/middleware/permissionRegistry.ts`** — both new routes registered as `TEACHER`
 - TypeScript: ✅ 0 errors (client + server)
 
 #### High-Velocity Pedagogy Refactor
