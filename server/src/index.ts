@@ -6,6 +6,7 @@ import { config } from './config';
 import { errorHandler } from './middleware/errorHandler.middleware';
 import routes from './routes';
 import { initializeDatabase } from './database/db';
+import { promptManager } from './services/promptManager.service';
 
 const app = express();
 
@@ -71,6 +72,7 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     ensureDirectories();
+    promptManager.loadConfigs();
     await initializeDatabase();
 
     app.listen(config.port, () => {

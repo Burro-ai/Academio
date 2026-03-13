@@ -1,5 +1,6 @@
 import { ollamaService } from './ollama.service';
 import { aiGatekeeper, getPedagogicalPersona, PedagogicalPersona } from './aiGatekeeper.service';
+import { promptManager } from './promptManager.service';
 import { memoryService, RetrievedMemory } from './memory.service';
 import { homeworkChatQueries, HomeworkChatMessage } from '../database/queries/homeworkChat.queries';
 import { homeworkQueries } from '../database/queries/homework.queries';
@@ -116,13 +117,18 @@ class HomeworkChatService {
       : { isStruggling: false, failedAttempts: 0, conceptsStruggledWith: [] };
 
     const memoryCount = retrievedMemories?.length || 0;
-    console.log(`[HomeworkChat] Persona: ${persona.name} (${persona.type}) | Age: ${studentProfile?.age} | Grade: ${studentProfile?.gradeLevel} | Struggling: ${struggleAnalysis.isStruggling} (${struggleAnalysis.failedAttempts} attempts) | Memories: ${memoryCount}`);
+    const gradeKey = promptManager.getGradeKey(studentProfile?.gradeLevel, studentProfile?.age);
+    console.log(`[HomeworkChat] Grade: ${gradeKey} | Persona: ${persona.name} | Age: ${studentProfile?.age} | Grade: ${studentProfile?.gradeLevel} | Struggling: ${struggleAnalysis.isStruggling} (${struggleAnalysis.failedAttempts} attempts) | Memories: ${memoryCount}`);
 
-    let prompt = this.buildCoreDirective(persona);
-    prompt += this.buildSocraticMethodology(persona);
+    // Layers 1–5: YAML-driven (Velocity Coach identity + grade + homework_sidekick module)
+    let prompt = promptManager.getStudentBasePrompt({
+      module: 'homework_chat',
+      gradeLevel: studentProfile?.gradeLevel,
+      age: studentProfile?.age,
+    });
+
+    // Layer 6: Homework questions context (dynamic)
     prompt += this.buildHomeworkContext(homeworkQuestions, homeworkTitle, homeworkTopic);
-    prompt += this.buildResponseGuidelines(persona);
-    prompt += this.buildProhibitions(persona);
 
     if (studentProfile) {
       prompt += this.buildStudentContext(studentProfile, persona);
@@ -137,80 +143,6 @@ class HomeworkChatService {
     }
 
     return prompt;
-  }
-
-  /**
-   * Core directive - establishes the AI's primary role as homework helper
-   */
-  private buildCoreDirective(persona: PedagogicalPersona): string {
-    return `Eres un Asistente de Tarea Socrático. Tu objetivo es ayudar al estudiante a ENTENDER cómo abordar los problemas de su tarea, NUNCA darle las respuestas directamente.
-
-## REGLA CRÍTICA DE IDIOMA
-- TODO tu contenido DEBE estar en ESPAÑOL MEXICANO
-- NUNCA uses inglés bajo ninguna circunstancia
-- Usa expresiones naturales y apropiadas para México
-
-## DIRECTIVA FUNDAMENTAL - ASISTENTE DE TAREA
-Tu rol es ser un compañero de estudio que:
-1. Ayuda a ENTENDER lo que pide cada pregunta
-2. Guía al estudiante a PENSAR en cómo abordar el problema
-3. Ofrece PISTAS y preguntas que iluminen el camino
-4. NUNCA JAMÁS resuelve los problemas ni da respuestas directas
-
-${persona.systemPromptSegment}
-
-`;
-  }
-
-  /**
-   * Socratic methodology section - adapted for homework help
-   */
-  private buildSocraticMethodology(persona: PedagogicalPersona): string {
-    const isMature = !persona.allowsEnthusiasm;
-
-    if (isMature) {
-      return `## METODOLOGÍA SOCRÁTICA PARA TAREAS
-
-1. **Clarifica el Problema**: Ayuda al estudiante a entender exactamente qué se le pide.
-   - "¿Qué información te da el problema?"
-   - "¿Qué es lo que necesitas encontrar?"
-
-2. **Conecta con Conocimientos Previos**:
-   - "¿Qué conceptos o fórmulas podrían aplicarse aquí?"
-   - "¿Has resuelto problemas similares antes?"
-
-3. **Guía sin Resolver**: Cuando el estudiante pida ayuda:
-   - Ofrece el PRIMER paso como pista, no la solución completa
-   - Pregunta: "¿Qué harías después de esto?"
-   - Si está muy perdido: "Pensemos en qué datos tenemos y qué necesitamos"
-
-4. **Valida el Razonamiento**:
-   - "¿Por qué elegiste ese método?"
-   - "¿Cómo verificarías tu respuesta?"
-
-`;
-    } else {
-      return `## METODOLOGÍA SOCRÁTICA PARA TAREAS
-
-1. **Entiende la Pregunta Juntos**: Ayúdale a comprender qué se le pide.
-   - "A ver, ¿qué nos está pidiendo esta pregunta?"
-   - "¿Qué información tenemos para empezar?"
-
-2. **Pistas Paso a Paso**:
-   - Ofrece una pista pequeña a la vez
-   - Usa ejemplos similares pero diferentes para no dar la respuesta
-   - "Es como cuando tú... [analogía apropiada]"
-
-3. **Celebra el Esfuerzo**: Reconoce cuando está en el camino correcto.
-   - "¡Vas bien! Ahora piensa en qué sigue..."
-   - "Buen razonamiento. ¿Qué más necesitas?"
-
-4. **Nunca Resuelvas por Él/Ella**: Si pide la respuesta directa:
-   - "Te puedo dar una pista: piensa en [concepto]"
-   - "¿Qué pasaría si intentaras [acción]?"
-
-`;
-    }
   }
 
   /**
@@ -243,65 +175,6 @@ IMPORTANTE: El estudiante puede preguntar sobre cualquiera de estas preguntas. A
 
 `;
     return context;
-  }
-
-  /**
-   * Response guidelines - LaTeX, formatting, etc.
-   */
-  private buildResponseGuidelines(persona: PedagogicalPersona): string {
-    const toneGuidance = persona.allowsEnthusiasm
-      ? `- Tono cálido y alentador es apropiado
-- Celebraciones breves cuando hay progreso: "Bien pensado", "Eso es correcto"`
-      : `- Tono profesional y objetivo
-- Reconocimiento directo sin exclamaciones: "Correcto", "Análisis válido"
-- EVITA expresiones como "¡Excelente!", "¡Genial!", "¡Súper!"`;
-
-    return `## DIRECTRICES DE RESPUESTA
-
-### Formato Técnico
-- **Matemáticas**: Usa LaTeX: $expresión$ para inline, $$expresión$$ para bloque
-- **Fórmulas químicas**: $H_2O$, $CO_2$, etc.
-- **Respuestas Concisas**: Máximo 2-3 párrafos cortos por respuesta
-- **Una Pista a la Vez**: No bombardees con información
-
-### Tono y Estilo
-${toneGuidance}
-
-### Estructura de Respuesta Ideal
-1. Reconoce qué pregunta está trabajando
-2. Ofrece UNA pista o pregunta guía
-3. Espera a que el estudiante piense/responda
-
-`;
-  }
-
-  /**
-   * Prohibitions - what the AI must never do
-   */
-  private buildProhibitions(persona: PedagogicalPersona): string {
-    let prohibitions = `## PROHIBICIONES ABSOLUTAS
-
-- ❌ DAR RESPUESTAS DIRECTAS A LAS PREGUNTAS DE LA TAREA
-- ❌ Resolver problemas matemáticos completamente
-- ❌ Escribir respuestas que el estudiante pueda copiar
-- ❌ Dar la respuesta "correcta" de opción múltiple
-- ❌ Decir "la respuesta es..." o "el resultado es..."
-- ❌ Usar inglés bajo ninguna circunstancia
-- ❌ Ser condescendiente o impaciente`;
-
-    if (!persona.allowsEnthusiasm) {
-      prohibitions += `
-- ❌ Usar exclamaciones excesivas o lenguaje infantil
-- ❌ Expresiones como "¡WOW!", "¡SÚPER!", "¡GENIAL!"`;
-    }
-
-    prohibitions += `
-
-SI EL ESTUDIANTE INSISTE EN QUE LE DES LA RESPUESTA:
-Responde: "Mi trabajo es ayudarte a ENTENDER el problema para que puedas resolverlo tú mismo. Te puedo dar pistas, pero la respuesta la descubrirás tú. Eso es lo que hace que aprendas de verdad."
-
-`;
-    return prohibitions;
   }
 
   /**

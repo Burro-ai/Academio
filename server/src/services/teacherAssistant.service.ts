@@ -1,47 +1,39 @@
 import { config } from '../config';
 import { OllamaGenerateRequest, OllamaResponse, MaterialType, TeacherChatMessage } from '../types';
-import fs from 'fs';
+import { promptManager, TeacherFunction } from './promptManager.service';
+
+// Maps MaterialType → TeacherFunction for PromptManager
+const MATERIAL_TO_FUNCTION: Partial<Record<MaterialType, TeacherFunction>> = {
+  lesson:       'lesson_planner',
+  test:         'grading_assistant',
+  homework:     'grading_assistant',
+  presentation: 'lesson_planner',
+  general:      'general',
+};
 
 class TeacherAssistantService {
   private baseUrl: string;
   private model: string;
-  private systemPromptPath: string;
 
   constructor() {
     this.baseUrl = config.ollama.baseUrl;
     this.model = config.ollama.model;
-    this.systemPromptPath = config.paths.teacherSystemPrompt;
   }
 
   /**
-   * Get the teacher system prompt
+   * Get the teacher system prompt via PromptManager.
+   * Falls back to the general identity if no materialType is provided.
    */
-  async getSystemPrompt(): Promise<string> {
-    try {
-      return fs.readFileSync(this.systemPromptPath, 'utf-8');
-    } catch {
-      // Return default prompt if file doesn't exist
-      return `You are an AI Teaching Assistant. Help teachers create educational materials including lesson plans, presentations, tests, and homework assignments. Be direct and provide complete, ready-to-use content.`;
-    }
+  async getSystemPrompt(materialType?: MaterialType): Promise<string> {
+    const fn = materialType ? (MATERIAL_TO_FUNCTION[materialType] ?? 'general') : undefined;
+    return promptManager.getTeacherBasePrompt({ function: fn });
   }
 
   /**
    * Build conversation context for the LLM
    */
-  buildPrompt(messages: TeacherChatMessage[], newMessage: string, materialType?: MaterialType): string {
+  buildPrompt(messages: TeacherChatMessage[], newMessage: string, _materialType?: MaterialType): string {
     let prompt = '';
-
-    // Add material type context if provided
-    if (materialType && materialType !== 'general') {
-      const typeContext: Record<MaterialType, string> = {
-        lesson: 'The teacher is creating a lesson plan. Include objectives, activities, and time estimates.',
-        presentation: 'The teacher is creating a presentation. Structure content with clear sections and key points.',
-        test: 'The teacher is creating an assessment. Include various question types and an answer key.',
-        homework: 'The teacher is creating homework. Include clear instructions and practice problems.',
-        general: '',
-      };
-      prompt += `Context: ${typeContext[materialType]}\n\n`;
-    }
 
     // Include conversation history
     for (const msg of messages) {
@@ -63,9 +55,10 @@ class TeacherAssistantService {
    */
   async *generateStream(
     prompt: string,
-    context?: number[]
+    context?: number[],
+    materialType?: MaterialType
   ): AsyncGenerator<{ text: string; done: boolean; context?: number[] }> {
-    const systemPrompt = await this.getSystemPrompt();
+    const systemPrompt = await this.getSystemPrompt(materialType);
 
     const requestBody: OllamaGenerateRequest = {
       model: this.model,

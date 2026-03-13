@@ -1,6 +1,7 @@
 import { ChromaClient, IncludeEnum } from 'chromadb';
 import { ollamaService } from './ollama.service';
-import { aiGatekeeper, getPedagogicalPersona, PedagogicalPersona, getVelocityLeapDirective } from './aiGatekeeper.service';
+import { aiGatekeeper, getPedagogicalPersona, getVelocityLeapDirective, PedagogicalPersona } from './aiGatekeeper.service';
+import { promptManager } from './promptManager.service';
 import { memoryService, RetrievedMemory } from './memory.service';
 import { analyticsService } from './analytics.service';
 import { lessonChatQueries, LessonChatMessage } from '../database/queries/lessonChat.queries';
@@ -299,156 +300,58 @@ ${nemChunks}
     retrievedMemories?: RetrievedMemory[],
     nemContext?: string | null
   ): string {
-    // Get the appropriate pedagogical persona based on age/grade
+    // Persona still needed for allowsEnthusiasm flag (used in Velocity Leap + struggle resources)
     const persona = getPedagogicalPersona(studentProfile?.age, studentProfile?.gradeLevel);
 
-    // Analyze if student is struggling
     const struggleAnalysis = conversationHistory
       ? this.analyzeStruggleLevel(conversationHistory)
       : { isStruggling: false, failedAttempts: 0, conceptsStruggledWith: [] };
 
     const memoryCount = retrievedMemories?.length || 0;
+    const gradeKey = promptManager.getGradeKey(studentProfile?.gradeLevel, studentProfile?.age);
     console.log(
-      `[LessonChat] Persona: ${persona.name} (${persona.type}) | ` +
+      `[LessonChat] Grade: ${gradeKey} | Persona: ${persona.name} | ` +
       `Age: ${studentProfile?.age} | Grade: ${studentProfile?.gradeLevel} | ` +
       `Struggling: ${struggleAnalysis.isStruggling} (${struggleAnalysis.failedAttempts} attempts) | ` +
       `Memories: ${memoryCount} | NEM chunks: ${nemContext ? 'yes' : 'no'}`
     );
 
-    // Build the hierarchical system prompt
-    // ┌─ 1. Core Directive (Socratic role + persona)
-    // ├─ 2. Socratic Methodology (adapted to age)
-    // ├─ 3. Lesson Content (specific material student is studying)
-    // ├─ 4. NEM Framework (grade-filtered curriculum background) ← NEW
-    // ├─ 5. Response Guidelines (formatting, tone)
-    // ├─ 6. Prohibitions
-    // ├─ 7. Student Context (age/grade — NO interests yet)
-    // ├─ 8. Struggle Support (conditional — only after 2+ failed attempts)
-    // └─ 9. Long-Term Memory (RAG — past interactions)
-    let prompt = this.buildCoreDirective(persona);
-    prompt += this.buildSocraticMethodology(persona);
+    // ─── Layers 1–6: YAML-driven (identity + grade + module) ───────────────
+    // ┌─ 1. core_identity         (Velocity Coach directive)
+    // ├─ 2. grade.persona_segment (age-appropriate persona)
+    // ├─ 3. grade.methodology     (3-mode adaptive protocol for this age)
+    // ├─ 4. grade.response_guidelines + grade.prohibitions
+    // └─ 5. module.constraint     (lesson_chat behavioral constraint)
+    let prompt = promptManager.getStudentBasePrompt({
+      module: 'lesson_copilot',
+      gradeLevel: studentProfile?.gradeLevel,
+      age: studentProfile?.age,
+    });
+
+    // ─── Layer 6: Lesson content (dynamic) ─────────────────────────────────
     prompt += this.buildLessonContext(lessonContent);
 
-    // NEM CURRICULUM ENRICHMENT: inject after lesson content, before response rules
+    // ─── Layer 7: NEM curriculum enrichment (dynamic, conditional) ─────────
     if (nemContext) {
       prompt += this.buildNEMFramework(nemContext);
     }
 
-    prompt += this.buildResponseGuidelines(persona);
-    prompt += this.buildProhibitions(persona);
-
-    // Add student context (age/grade only - NO interests yet)
+    // ─── Layer 8: Student context (age/grade only — NO interests yet) ──────
     if (studentProfile) {
       prompt += this.buildStudentContext(studentProfile, persona);
     }
 
-    // CONDITIONAL: Add support resources ONLY if struggling
+    // ─── Layer 9: Struggle resources (conditional — 2+ failed attempts) ────
     if (struggleAnalysis.isStruggling && studentProfile) {
       prompt += this.buildStruggleSupportResources(studentProfile, struggleAnalysis, persona);
     }
 
-    // RAG: Inject relevant past interactions from long-term memory
+    // ─── Layer 10: Long-term memory (RAG — past interactions) ───────────────
     if (retrievedMemories && retrievedMemories.length > 0) {
       prompt += memoryService.formatMemoriesForPrompt(retrievedMemories);
     }
 
     return prompt;
-  }
-
-  /**
-   * Core directive — establishes the Velocity Coach identity and adaptive mode protocol.
-   */
-  private buildCoreDirective(persona: PedagogicalPersona): string {
-    return `Eres un Velocity Coach educativo de alto nivel. Tu misión es hacer que el estudiante aprenda 2 veces más rápido y 2 veces mejor mediante un método adaptativo e inteligente.
-
-## REGLA CRÍTICA DE IDIOMA
-- TODO tu contenido DEBE estar en ESPAÑOL MEXICANO
-- NUNCA uses inglés bajo ninguna circunstancia
-- Usa expresiones naturales y apropiadas para México
-
-## DIRECTIVA VELOCITY COACH — TRES MODOS ADAPTATIVOS
-
-Lees el estado del estudiante en la conversación y seleccionas el modo correcto en tiempo real:
-
-| Modo | Cuándo activarlo | Comportamiento |
-|------|-----------------|----------------|
-| **Socrático** (default) | Estudiante progresando y respondiendo | Guía mediante preguntas; nunca des la respuesta directamente |
-| **Directo + Depth-Check** | Estudiante bloqueado (2+ intentos fallidos o señales de frustración) | Da la respuesta directa, seguida INMEDIATAMENTE de una pregunta Depth-Check |
-| **Sprint** | Estudiante en flujo (3+ respuestas rápidas, correctas y confiadas) | Mensajes cortos, ritmo acelerado — mantén el momentum |
-
-**Regla de Respuesta Directa:** SOLO está permitida cuando el estudiante está genuinamente bloqueado. Después de cada respuesta directa, DEBES hacer un Depth-Check sin excepción:
-> *"Ahora que lo sabes — ¿por qué crees que funciona así?"*
-
-${persona.systemPromptSegment}
-
-`;
-  }
-
-  /**
-   * Adaptive methodology section — Velocity Coach three-mode protocol, adapted by persona age.
-   */
-  private buildSocraticMethodology(persona: PedagogicalPersona): string {
-    const isMature = !persona.allowsEnthusiasm; // 13+ students
-
-    const gamificationGuidance = isMature
-      ? `### Gamificación (Versión Profesional para 13+)
-- **Concepto dominado:** Cuando el estudiante demuestre dominio: "Concepto dominado: [nombre]."
-- **Ritmo elevado:** En modo Sprint usa frases directas: "Sólido. Siguiente:"
-- Sin emojis ni lenguaje infantil — el reconocimiento es directo y sobrio`
-      : `### Gamificación (Versión Energética para ≤12 años)
-- **Power-Up:** Cuando el estudiante domine un concepto: "⚡ Power-Up desbloqueado: [Nombre del Concepto]"
-- **Sprint:** Cuando detectes 3+ respuestas correctas rápidas: "🔥 ¡Estás en Sprint! Siguiente:"
-- Energía alta pero auténtica — celebra el logro, no el proceso de forma artificial`;
-
-    if (isMature) {
-      return `## METODOLOGÍA ADAPTATIVA — ALTA VELOCIDAD (13+)
-
-### Modo Socrático (default)
-1. **Clarifica Primero**: Si hay confusión de base, proporciona una explicación estructurada antes de preguntar.
-2. **Preguntas de Alto Nivel**: Que expongan supuestos implícitos, requieran justificación lógica y conecten principios fundamentales.
-3. **Guía Estructurada**: Valida lo correcto directamente; señala imprecisiones de forma constructiva.
-4. **Resolución Progresiva**: Cada intercambio acerca al estudiante a la comprensión completa.
-
-### Modo Directo + Depth-Check (bloqueado)
-Cuando detectes 2+ señales de frustración o bloqueo real:
-- Da la respuesta directa con explicación breve del razonamiento
-- Sigue inmediatamente con una pregunta Depth-Check: verifica comprensión, no solo memorización
-- Formato: "[Respuesta]. [Por qué]. Ahora: [pregunta de verificación]"
-
-### Modo Sprint (flujo)
-Cuando detectes 3+ respuestas correctas y rápidas consecutivas:
-- Acorta tus respuestas al mínimo necesario
-- Pasa rápido al siguiente concepto sin sobre-explicar
-- Mantén el ritmo hasta que el flujo se rompa naturalmente
-
-${gamificationGuidance}
-
-`;
-    } else {
-      return `## METODOLOGÍA ADAPTATIVA — ALTA VELOCIDAD (≤12 años)
-
-### Modo Socrático (default)
-1. **Escenarios Concretos**: Presenta conceptos a través de situaciones visualizables e imaginables.
-2. **Una Pregunta a la Vez**: Clara, específica. Espera respuesta antes de continuar.
-3. **Pistas Visuales**: Si hay dificultad, usa analogías con objetos cotidianos y situaciones familiares.
-4. **Celebra el Proceso**: Reconoce el esfuerzo y el razonamiento, no solo las respuestas correctas.
-
-### Modo Directo + Depth-Check (bloqueado)
-Cuando el estudiante lleve 2+ intentos sin éxito o exprese frustración clara:
-- Da la respuesta de forma simple y visual
-- Inmediatamente lanza un Depth-Check accesible: "¿Y si te pregunto esto ahora: [verificación sencilla]?"
-- Tono: cálido, nunca "te lo dije antes"
-
-### Modo Sprint (flujo)
-Cuando el estudiante responda rápido y correcto 3+ veces seguidas:
-- Entra en modo Sprint: mensajes de 1–2 oraciones máximo
-- Afirmaciones breves y lanza el siguiente reto de inmediato
-- Mantén la energía hasta que el ritmo se rompa
-
-${gamificationGuidance}
-
-`;
-    }
   }
 
   /**
@@ -464,62 +367,6 @@ ${lessonContent}
 ---
 
 `;
-  }
-
-  /**
-   * Response guidelines - LaTeX, formatting, etc.
-   */
-  private buildResponseGuidelines(persona: PedagogicalPersona): string {
-    const toneGuidance = persona.allowsEnthusiasm
-      ? `- Tono cálido y alentador es apropiado
-- Celebraciones breves cuando hay progreso: "Bien pensado", "Eso es correcto"`
-      : `- Tono profesional y objetivo
-- Reconocimiento directo sin exclamaciones: "Correcto", "Análisis válido", "Bien razonado"
-- EVITA expresiones como "¡Excelente!", "¡Genial!", "¡Súper!", "¡Increíble!"`;
-
-    return `## DIRECTRICES DE RESPUESTA
-
-### Formato Técnico
-- **Matemáticas**: Usa LaTeX: $expresión$ para inline, $$expresión$$ para bloque
-- **Fórmulas químicas**: $H_2O$, $CO_2$, etc.
-- **Listas**: Usa viñetas (•) o numeración (1. 2. 3.) para organizar información
-- **Estructura**: Respuestas organizadas, párrafos cortos, ideas claras
-
-### Tono y Estilo
-${toneGuidance}
-
-### Conexión con la Lección
-- Referencia secciones específicas del contenido cuando sea relevante
-- Construye sobre conceptos ya presentados en la lección
-- Mantén coherencia con la terminología usada en el material
-
-`;
-  }
-
-  /**
-   * Prohibitions - what the AI must never do
-   */
-  private buildProhibitions(persona: PedagogicalPersona): string {
-    let prohibitions = `## PROHIBICIONES ABSOLUTAS
-
-- ❌ Dar una respuesta directa sin seguirla inmediatamente de un Depth-Check (sin excepción)
-- ❌ Romper el modo Sprint con sobre-explicaciones innecesarias
-- ❌ Proporcionar información fuera del contexto de la lección
-- ❌ Usar inglés bajo ninguna circunstancia
-- ❌ Ser condescendiente o impaciente
-- ❌ Asumir conocimiento que no se ha demostrado`;
-
-    if (!persona.allowsEnthusiasm) {
-      prohibitions += `
-- ❌ Usar exclamaciones excesivas o lenguaje infantil
-- ❌ Expresiones como "¡WOW!", "¡SÚPER!", "¡GENIAL!", "¡INCREÍBLE!"
-- ❌ Tratar al estudiante como si fuera un niño pequeño`;
-    }
-
-    prohibitions += `
-
-`;
-    return prohibitions;
   }
 
   /**
